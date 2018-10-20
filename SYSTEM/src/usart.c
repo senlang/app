@@ -158,10 +158,12 @@ void Debug_USART_Config(void)
 	USART_ITConfig(DEBUG_USARTx, USART_IT_RXNE, ENABLE);	
 	
 	// ????
-	USART_Cmd(DEBUG_USARTx, ENABLE);		
+	USART_Cmd(DEBUG_USARTx, ENABLE);	
+	
+	USART_GetFlagStatus(USART1, USART_FLAG_TC);
 
   // ????????
-	//USART_ClearFlag(USART1, USART_FLAG_TC);     
+	USART_ClearFlag(USART1, USART_FLAG_TC);     
 }
 
 

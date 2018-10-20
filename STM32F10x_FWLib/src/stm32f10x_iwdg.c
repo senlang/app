@@ -30,7 +30,6 @@
   * @brief IWDG driver modules
   * @{
   */ 
-
 /** @defgroup IWDG_Private_TypesDefinitions
   * @{
   */

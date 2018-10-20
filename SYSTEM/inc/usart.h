@@ -165,8 +165,8 @@ int UART2_IO_Receive(void);
 void UART1_IO_ClearRecive(void);
 void UART2_IO_ClearRecive(void);
 
-int up_receive_data(void);
-int down_receive_data(void);
+int uart1_receive_data(void);
+int uart2_receive_data(void);
 
 
 #endif /* __USART_H */

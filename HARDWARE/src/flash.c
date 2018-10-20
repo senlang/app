@@ -25,6 +25,7 @@ u16 SPI_FLASH_TYPE=W25Q16;//默认就是25Q16
 //容量为2M字节,共有32个Block,512个Sector 
 
 //初始化SPI FLASH的IO口
+#if 0
 void SPI_Flash_Init(void)
 {	
   GPIO_InitTypeDef GPIO_InitStructure;
@@ -50,6 +51,7 @@ void SPI_Flash_Init(void)
 	SPI_FLASH_TYPE=SPI_Flash_ReadID();//读取FLASH ID.  
 
 }  
+#enif
 
 
 //读取SPI_FLASH的状态寄存器

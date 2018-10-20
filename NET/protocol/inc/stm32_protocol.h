@@ -1,0 +1,384 @@
+#ifndef _STM32_PROTOCOL_H_
+#define _STM32_PROTOCOL_H_
+
+#include "stm32f10x.h"
+
+
+
+
+#define MAX_PAYLOAD_LEN 256 //byte
+
+#define STX_CODE_SIZE 1  
+#define PACKET_LEN_SIZE 1  
+#define USER_CMD_SIZE 1  
+#define CHECKSUM_SIZE 1 
+
+#define MAX_PUSH_CNT	16
+#define TOTAL_PUSH_CNT	(MAX_PUSH_CNT * 10)
+
+#define TRACK_MAX	96
+#define BOARD_ID_MAX 8
+#define PUSH_TIME_MAX 200
+
+
+//通用报文长度
+#define IPUC (STX_CODE_SIZE + PACKET_LEN_SIZE + USER_CMD_SIZE)  
+
+
+/*心跳及状态上报 */
+#define STATUS_REPORT_REQUEST_INFO_SIZE 4 //即(1字节	1字节	1字节	1字节)   
+#define STATUS_REPORT_REQUEST_PACKET_SIZE (IPUC + STATUS_REPORT_REQUEST_INFO_SIZE + CHECKSUM_SIZE)  
+
+
+/*请求出货指令*/
+#define PUSH_MEDICINE_REQUEST_INFO_SIZE 4 //即(1字节	1字节	2字节)   
+#define PUSH_MEDICINE_REQUEST_PACKET_SIZE (IPUC + PUSH_MEDICINE_REQUEST_INFO_SIZE * MAX_PUSH_CNT + CHECKSUM_SIZE)  
+
+
+/*请求补货指令*/
+#define REPLENISH_MEDICINE_REQUEST_INFO_SIZE 4 //即(1字节	1字节	2字节)   
+#define REPLENISH_MEDICINE_REQUEST_PACKET_SIZE (IPUC + REPLENISH_MEDICINE_REQUEST_INFO_SIZE * MAX_PUSH_CNT + CHECKSUM_SIZE)  
+
+/*货道校准指令*/
+#define CILIBRATE_TRACK_REQUEST_INFO_SIZE 2 //即(1字节	1字节)   
+#define CILIBRATE_TRACK_REQUEST_PACKET_SIZE (IPUC + CILIBRATE_TRACK_REQUEST_INFO_SIZE + CHECKSUM_SIZE)  
+
+
+/*测试动作指令*/
+#define BOARD_TEST_REQUEST_INFO_SIZE 5 //即(1字节	1字节	1字节	2字节)   
+#define BOARD_TEST_REQUEST_PACKET_SIZE (IPUC + BOARD_TEST_REQUEST_INFO_SIZE + CHECKSUM_SIZE)  
+
+
+/*设置参数指令*/
+#define SETTINT_REQUEST_INFO_SIZE 3 //即(1字节	1字节	1字节)   
+#define SETTING_REQUEST_PACKET_SIZE (IPUC + SETTINT_REQUEST_INFO_SIZE + CHECKSUM_SIZE)  
+
+
+/*出货完成*/
+#define PUSH_MEDICINE_COMPLETE_INFO_SIZE 3 //即(1字节	1字节	1字节)   
+#define PUSH_MEDICINE_COMPLETE_PACKET_SIZE (IPUC + PUSH_MEDICINE_COMPLETE_INFO_SIZE * MAX_PUSH_CNT + CHECKSUM_SIZE)  
+
+
+/*补货完成*/
+#define REPLENISH_MEDICINE_CONPLETE_REQUEST_INFO_SIZE 2 //即(1字节	字节)   
+#define REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE (IPUC + REPLENISH_MEDICINE_CONPLETE_REQUEST_INFO_SIZE * MAX_PUSH_CNT + CHECKSUM_SIZE)  
+
+
+/*指令应答*/
+#define COMMAND_ACK_INFO_SIZE 3 //即(1字节	1字节	1字节)   
+#define COMMAND_ACK_PACKET_SIZE (IPUC + COMMAND_ACK_INFO_SIZE + CHECKSUM_SIZE)  
+
+
+/*查询指令*/
+#define QUERY_REQUEST_INFO_SIZE 1 //即(2字节	2字节	2字节)   
+#define QUERY_REQUEST_PACKET_SIZE (IPUC + QUERY_REQUEST_INFO_SIZE + CHECKSUM_SIZE)  
+
+
+
+enum {  
+    STATUS_REPORT_REQUEST = 0,  
+	PUSH_MEDICINE_REQUEST,
+	REPLENISH_MEDICINE_REQUEST,
+	CILIBRATE_TRACK_REQUEST,
+	TEST_REQUEST,
+	SETTING_REQUEST,
+	PUSH_MEDICINE_COMPLETE_REQUEST,
+	REPLENISH_MEDICINE_COMPLETE_REQUEST,
+	CMD_ACK,
+};  
+
+
+
+enum {   
+    STATUS_REPORT_REQUEST_BUF = (1 << 0),  
+	PUSH_MEDICINE_REQUEST_BUF= (1 << 1),
+	REPLENISH_MEDICINE_REQUEST_BUF= (1 << 2),
+	CILIBRATE_TRACK_REQUEST_BUF= (1 << 3),
+	TEST_REQUEST_BUF= (1 << 4),
+	SETTING_REQUEST_BUF= (1 << 5),
+	PUSH_MEDICINE_COMPLETE_REQUEST_BUF= (1 << 6),
+	REPLENISH_MEDICINE_COMPLETE_REQUEST_BUF= (1 << 7),
+
+	CMD_ACK_BUF = (1 << 16),
+};  
+
+
+
+enum {   
+	CMD_NOK = 0,
+    CMD_OK = 1,
+};  
+
+
+typedef enum{
+	MOTOR_FORWARD_TEST = 0,
+    MOTOR_BACKWARD_TEST = 1,
+	TRACK_RUN_TEST = 2,
+	REFRIGERATION_RUN_TEST = 3,
+}BOARD_TEST_MODE;  
+
+
+
+
+
+
+#define START_CODE 0x02
+
+#define CMD_STATUS_REPORT_REQUEST 0x10	//心跳及状态上报 
+
+#define CMD_PUSH_MEDICINE_REQUEST	0x20	//请求出货指令
+
+#define CMD_REPLENISH_MEDICINE_REQUEST 0x30	//请求补货指令
+
+#define CMD_CALIBRATE_TRACK_REQUEST 0x40	//货道校准指令
+
+#define CMD_TEST_REQUEST 0x50	//测试动作指令
+
+#define CMD_SETTING_REQUEST 0x60	//设置参数指令
+
+#define CMD_PUSH_MEDICINE_COMPLETE 0x70	//出货完成
+
+#define CMD_ADD_MEDICINE_COMPLETE 0x80	//补货完成
+
+#define CMD_CMD_ACK 0xF0	//指令应答
+
+
+typedef struct _uart_msg_struct
+{
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	uint8_t *payload;	 
+	uint8_t checksum; 
+}uart_msg_struct;
+
+typedef struct _ack_struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+    uint8_t board_id;  
+	uint8_t checksum; 
+}ack_struct; 
+
+
+
+/*心跳及状态上报*/
+
+struct status_report_request_info_struct  
+{  
+    uint8_t board_id;  
+    uint8_t board_status;  
+    uint8_t board_error_code;  
+    uint8_t medicine_track_number;  
+}; 
+  
+struct status_report_request_struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	struct status_report_request_info_struct info;
+	uint8_t checksum; 
+};  
+
+
+/*请求出货指令*/
+struct push_medicine_request_info_struct  
+{  
+    uint8_t board_id;  
+    uint8_t medicine_track_number;  
+    uint16_t push_time;  	
+}; 
+
+
+struct push_medicine_request_struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	struct push_medicine_request_info_struct info[32];
+	uint8_t checksum; 
+};  
+
+struct push_medicine_paramter
+{  
+	uint8_t push_cnt;
+	struct push_medicine_request_info_struct info[32];
+};  
+
+
+
+/*请求补货指令*/
+struct replenish_medicine_request_info_struct  
+{  
+    uint8_t board_id;  
+    uint8_t medicine_track_number;  
+    uint16_t push_time;  	
+}; 
+
+struct replenish_medicine_request_struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	struct replenish_medicine_request_info_struct info[32];
+	uint8_t checksum; 
+};  
+
+struct replenish_medicine_paramter
+{  
+	uint8_t push_cnt;
+	struct replenish_medicine_request_info_struct info[32];
+};  
+
+
+
+
+/*货到校准指令*/
+struct calibrate_track_request_info_struct  
+{  
+    uint8_t board_id;  
+    uint8_t medicine_track_number;  
+}; 
+
+struct calibrate_track_request_struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	struct calibrate_track_request_info_struct info;
+	uint8_t checksum; 
+};  
+
+
+
+/*测试请求信息 */
+struct test_request_info_struct  
+{  
+    uint8_t board_id;  
+    uint8_t test_mode;  
+    uint8_t medicine_track_number;  
+    uint16_t test_time;  	
+}; 
+
+
+struct test_request_struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	struct test_request_info_struct info;
+	uint8_t checksum; 
+}; 
+/*出货完成*/
+struct push_medicine_complete_request_info_struct  
+{  
+    uint8_t board_id;  
+    uint8_t medicine_track_number;  
+}; 
+
+struct push_medicine_complete_struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	struct push_medicine_complete_request_info_struct info;
+	uint8_t checksum; 
+}; 
+
+
+
+
+/*补货完成 */
+struct replenish_medicine_complete_request_info_struct  
+{  
+    uint8_t board_id;  
+    uint8_t medicine_track_number;  
+    uint16_t push_time;  	
+}; 
+
+struct replenish_medicine_complete_struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	struct replenish_medicine_complete_request_info_struct info;
+	uint8_t checksum; 
+}; 
+
+
+
+/*查询请求信息 */
+
+struct request_query_info_struct  
+{  
+    uint8_t board_id;  	
+}; 
+
+
+
+struct request_query_ack_info_struct  
+{  
+    uint8_t board_id;  
+    uint8_t board_status;  
+    uint8_t board_error_code;  
+    uint16_t tempreture; 
+    uint8_t medicine_track_number; 
+}; 
+
+
+struct request_query_struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	struct request_query_info_struct info;
+	uint8_t checksum; 
+}; 
+
+struct request_query_ack_struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	struct request_query_ack_info_struct ack;
+	uint8_t checksum; 		
+};
+
+
+
+
+/*指令应答*/
+struct cmd_ack_info_struct  
+{  
+    uint8_t board_id;  
+    uint8_t rsp_cmd_type; 
+    uint8_t status; 
+}; 
+
+struct cmd_ack_struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	struct cmd_ack_info_struct ack;
+	uint8_t checksum; 		
+};
+
+
+
+
+
+
+
+int up_shared_buf_copy(unsigned char *src, int len);
+void parse_up_rx_info(void); 
+
+void send_status_report_request(void); 
+void push_test(void);
+void replenish_test(void);
+
+void BoardId_Init(void);
+
+#endif
