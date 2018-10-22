@@ -270,7 +270,7 @@ void PUSH_MEDICINE_Task(void *pdata)
 	{
 		OSSemPend(SemOfMotor, 0u, &err);
 		
-		//UsartPrintf(USART_DEBUG, "Run Motor----------\r\n");		//提示任务开始执行
+		UsartPrintf(USART_DEBUG, "Run Motor----------\r\n");		//提示任务开始执行
 		Push_Medicine_Start();
 	}
 
@@ -281,9 +281,10 @@ void SENSOR_Task(void *pdata)
 {
 	while(1)
 	{	
-		push_test();
+		//push_test();
 		//replenish_test();
-		RTOS_TimeDlyHMSM(0, 0, 40, 0);	//挂起任务60s
+		//test_test();
+		RTOS_TimeDlyHMSM(0, 0, 40, 0);	//
 	}
 }
 

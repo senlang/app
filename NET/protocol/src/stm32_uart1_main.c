@@ -59,11 +59,13 @@ int uart1_receive_data(void)
 	return retval;
 
 
-	//UsartPrintf(USART_DEBUG, "datalen[%d]\r\n",up_recv_data_info.dataLen);
-	//for(i = 0; i < up_recv_data_info.dataLen; i++)
-	//{
-	//	UsartPrintf(USART_DEBUG, "0x%02x\r\n", up_recv_data_info.buf[i]);
-	//}
+	UsartPrintf(USART_DEBUG, "datalen[%d]\r\n",up_recv_data_info.dataLen);
+	for(i = 0; i < up_recv_data_info.dataLen; i++)
+	{
+		UsartPrintf(USART_DEBUG, "0x%02x,", up_recv_data_info.buf[i]);
+	}
+	
+	UsartPrintf(USART_DEBUG, "\r\n");
 	
 	//UART2_IO_Send(up_recv_data_info.buf, up_recv_data_info.dataLen);
 

@@ -80,7 +80,7 @@ enum {
 	PUSH_MEDICINE_REQUEST,
 	REPLENISH_MEDICINE_REQUEST,
 	CILIBRATE_TRACK_REQUEST,
-	TEST_REQUEST,
+	TEST_BOARD_REQUEST,
 	SETTING_REQUEST,
 	PUSH_MEDICINE_COMPLETE_REQUEST,
 	REPLENISH_MEDICINE_COMPLETE_REQUEST,
@@ -352,8 +352,8 @@ struct request_query_ack_struct
 /*Ö¸ÁîÓ¦´ð*/
 struct cmd_ack_info_struct  
 {  
+    uint8_t rsp_cmd_type;
     uint8_t board_id;  
-    uint8_t rsp_cmd_type; 
     uint8_t status; 
 }; 
 
@@ -378,6 +378,7 @@ void parse_up_rx_info(void);
 void send_status_report_request(void); 
 void push_test(void);
 void replenish_test(void);
+void test_test(void);
 
 void BoardId_Init(void);
 

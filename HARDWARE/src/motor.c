@@ -160,7 +160,7 @@ void Push_Medicine_Start(void)
 			UsartPrintf(USART_DEBUG, "push_srtuct[%d].medicine_track_number = 0x%04x\r\n", dequeue_push_index, push_srtuct[dequeue_push_index].medicine_track_number);
 			UsartPrintf(USART_DEBUG, "push_srtuct[%d].push_time = 0x%04x\r\n", dequeue_push_index, push_srtuct[dequeue_push_index].push_time);
 
-			Motor_Set(MOTOR_RUN_BACKWARD);
+			Motor_Set(MOTOR_RUN_FORWARD);
 			Conveyor_set(CONVEYOR_RUN);
 			
 			set_track(push_srtuct[dequeue_push_index].medicine_track_number, MOTOR_RUN_FORWARD);
@@ -192,7 +192,7 @@ void Push_Medicine_Start(void)
 	
 	if(MotorStatus.ConveyoeSta == CONVEYOR_RUN)
 	{
-		RTOS_TimeDlyHMSM(0, 0, last_keep_time, 0);
+		RTOS_TimeDlyHMSM(0, 0, 30, 0);
 		Conveyor_set(CONVEYOR_STOP);
 	}
 
