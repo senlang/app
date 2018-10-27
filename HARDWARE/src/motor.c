@@ -158,8 +158,8 @@ void Motor_Start(void)
 	uint16_t delay_ms = 0;
 
 	
-	UsartPrintf(USART_DEBUG, "Motor_Start,motor_dequeue_idx[%d]-------------\r\n", motor_dequeue_idx);
-	push_cnt = (motor_enqueue_idx > motor_dequeue_idx) ? (motor_enqueue_idx - motor_dequeue_idx):(MAX_PUSH_CNT - motor_dequeue_idx + motor_enqueue_idx + 1);
+	UsartPrintf(USART_DEBUG, "Motor_Start,motor_enqueue_idx[%d]motor_dequeue_idx[%d]-------------\r\n", motor_enqueue_idx, motor_dequeue_idx);
+	push_cnt = (motor_dequeue_idx > motor_enqueue_idx) ? (motor_enqueue_idx - motor_dequeue_idx + TOTAL_PUSH_CNT):(motor_enqueue_idx - motor_dequeue_idx);
 
 	
 	UsartPrintf(USART_DEBUG, "push_cnt[%d]-------------\r\n", push_cnt);

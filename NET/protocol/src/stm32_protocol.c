@@ -370,87 +370,6 @@ int board_send_message(int msg_type, void *input_data)
 }
 
 
-  
-int uart1_shared_buf_preparse(unsigned char *src, int len)
-{  
-	int chk_offset = 0;
-	int pkt_len = 0;
-	int board_id = 0;
-	unsigned char *uart1_shared_rx_buf;  
-	do
-	{
-		uart1_shared_rx_buf = src + chk_offset;
-
-		UsartPrintf(USART_DEBUG, "start code = 0x%02x, cmd = 0x%02x!!\r\n", *(uart1_shared_rx_buf), *(uart1_shared_rx_buf + 2));
-		
-		pkt_len = *(uart1_shared_rx_buf + 1) + 1;//data + checksum
-		board_id = *(uart1_shared_rx_buf + 3);
-		if(board_id != g_src_board_id)
-		{
-			UART2_IO_Send(uart1_shared_rx_buf, pkt_len);	
-		}
-		else
-		{
-
-			if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_STATUS_REPORT_REQUEST)) //收到状态上报请求
-			{  
-				buf_bitmap |= STATUS_REPORT_REQUEST_BUF;  
-				memcpy(status_report_request_buf, uart1_shared_rx_buf, pkt_len);  
-				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_STATUS_REPORT_REQUEST!!\r\n");
-			} 
-			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_REQUEST)) //收到状态上报响应
-			{  
-				buf_bitmap |= PUSH_MEDICINE_REQUEST_BUF;  
-				memcpy(push_medicine_request_buf, uart1_shared_rx_buf, pkt_len);  
-				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_PUSH_MEDICINE_REQUEST!!\r\n");
-			}  
-			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_REPLENISH_MEDICINE_REQUEST)) //收到状态上报响应
-			{  
-				buf_bitmap |= REPLENISH_MEDICINE_REQUEST_BUF;  
-				memcpy(replenish_medicine_request_buf, uart1_shared_rx_buf, pkt_len);  
-				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_REPLENISH_MEDICINE_REQUEST!!\r\n");
-			}  
-
-			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_CALIBRATE_TRACK_REQUEST)) //收到状态上报响应
-			{  
-				buf_bitmap |= CALIBRATE_TRACK_REQUEST_BUF;  
-				memcpy(calibrate_track_request_buf, uart1_shared_rx_buf, pkt_len);  
-				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_CALIBRATE_TRACK_REQUEST!!\r\n");
-			}  	
-			
-			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_TEST_REQUEST)) //收到状态上报响应
-			{  
-				buf_bitmap |= TEST_REQUEST_BUF;  
-				memcpy(board_test_buf, uart1_shared_rx_buf, pkt_len);  
-				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_TEST_REQUEST!!\r\n");
-			}  
-
-			
-			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_MSG_ACK)) //收到状态上报响应
-			{  
-				buf_bitmap |= CMD_ACK_BUF;  
-				memcpy(message_ack_buf, uart1_shared_rx_buf, pkt_len);	
-				
-				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MSG_ACK!!\r\n");
-			} 
-
-			else
-			{
-				UsartPrintf(USART_DEBUG, "Received Data is Error, drop!!\r\n");
-				break;
-			}
-
-			UsartPrintf(USART_DEBUG, "buf_bitmap = 0x%08x!!\r\n", buf_bitmap);
-		}
-		
-		chk_offset = chk_offset + pkt_len;
-		//UsartPrintf(USART_DEBUG, "chk_offset = %d, len = %d!!\r\n", chk_offset, len);
-	}while(chk_offset >0 && (chk_offset + 1) < len);
-	
-	return 0;
-}  
-
-
 
 void print_message_ack(struct msg_ack_struct *cmd_ack)  
 {  
@@ -887,6 +806,91 @@ void parse_calibrate_track_request(struct calibrate_track_request_struct *calibr
 
 
 
+
+
+  
+int uart1_shared_buf_preparse(unsigned char *src, int len)
+{  
+	int chk_offset = 0;
+	int pkt_len = 0;
+	int board_id = 0;
+	unsigned char *uart1_shared_rx_buf;  
+	do
+	{
+		uart1_shared_rx_buf = src + chk_offset;
+
+		UsartPrintf(USART_DEBUG, "start code = 0x%02x, cmd = 0x%02x!!\r\n", *(uart1_shared_rx_buf), *(uart1_shared_rx_buf + 2));
+		
+		pkt_len = *(uart1_shared_rx_buf + 1) + 1;//data + checksum
+		board_id = *(uart1_shared_rx_buf + 3);
+		if(board_id != g_src_board_id)
+		{
+			UART2_IO_Send(uart1_shared_rx_buf, pkt_len);	
+		}
+		else
+		{
+
+			if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_STATUS_REPORT_REQUEST)) //收到状态上报请求
+			{  
+				buf_bitmap |= STATUS_REPORT_REQUEST_BUF;  
+				memcpy(status_report_request_buf, uart1_shared_rx_buf, pkt_len);  
+				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_STATUS_REPORT_REQUEST!!\r\n");
+			} 
+			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_REQUEST)) //收到状态上报响应
+			{  
+				buf_bitmap |= PUSH_MEDICINE_REQUEST_BUF;  
+				memcpy(push_medicine_request_buf, uart1_shared_rx_buf, pkt_len);  
+				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_PUSH_MEDICINE_REQUEST!!\r\n");
+			}  
+			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_REPLENISH_MEDICINE_REQUEST)) //收到状态上报响应
+			{  
+				buf_bitmap |= REPLENISH_MEDICINE_REQUEST_BUF;  
+				memcpy(replenish_medicine_request_buf, uart1_shared_rx_buf, pkt_len);  
+				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_REPLENISH_MEDICINE_REQUEST!!\r\n");
+			}  
+
+			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_CALIBRATE_TRACK_REQUEST)) //收到状态上报响应
+			{  
+				buf_bitmap |= CALIBRATE_TRACK_REQUEST_BUF;  
+				memcpy(calibrate_track_request_buf, uart1_shared_rx_buf, pkt_len);  
+				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_CALIBRATE_TRACK_REQUEST!!\r\n");
+			}  	
+			
+			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_TEST_REQUEST)) //收到状态上报响应
+			{  
+				buf_bitmap |= TEST_REQUEST_BUF;  
+				memcpy(board_test_buf, uart1_shared_rx_buf, pkt_len);  
+				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_TEST_REQUEST!!\r\n");
+			}  
+
+			
+			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_MSG_ACK)) //收到状态上报响应
+			{  
+				buf_bitmap |= CMD_ACK_BUF;  
+				memcpy(message_ack_buf, uart1_shared_rx_buf, pkt_len);	
+				
+				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MSG_ACK!!\r\n");
+			} 
+
+			else
+			{
+				UsartPrintf(USART_DEBUG, "Received Data is Error, drop!!\r\n");
+				break;
+			}
+
+			UsartPrintf(USART_DEBUG, "buf_bitmap = 0x%08x!!\r\n", buf_bitmap);
+		}
+		
+		chk_offset = chk_offset + pkt_len;
+		//UsartPrintf(USART_DEBUG, "chk_offset = %d, len = %d!!\r\n", chk_offset, len);
+	}while(chk_offset >0 && (chk_offset + 1) < len);
+	
+	return 0;
+}  
+
+
+
+
 void parse_up_rx_info(void)  
 {  
 	struct status_report_request_struct  status_report_request;
@@ -894,17 +898,11 @@ void parse_up_rx_info(void)
     struct push_medicine_request_struct push_medicine_request;
     struct replenish_medicine_request_struct replenish_medicine_request;
     struct test_request_struct test_request;
-	
     struct calibrate_track_request_struct calibrate_track_request;
 	
 	
     UsartPrintf(USART_DEBUG, "buf_bitmap : 0x%04x\r\n", buf_bitmap);  
-    if (buf_bitmap & CMD_ACK_BUF)   
-    { 
-        parse_message_ack(&cmd_ack);  
-        print_message_ack(&cmd_ack);  
-        buf_bitmap &= ~CMD_ACK_BUF;  
-    }
+
     if (buf_bitmap & STATUS_REPORT_REQUEST_BUF)   
     { 
         parse_status_report_request(&status_report_request);  
@@ -935,9 +933,109 @@ void parse_up_rx_info(void)
         print_board_test_request(&test_request);  
         buf_bitmap &= ~TEST_REQUEST_BUF;  
     }  
-
+	
+    if (buf_bitmap & CMD_ACK_BUF)   
+    { 
+        parse_message_ack(&cmd_ack);  
+        print_message_ack(&cmd_ack);  
+        buf_bitmap &= ~CMD_ACK_BUF;  
+    }
 	
 }  
 
 
+
+
+void packet_parser(unsigned char *src, int len)  
+{  
+	int chk_offset = 0;
+	int pkt_len = 0;
+	int board_id = 0;
+	unsigned char *uart1_shared_rx_buf; 
+
+	struct status_report_request_struct  status_report_request;
+	struct msg_ack_struct  cmd_ack;
+    struct push_medicine_request_struct push_medicine_request;
+    struct replenish_medicine_request_struct replenish_medicine_request;
+    struct test_request_struct test_request;
+    struct calibrate_track_request_struct calibrate_track_request; 
+
+	
+	do
+	{
+		uart1_shared_rx_buf = src + chk_offset;
+
+		UsartPrintf(USART_DEBUG, "start code = 0x%02x, cmd = 0x%02x!!\r\n", *(uart1_shared_rx_buf), *(uart1_shared_rx_buf + 2));
+		
+		pkt_len = *(uart1_shared_rx_buf + 1) + 1;//data + checksum
+		board_id = *(uart1_shared_rx_buf + 3);
+		if(board_id != g_src_board_id)
+		{
+			UART2_IO_Send(uart1_shared_rx_buf, pkt_len);	
+		}
+		else
+		{
+
+			if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_REQUEST)) //收到状态上报响应
+			{  
+				memcpy(push_medicine_request_buf, uart1_shared_rx_buf, pkt_len);  
+
+				parse_push_medicine_request(&push_medicine_request);  
+				print_push_medicine_request(&push_medicine_request);  
+  
+				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_PUSH_MEDICINE_REQUEST!!\r\n");
+			}  
+			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_REPLENISH_MEDICINE_REQUEST)) //收到状态上报响应
+			{  
+				memcpy(replenish_medicine_request_buf, uart1_shared_rx_buf, pkt_len);  
+				parse_replenish_medicine_request(&replenish_medicine_request);	
+				print_replenish_medicine_request(&replenish_medicine_request);	
+				
+				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_REPLENISH_MEDICINE_REQUEST!!\r\n");
+			}  
+
+			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_CALIBRATE_TRACK_REQUEST)) //收到状态上报响应
+			{  
+				memcpy(calibrate_track_request_buf, uart1_shared_rx_buf, pkt_len);  
+				parse_calibrate_track_request(&calibrate_track_request);  
+				print_calibrate_request(&calibrate_track_request);	
+				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_CALIBRATE_TRACK_REQUEST!!\r\n");
+			}  	
+			
+			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_TEST_REQUEST)) //收到状态上报响应
+			{  
+				memcpy(board_test_buf, uart1_shared_rx_buf, pkt_len);  
+				parse_board_test_request(&test_request);  
+				print_board_test_request(&test_request);  
+				
+				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_TEST_REQUEST!!\r\n");
+			}  
+			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_MSG_ACK)) //收到状态上报响应
+			{  
+				memcpy(message_ack_buf, uart1_shared_rx_buf, pkt_len);	
+				parse_message_ack(&cmd_ack);  
+				print_message_ack(&cmd_ack);  
+				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MSG_ACK!!\r\n");
+			} 
+			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_STATUS_REPORT_REQUEST)) //收到状态上报请求
+			{  
+				memcpy(status_report_request_buf, uart1_shared_rx_buf, pkt_len);  
+				parse_status_report_request(&status_report_request);  
+				print_status_report_request(&status_report_request);  
+				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_STATUS_REPORT_REQUEST!!\r\n");
+			} 
+			else 
+			{
+				UsartPrintf(USART_DEBUG, "Received Data is Error, drop!!\r\n");
+				break;
+			}
+
+			UsartPrintf(USART_DEBUG, "buf_bitmap = 0x%08x!!\r\n", buf_bitmap);
+		}
+		
+		chk_offset = chk_offset + pkt_len;
+		//UsartPrintf(USART_DEBUG, "chk_offset = %d, len = %d!!\r\n", chk_offset, len);
+	}while(chk_offset >0 && (chk_offset + 1) < len);
+		
+}
 

@@ -71,12 +71,17 @@ int uart1_receive_data(void)
 	
 	//UART2_IO_Send(up_recv_data_info.buf, up_recv_data_info.dataLen);
 
+#if 0
 	uart1_shared_buf_preparse(up_recv_data_info.buf, up_recv_data_info.dataLen);
 
 	
 	UART1_IO_ClearRecive();
 	
 	up_data_parse();
+#else
+	packet_parser(up_recv_data_info.buf, up_recv_data_info.dataLen);
+	UART1_IO_ClearRecive();
+#endif		
 	return 0;
 }
 

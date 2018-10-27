@@ -386,5 +386,6 @@ void replenish_test(void);
 void test_test(void);
 
 void BoardId_Init(void);
+void packet_parser(unsigned char *src, int len);
 
 #endif
