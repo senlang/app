@@ -12,8 +12,6 @@
 #define KEY2			GPIO_Pin_1
 #define KEY3			GPIO_Pin_0
 
-#define KEYPORTNUM1		(GPIO_Pin_2 | GPIO_Pin_3 | GPIO_Pin_4)
-#define KEYPORTNUM2		GPIO_Pin_0
 
 
 /*******************************************
@@ -22,27 +20,13 @@
 #define KEYDOWN			1
 #define KEYUP			0
 
-#define KEY0DOWN		0
-#define KEY0UP			1
-#define KEY0DOUBLE		2
-#define KEY0DOWNLONG	100
+typedef enum{
+	KEY_UPKEEP = 0,
+	KEY_UP2DOWN = 0,
+    KEY_DOWN2UP = 1,
+	KEY_DOWNKEEP = 3,
+}KEY_STAT_CHANGE;  
 
-#define KEY1DOWN		3
-#define KEY1UP			4
-#define KEY1DOUBLE		5
-#define KEY1DOWNLONG	101
-
-#define KEY2DOWN		6
-#define KEY2UP			7
-#define KEY2DOUBLE		8
-#define KEY2DOWNLONG	102
-
-#define KEY3DOWN		9
-#define KEY3UP			10
-#define KEY3DOUBLE		11
-#define KEY3DOWNLONG	103
-
-#define KEYNONE			255
 
 
 /*******************************************
@@ -56,5 +40,18 @@ extern void Key_Init(void);
 _Bool KeyScan(GPIO_TypeDef* GPIOX, unsigned int NUM);
 
 extern unsigned char Keyboard(void);
+
+
+
+typedef struct
+{
+	_Bool Key0Stat;
+	_Bool Key0OldStat;
+	_Bool Key1Stat;
+	_Bool Key1OldStat;
+	unsigned char Key0StatChange;
+	unsigned char Key1StatChange;
+} KEY_STATUS;
+
 
 #endif

@@ -45,7 +45,7 @@ void FAULT_Task(void *pdata);
 #define UP_RECEIVE_TASK_PRIO		9 //
 #define UP_RECEIVE_STK_SIZE		512
 OS_STK UP_RECEIVE_TASK_STK[UP_RECEIVE_STK_SIZE]; //
-void UP_RECEIVE_Task(void *pdata);
+void UART1_RECEIVE_Task(void *pdata);
 
 //UART1 上行数据发送
 #define UP_SEND_TASK_PRIO		10 //
@@ -82,16 +82,27 @@ void KEY_Task(void *pdata);
 
 
 
-//出药任务
-#define PUSH_MEDICINE_TASK_PRIO		14
-#define PUSH_MEDICINE_STK_SIZE		512
-OS_STK PUSH_MEDICINE_TASK_STK[PUSH_MEDICINE_STK_SIZE];
-void PUSH_MEDICINE_Task(void *pdata);
+//电机控制
+#define MOTOR_TASK_PRIO		14
+#define MOTOR_STK_SIZE		512
+OS_STK MOTOR_TASK_STK[MOTOR_STK_SIZE];
+void MOTOR_Task(void *pdata);
+
+
+
+
+//传送带控制任务
+#define TRACK_TASK_PRIO		15
+#define TRACK_STK_SIZE		512
+OS_STK TRACK_TASK_STK[TRACK_STK_SIZE];
+void TRACK_Task(void *pdata);
 
 
 
 
 OS_EVENT *SemOfMotor;          //Motor控制信号量
+OS_EVENT *SemOfUart1RecvData;          //
+
 
 
 
@@ -164,13 +175,14 @@ int main(void)
 	//创建应用任务
 	
 	OSTaskCreate(IWDG_Task, (void *)0, (OS_STK*)&IWDG_TASK_STK[IWDG_STK_SIZE - 1], IWDG_TASK_PRIO);
-	OSTaskCreate(UP_RECEIVE_Task, (void *)0, (OS_STK*)&UP_RECEIVE_TASK_STK[UP_RECEIVE_STK_SIZE - 1], UP_RECEIVE_TASK_PRIO);
+	OSTaskCreate(UART1_RECEIVE_Task, (void *)0, (OS_STK*)&UP_RECEIVE_TASK_STK[UP_RECEIVE_STK_SIZE - 1], UP_RECEIVE_TASK_PRIO);
 	OSTaskCreate(DOWN_RECEIVE_Task, (void *)0, (OS_STK*)&DOWN_RECEIVE_TASK_STK[DOWN_RECEIVE_STK_SIZE - 1], DOWN_RECEIVE_TASK_PRIO);
 	
 	OSTaskCreate(HEART_Task, (void *)0, (OS_STK*)&HEART_TASK_STK[HEART_STK_SIZE - 1], HEART_TASK_PRIO);
 	
-	OSTaskCreate(PUSH_MEDICINE_Task, (void *)0, (OS_STK*)&PUSH_MEDICINE_TASK_STK[PUSH_MEDICINE_STK_SIZE- 1], PUSH_MEDICINE_TASK_PRIO);
+	OSTaskCreate(MOTOR_Task, (void *)0, (OS_STK*)&MOTOR_TASK_STK[MOTOR_STK_SIZE- 1], MOTOR_TASK_PRIO);
 
+	OSTaskCreate(TRACK_Task, (void *)0, (OS_STK*)&TRACK_TASK_STK[TRACK_STK_SIZE- 1], TRACK_TASK_PRIO);
 
 	OSTaskCreate(SENSOR_Task, (void *)0, (OS_STK*)&SENSOR_TASK_STK[SENSOR_STK_SIZE- 1], SENSOR_TASK_PRIO);
 
@@ -210,21 +222,19 @@ void IWDG_Task(void *pdata)
 
 }
 
-void UP_RECEIVE_Task(void *pdata)
+void UART1_RECEIVE_Task(void *pdata)
 {
+    INT8U            err;
+	SemOfUart1RecvData = OSSemCreate(0);
+
 	while(1)
 	{
-		if(uart1_receive_data() == -1)
-		{
-			RTOS_TimeDly(200);
-			Led_Set(LED_OFF);
-		}
-		else
-		{
-			Led_Set(LED_ON);
-		}
-		
-		RTOS_TimeDly(200);
+		OSSemPend(SemOfUart1RecvData, 0u, &err);
+		do{
+			if(uart1_receive_data() == 0)
+				break;
+			RTOS_TimeDly(10);
+		}while(1);
 	}
 
 }
@@ -234,15 +244,7 @@ void DOWN_RECEIVE_Task(void *pdata)
 
 	while(1)
 	{
-		if(uart2_receive_data() == -1)
-		{
-			RTOS_TimeDly(1000);
-		}
-		else
-		{
-		
-		}
-		
+		uart2_receive_data();
 		RTOS_TimeDly(1000);
 	}
 
@@ -261,7 +263,7 @@ void HEART_Task(void *pdata)
 	}
 }
 
-void PUSH_MEDICINE_Task(void *pdata)
+void MOTOR_Task(void *pdata)
 {
     INT8U            err;
 	SemOfMotor = OSSemCreate(0);
@@ -271,23 +273,68 @@ void PUSH_MEDICINE_Task(void *pdata)
 		OSSemPend(SemOfMotor, 0u, &err);
 		
 		UsartPrintf(USART_DEBUG, "Run Motor----------\r\n");		//提示任务开始执行
-		Push_Medicine_Start();
+		Motor_Start();
 	}
 
 	OSSemDel(SemOfMotor, 0, &err);
 }
 
-void SENSOR_Task(void *pdata)
+
+
+void TRACK_Task(void *pdata)
 {
 	while(1)
 	{	
-		//push_test();
-		//replenish_test();
-		//test_test();
-		RTOS_TimeDlyHMSM(0, 0, 40, 0);	//
+		RTOS_TimeDlyHMSM(0, 0, 0, 500);	
 	}
 }
 
 
+
+
+/*
+************************************************************
+*	函数名称：	KEY_Task
+*
+*	函数功能：	扫描按键是否按下，如果有按下，进行对应的处理
+*
+*	入口参数：	void类型的参数指针
+*
+*	返回参数：	无
+*
+*	说明：		按键任务
+************************************************************
+*/
+void KEY_Task(void *pdata)
+{
+
+	while(1)
+	{
+		
+		if(Keyboard())								//扫描按键状态
+		{
+			
+		}
+		else
+		{
+
+		}
+		RTOS_TimeDly(10); 								//挂起任务50ms
+	
+	}
+
+}
+
+
+void SENSOR_Task(void *pdata)
+{
+	while(1)
+	{	
+		push_test();
+		replenish_test();
+		//test_test();
+		RTOS_TimeDlyHMSM(0, 0, 40, 0);	//
+	}
+}
 
 

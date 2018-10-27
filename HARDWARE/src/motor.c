@@ -26,14 +26,16 @@
 #include "usart.h"
 #include "stm32_protocol.h"
 #include "delay.h"
-
+#include "key.h"
 
 
 MOTOR_STATUS MotorStatus;
-extern struct push_medicine_request_info_struct push_srtuct[TOTAL_PUSH_CNT];
-extern int enqueue_push_index;
-extern int dequeue_push_index;
+extern struct motor_control_struct  motor_struct[TOTAL_PUSH_CNT];
+extern int motor_enqueue_idx;
+extern int motor_dequeue_idx;
 
+extern unsigned char calibrate_track_selected;
+extern KEY_STATUS key_status;
 
 /*
 ************************************************************
@@ -65,6 +67,9 @@ void Motor_Init(void)
 	GPIO_Init(GPIOC, &gpioInitStrcut);
     
     Motor_Set(MOTOR_STOP);
+
+	motor_enqueue_idx = 0;
+	motor_dequeue_idx = 0;
 }
 
 
@@ -142,60 +147,85 @@ void Conveyor_set(CONVEYOR_ENUM status)
 
 
 
-void Push_Medicine_Start(void)
+
+
+void Motor_Start(void)
 {
 	int push_cnt = 0;
 	int i = 0;
 	uint16_t last_keep_time = 0;
 	uint8_t delay_s = 0;
 	uint16_t delay_ms = 0;
+
 	
+	UsartPrintf(USART_DEBUG, "Motor_Start,motor_dequeue_idx[%d]-------------\r\n", motor_dequeue_idx);
+	push_cnt = (motor_enqueue_idx > motor_dequeue_idx) ? (motor_enqueue_idx - motor_dequeue_idx):(MAX_PUSH_CNT - motor_dequeue_idx + motor_enqueue_idx + 1);
+
 	
-	if(dequeue_push_index < enqueue_push_index)
+	UsartPrintf(USART_DEBUG, "push_cnt[%d]-------------\r\n", push_cnt);
+	
+	for(i = 0; i < push_cnt; i++)
 	{
-		push_cnt = enqueue_push_index - dequeue_push_index;
-		for(i = 0; i < push_cnt; i++)
+		UsartPrintf(USART_DEBUG, "motor_struct[%d] board_id = 0x%04x\r\n", motor_dequeue_idx, motor_struct[motor_dequeue_idx].info.board_id);
+		UsartPrintf(USART_DEBUG, "motor_struct[%d] medicine_track_number = 0x%04x\r\n", motor_dequeue_idx, motor_struct[motor_dequeue_idx].info.medicine_track_number);
+		UsartPrintf(USART_DEBUG, "motor_struct[%d] push_time = 0x%04x\r\n", motor_dequeue_idx, motor_struct[motor_dequeue_idx].info.push_time);
+
+		if(motor_struct[motor_dequeue_idx].motor_run == MOTOR_RUN_FORWARD)
 		{
-			UsartPrintf(USART_DEBUG, "push_srtuct[%d].board_id = 0x%04x\r\n", dequeue_push_index, push_srtuct[dequeue_push_index].board_id);
-			UsartPrintf(USART_DEBUG, "push_srtuct[%d].medicine_track_number = 0x%04x\r\n", dequeue_push_index, push_srtuct[dequeue_push_index].medicine_track_number);
-			UsartPrintf(USART_DEBUG, "push_srtuct[%d].push_time = 0x%04x\r\n", dequeue_push_index, push_srtuct[dequeue_push_index].push_time);
-
 			Motor_Set(MOTOR_RUN_FORWARD);
-			Conveyor_set(CONVEYOR_RUN);
-			
-			set_track(push_srtuct[dequeue_push_index].medicine_track_number, MOTOR_RUN_FORWARD);
-			
-
-			delay_s = push_srtuct[dequeue_push_index].push_time/10;
-			delay_ms = (push_srtuct[dequeue_push_index].push_time%10) * 100;
-
-			UsartPrintf(USART_DEBUG, "delay_s[%d]delay_ms[%d]\r\n", delay_s, delay_ms);
-			last_keep_time = delay_s;
-				
-			RTOS_TimeDlyHMSM(0, 0, delay_s, delay_ms);
-			
-
-			
-			set_track(push_srtuct[dequeue_push_index].medicine_track_number, MOTOR_STOP);
-			Motor_Set(MOTOR_STOP);
-			
-			dequeue_push_index++;
+		}
+		else if(motor_struct[motor_dequeue_idx].motor_run == MOTOR_RUN_BACKWARD)
+		{
+			Motor_Set(MOTOR_RUN_BACKWARD);
 		}
 		
+		Conveyor_set(CONVEYOR_RUN);
+		
+		set_track(motor_struct[motor_dequeue_idx].info.medicine_track_number, MOTOR_RUN_FORWARD);
+		
+
+		delay_s = motor_struct[motor_dequeue_idx].info.push_time/10;
+		delay_ms = (motor_struct[motor_dequeue_idx].info.push_time%10) * 100;
+
+		UsartPrintf(USART_DEBUG, "delay_s[%d]delay_ms[%d]\r\n", delay_s, delay_ms);
+		last_keep_time = delay_s;
+			
+		RTOS_TimeDlyHMSM(0, 0, delay_s, delay_ms);
+		
+
+		
+		set_track(motor_struct[motor_dequeue_idx].info.medicine_track_number, MOTOR_STOP);
+		Motor_Set(MOTOR_STOP);
 
 
-	}
-	else if(dequeue_push_index > enqueue_push_index)
-	{
-		push_cnt = TOTAL_PUSH_CNT - dequeue_push_index + enqueue_push_index;
+		motor_dequeue_idx++;
+
+		if (motor_dequeue_idx == MAX_PUSH_CNT)
+		{
+			motor_dequeue_idx = 0;
+		}
 	}
 	
-	if(MotorStatus.ConveyoeSta == CONVEYOR_RUN)
-	{
-		RTOS_TimeDlyHMSM(0, 0, 30, 0);
-		Conveyor_set(CONVEYOR_STOP);
-	}
+	
+	//if(MotorStatus.ConveyoeSta == CONVEYOR_RUN)
+	//{
+	//	RTOS_TimeDlyHMSM(0, 0, 30, 0);
+	//	Conveyor_set(CONVEYOR_STOP);
+	//}
 
+}
+
+void track_calibrate()
+{
+#if 0
+	if()
+	Motor_Set(MOTOR_RUN_FORWARD);
+	set_track(calibrate_track_selected, MOTOR_RUN_FORWARD);
+	
+	
+	
+	set_track(push_srtuct[motor_dequeue_idx].medicine_track_number, MOTOR_STOP);
+	#endif
 }
 
 

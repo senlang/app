@@ -14,7 +14,7 @@
 #define CHECKSUM_SIZE 1 
 
 #define MAX_PUSH_CNT	16
-#define TOTAL_PUSH_CNT	(MAX_PUSH_CNT * 10)
+#define TOTAL_PUSH_CNT	(100)
 
 #define TRACK_MAX	96
 #define BOARD_ID_MAX 8
@@ -93,7 +93,7 @@ enum {
     STATUS_REPORT_REQUEST_BUF = (1 << 0),  
 	PUSH_MEDICINE_REQUEST_BUF= (1 << 1),
 	REPLENISH_MEDICINE_REQUEST_BUF= (1 << 2),
-	CILIBRATE_TRACK_REQUEST_BUF= (1 << 3),
+	CALIBRATE_TRACK_REQUEST_BUF= (1 << 3),
 	TEST_REQUEST_BUF= (1 << 4),
 	SETTING_REQUEST_BUF= (1 << 5),
 	PUSH_MEDICINE_COMPLETE_REQUEST_BUF= (1 << 6),
@@ -140,7 +140,7 @@ typedef enum{
 
 #define CMD_ADD_MEDICINE_COMPLETE 0x80	//补货完成
 
-#define CMD_CMD_ACK 0xF0	//指令应答
+#define CMD_MSG_ACK 0xF0	//指令应答
 
 
 typedef struct _uart_msg_struct
@@ -184,7 +184,7 @@ struct status_report_request_struct
 
 
 /*请求出货指令*/
-struct push_medicine_request_info_struct  
+struct motor_control_info_struct  
 {  
     uint8_t board_id;  
     uint8_t medicine_track_number;  
@@ -197,14 +197,14 @@ struct push_medicine_request_struct
 	uint8_t start_code; 
 	uint8_t packet_len;
 	uint8_t cmd_type;
-	struct push_medicine_request_info_struct info[32];
+	struct motor_control_info_struct info[32];
 	uint8_t checksum; 
 };  
 
 struct push_medicine_paramter
 {  
 	uint8_t push_cnt;
-	struct push_medicine_request_info_struct info[32];
+	struct motor_control_info_struct info[32];
 };  
 
 
@@ -350,29 +350,34 @@ struct request_query_ack_struct
 
 
 /*指令应答*/
-struct cmd_ack_info_struct  
+struct msg_ack_info_struct  
 {  
     uint8_t rsp_cmd_type;
     uint8_t board_id;  
     uint8_t status; 
 }; 
 
-struct cmd_ack_struct  
+struct msg_ack_struct  
 {  
 	uint8_t start_code; 
 	uint8_t packet_len;
 	uint8_t cmd_type;
-	struct cmd_ack_info_struct ack;
+	struct msg_ack_info_struct ack;
 	uint8_t checksum; 		
 };
 
 
 
+struct motor_control_struct  
+{  
+	uint8_t motor_run;
+	struct motor_control_info_struct info;
+};  
 
 
 
 
-int up_shared_buf_copy(unsigned char *src, int len);
+int uart1_shared_buf_preparse(unsigned char *src, int len);
 void parse_up_rx_info(void); 
 
 void send_status_report_request(void); 

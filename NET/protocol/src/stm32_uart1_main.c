@@ -37,6 +37,8 @@
 
 #include "ucos_ii.h"
 
+extern OS_EVENT *SemOfUart1RecvData;          
+
 
 
 int up_data_parse(void)
@@ -59,7 +61,7 @@ int uart1_receive_data(void)
 	return retval;
 
 
-	UsartPrintf(USART_DEBUG, "datalen[%d]\r\n",up_recv_data_info.dataLen);
+	//UsartPrintf(USART_DEBUG, "datalen[%d]\r\n",up_recv_data_info.dataLen);
 	for(i = 0; i < up_recv_data_info.dataLen; i++)
 	{
 		UsartPrintf(USART_DEBUG, "0x%02x,", up_recv_data_info.buf[i]);
@@ -69,7 +71,7 @@ int uart1_receive_data(void)
 	
 	//UART2_IO_Send(up_recv_data_info.buf, up_recv_data_info.dataLen);
 
-	up_shared_buf_copy(up_recv_data_info.buf, up_recv_data_info.dataLen);
+	uart1_shared_buf_preparse(up_recv_data_info.buf, up_recv_data_info.dataLen);
 
 	
 	UART1_IO_ClearRecive();

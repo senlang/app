@@ -32,8 +32,16 @@
 #include <stdarg.h>	//C库
 #include <string.h>
 
+
+#include "ucos_ii.h"
+
+
 DATA_IO_INFO up_recv_data_info;
 DATA_IO_INFO up_send_data_info;
+
+extern OS_EVENT *SemOfUart1RecvData;          //
+
+
 void UART1_IO_ClearRecive(void);
  /**
   * @brief  配置嵌套向量中断控制器NVIC
@@ -233,7 +241,7 @@ void UART1_IO_Send(unsigned char *str, unsigned short len)
 */
 _Bool UART1_IO_WaitRecive(void)
 {
-	UsartPrintf(USART_DEBUG, "datalen=%d, %d\r\n",up_recv_data_info.dataLen, up_recv_data_info.dataLenPre);
+	//UsartPrintf(USART_DEBUG, "datalen=%d, %d\r\n",up_recv_data_info.dataLen, up_recv_data_info.dataLenPre);
 
 	if(up_recv_data_info.dataLen == 0) 						//如果接收计数为0 则说明没有处于接收数据中，所以直接跳出，结束函数
 		return REV_WAIT;
@@ -300,6 +308,7 @@ void USART1_IRQHandler(void)
 		up_recv_data_info.buf[up_recv_data_info.dataLen] = USART1->DR;
 		//UsartPrintf(USART_DEBUG, "irq0,0x%02x\r\n",up_recv_data_info.buf[up_recv_data_info.dataLen]);
 		up_recv_data_info.dataLen++;
+		OSSemPost(SemOfUart1RecvData);
 
 		USART_ClearFlag(USART1, USART_FLAG_RXNE);
 	}
@@ -317,7 +326,7 @@ int UART1_IO_Receive(void)
 
 	if(UART1_IO_WaitRecive() != REV_OK)
 	{
-		UsartPrintf(USART_DEBUG, "UART1 No Data or Wait\r\n");
+		//UsartPrintf(USART_DEBUG, "UART1 No Data or Wait\r\n");
 		return 0;
 	}
 

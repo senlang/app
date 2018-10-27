@@ -43,7 +43,7 @@ void Conveyor_Init(void);
 
 void Conveyor_set(CONVEYOR_ENUM status);
 
-void Push_Medicine_Start(void);
+void Motor_Start(void);
 
 
 #endif
