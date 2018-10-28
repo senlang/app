@@ -36,6 +36,7 @@ extern int motor_dequeue_idx;
 
 extern unsigned char calibrate_track_selected;
 extern KEY_STATUS key_status;
+extern unsigned char calibrate_enable;
 
 /*
 ************************************************************
@@ -215,17 +216,44 @@ void Motor_Start(void)
 
 }
 
-void track_calibrate()
+void track_calibrate(void)
 {
-#if 0
-	if()
-	Motor_Set(MOTOR_RUN_FORWARD);
-	set_track(calibrate_track_selected, MOTOR_RUN_FORWARD);
+	//UsartPrintf(USART_DEBUG, "calibrate_track_selected[%d]calibrate_enable[%d]\r\n", calibrate_track_selected, calibrate_enable);
+
+	if((calibrate_enable == 1) && (calibrate_track_selected == 255))
+	{
+		Motor_Set(MOTOR_STOP);
+		set_track(calibrate_track_selected, MOTOR_STOP);
+		calibrate_enable = 0;
+		return;
+	}
+
+	calibrate_enable = 1;	
+	if((key_status.Key0StatChange == KEY_UP2DOWN)&&(key_status.Key1StatChange == KEY_UP2DOWN))
+	{
+		Motor_Set(MOTOR_STOP);
+		set_track(calibrate_track_selected, MOTOR_STOP);
+	}
 	
+	if((key_status.Key0StatChange == KEY_UP2DOWN))
+	{
+		Motor_Set(MOTOR_RUN_FORWARD);
+		set_track(calibrate_track_selected, MOTOR_RUN_FORWARD);
+	}
+
+	if((key_status.Key1StatChange == KEY_UP2DOWN))
+	{
+		Motor_Set(MOTOR_RUN_BACKWARD);
+		set_track(calibrate_track_selected, MOTOR_RUN_BACKWARD);
+	}
 	
-	
-	set_track(push_srtuct[motor_dequeue_idx].medicine_track_number, MOTOR_STOP);
-	#endif
+	if((key_status.Key0StatChange == KEY_DOWN2UP) 
+		|| (key_status.Key1StatChange == KEY_DOWN2UP))
+	{
+		Motor_Set(MOTOR_STOP);
+		set_track(calibrate_track_selected, MOTOR_STOP);
+	}
+
 }
 
 

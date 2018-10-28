@@ -127,25 +127,14 @@ int uart2_receive_data(void)
 	if(UART2_IO_Receive() == 0)
 	return retval;
 
-	//BDSIOInfo.dataLen = strlen(bdtxr_data);
-	//memcpy(BDSIOInfo.buf, bdtxr_data, BDSIOInfo.dataLen);
-
-	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", down_recv_data_info.buf, down_recv_data_info.dataLen);
+	//UsartPrintf(USART_DEBUG, "%s[%d]\r\n", down_recv_data_info.buf, down_recv_data_info.dataLen);
+	
 	UART1_IO_Send(down_recv_data_info.buf, down_recv_data_info.dataLen);
 
-	
-	down_shared_buf_copy(down_recv_data_info.buf, down_recv_data_info.dataLen);
-	
+	packet_parser(down_recv_data_info.buf, down_recv_data_info.dataLen);
+		
 	UART2_IO_ClearRecive();
 	
-	up_data_parse();
 	return 0;
 }
-
-
-
-
-
-
-
 

@@ -34,11 +34,6 @@ void IWDG_Task(void *pdata);
 OS_STK HEART_TASK_STK[HEART_STK_SIZE]; //
 void HEART_Task(void *pdata);
 
-//故障处理任务
-#define FAULT_TASK_PRIO		7 //
-#define FAULT_STK_SIZE		512
-OS_STK FAULT_TASK_STK[FAULT_STK_SIZE]; //
-void FAULT_Task(void *pdata);
 
 
 //UART1 下行数据接收
@@ -74,11 +69,7 @@ void SENSOR_Task(void *pdata);
 
 
 
-//按键任务
-#define KEY_TASK_PRIO		14
-#define KEY_STK_SIZE		256
-OS_STK KEY_TASK_STK[KEY_STK_SIZE];
-void KEY_Task(void *pdata);
+
 
 
 
@@ -97,6 +88,12 @@ void MOTOR_Task(void *pdata);
 OS_STK TRACK_TASK_STK[TRACK_STK_SIZE];
 void TRACK_Task(void *pdata);
 
+
+//按键任务
+#define KEY_TASK_PRIO		16
+#define KEY_STK_SIZE		256
+OS_STK KEY_TASK_STK[KEY_STK_SIZE];
+void KEY_Task(void *pdata);
 
 
 
@@ -129,7 +126,7 @@ void Hardware_Init(void)
 	
 	Led_Init();																	//LED初始化
 
-	//Key_Init();																	//按键初始化
+	Key_Init();																	//按键初始化
 
 	Motor_Init();
 
@@ -186,6 +183,7 @@ int main(void)
 
 	OSTaskCreate(SENSOR_Task, (void *)0, (OS_STK*)&SENSOR_TASK_STK[SENSOR_STK_SIZE- 1], SENSOR_TASK_PRIO);
 
+	OSTaskCreate(KEY_Task, (void *)0, (OS_STK*)&KEY_TASK_STK[KEY_STK_SIZE- 1], KEY_TASK_PRIO);
 	
 	UsartPrintf(USART_DEBUG, "OSStart\r\n");		//提示任务开始执行
 	
@@ -304,22 +302,12 @@ void TRACK_Task(void *pdata)
 */
 void KEY_Task(void *pdata)
 {
-
 	while(1)
 	{
-		
-		if(Keyboard())								//扫描按键状态
-		{
-			
-		}
-		else
-		{
-
-		}
-		RTOS_TimeDly(10); 								//挂起任务50ms
-	
+		Keyboard();
+		track_calibrate();
+		RTOS_TimeDly(100); 								//挂起任务500ms
 	}
-
 }
 
 
@@ -327,10 +315,19 @@ void SENSOR_Task(void *pdata)
 {
 	while(1)
 	{	
+		#if 1
 		push_test();
+		RTOS_TimeDlyHMSM(0, 0, 0, 100);	//
 		replenish_test();
-		//test_test();
-		RTOS_TimeDlyHMSM(0, 0, 40, 0);	//
+		RTOS_TimeDlyHMSM(0, 0, 0, 100);	//
+		test_test();
+		RTOS_TimeDlyHMSM(0, 0, 0, 100);	//
+		calibrate_test();
+		RTOS_TimeDlyHMSM(0, 0, 15, 0);	//
+		replenish_complete_test();
+		#endif
+		
+		RTOS_TimeDlyHMSM(0, 0, 15, 0);	//
 	}
 }
 

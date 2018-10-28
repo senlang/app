@@ -7,10 +7,10 @@
 
 
 
-#define KEY0			GPIO_Pin_11
-#define KEY1			GPIO_Pin_10
-#define KEY2			GPIO_Pin_1
-#define KEY3			GPIO_Pin_0
+#define KEY0			GPIO_Pin_1
+#define KEY1			GPIO_Pin_0
+//#define KEY2			GPIO_Pin_1
+//#define KEY3			GPIO_Pin_0
 
 
 
@@ -22,8 +22,8 @@
 
 typedef enum{
 	KEY_UPKEEP = 0,
-	KEY_UP2DOWN = 0,
-    KEY_DOWN2UP = 1,
+	KEY_UP2DOWN = 1,
+    KEY_DOWN2UP = 2,
 	KEY_DOWNKEEP = 3,
 }KEY_STAT_CHANGE;  
 

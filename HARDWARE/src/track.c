@@ -156,7 +156,9 @@ uint8_t set_track(uint16_t track_num, uint8_t status)
 	track_elem y;
 	track_addr addr;
 
-
+	if(track_num == 255)
+	return 0;
+	
 	get_track_addr(track_num, &addr);
 	
 	x = X_value[addr.x];
@@ -164,7 +166,7 @@ uint8_t set_track(uint16_t track_num, uint8_t status)
 
 
 	
-	UsartPrintf(USART_DEBUG, "x.GPIO_Pin[0x%04x]y.GPIO_Pin[0x%04x]\r\n", x.GPIO_Pin, y.GPIO_Pin);
+	//UsartPrintf(USART_DEBUG, "x.GPIO_Pin[0x%04x]y.GPIO_Pin[0x%04x]\r\n", x.GPIO_Pin, y.GPIO_Pin);
 	
 	if(0 == status)
 	{

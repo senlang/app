@@ -55,9 +55,10 @@ static uint32_t buf_bitmap = 0;
 static unsigned char status_report_request_buf[STATUS_REPORT_REQUEST_PACKET_SIZE];  
 static unsigned char push_medicine_request_buf[PUSH_MEDICINE_REQUEST_PACKET_SIZE];  
 static unsigned char replenish_medicine_request_buf[REPLENISH_MEDICINE_REQUEST_PACKET_SIZE];  
-
-
 static unsigned char calibrate_track_request_buf[CILIBRATE_TRACK_REQUEST_PACKET_SIZE];
+static unsigned char replenish_medicine_complete_request_buf[REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE];
+
+
 static unsigned char board_test_buf[BOARD_TEST_REQUEST_PACKET_SIZE]; 
 static unsigned char message_ack_buf[COMMAND_ACK_PACKET_SIZE]; 
 
@@ -85,7 +86,8 @@ int enqueue_replenish_index = 0;
 int dequeue_replenish_index = 0;
 
 
-unsigned char calibrate_track_selected = -1;
+unsigned char calibrate_track_selected = 255;
+unsigned char calibrate_enable = 0;
 
 
 extern OS_EVENT *SemOfMotor;          //Motor控制信号量
@@ -289,6 +291,82 @@ void send_board_test_request(void *input_data)
 
 
 
+
+
+
+
+
+
+/*货道校准测试*/
+void calibrate_track_test_request(void *input_data)  
+{  
+	int i = 0;
+	uint8_t calibrate_track_request_data[CILIBRATE_TRACK_REQUEST_PACKET_SIZE];
+	struct calibrate_track_request_info_struct *test_info = (struct calibrate_track_request_info_struct *)input_data;
+
+	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
+	
+	memset(calibrate_track_request_data, 0x00, CILIBRATE_TRACK_REQUEST_PACKET_SIZE);
+	
+	calibrate_track_request_data[0] = START_CODE;
+	calibrate_track_request_data[1] = CILIBRATE_TRACK_REQUEST_PACKET_SIZE - 1;
+	calibrate_track_request_data[2] = CMD_CALIBRATE_TRACK_REQUEST;
+
+	calibrate_track_request_data[3] = test_info->board_id;
+	calibrate_track_request_data[4] = test_info->medicine_track_number;
+
+
+	calibrate_track_request_data[CILIBRATE_TRACK_REQUEST_PACKET_SIZE - 1] = add_checksum(calibrate_track_request_data, CILIBRATE_TRACK_REQUEST_PACKET_SIZE - 1);  
+
+	UART2_IO_Send(calibrate_track_request_data, CILIBRATE_TRACK_REQUEST_PACKET_SIZE);  
+
+	
+	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
+} 
+
+
+
+
+
+
+
+
+
+
+
+
+/*补货完成测试*/
+void replenish_complete_test_request(void *input_data)  
+{  
+	int i = 0;
+	uint8_t replenish_complete_request_data[REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE];
+	struct replenish_medicine_complete_request_info_struct *test_info = (struct replenish_medicine_complete_request_info_struct *)input_data;
+
+	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
+	
+	memset(replenish_complete_request_data, 0x00, REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE);
+	
+	replenish_complete_request_data[0] = START_CODE;
+	replenish_complete_request_data[1] = REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE - 1;
+	replenish_complete_request_data[2] = CMD_ADD_MEDICINE_COMPLETE;
+
+	replenish_complete_request_data[3] = test_info->board_id;
+
+
+	replenish_complete_request_data[REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE - 1] = add_checksum(replenish_complete_request_data, REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE - 1);  
+
+	UART2_IO_Send(replenish_complete_request_data, REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE);  
+
+	
+	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
+} 
+
+
+
+
+
+
+
 void push_test(void)
 {
 	int i = 0;
@@ -341,6 +419,31 @@ void test_test(void)
 
 
 
+void calibrate_test(void)
+{
+	int i = 0;
+	struct calibrate_track_request_info_struct calibrate_track_request_info;
+	
+	calibrate_track_request_info.board_id = 0x01;
+	calibrate_track_request_info.medicine_track_number = 0x01;
+
+	calibrate_track_test_request((void *)&calibrate_track_request_info);
+}
+
+
+void replenish_complete_test(void)
+{
+	int i = 0;
+	struct replenish_medicine_complete_request_info_struct replenish_medicine_complete_request_info;
+	
+	replenish_medicine_complete_request_info.board_id = 0x01;
+
+	replenish_complete_test_request((void *)&replenish_medicine_complete_request_info);
+}
+
+
+
+
 int board_send_message(int msg_type, void *input_data)
 {
 	switch(msg_type)
@@ -357,11 +460,9 @@ int board_send_message(int msg_type, void *input_data)
 			send_replinish_medicine_request(input_data);
 		break;
 		
-
 		case CMD_ACK:
 			send_command_ack(input_data);
 		break;
-		
 		
 		defualt:
 		break;
@@ -786,9 +887,10 @@ void parse_calibrate_track_request(struct calibrate_track_request_struct *calibr
 		motor_control.board_id = calibrate_track_request->info.board_id;		
 		calibrate_track_request->info.medicine_track_number = calibrate_track_request_buf[4];
 		calibrate_track_selected = calibrate_track_request->info.medicine_track_number;
+
+		UsartPrintf(USART_DEBUG, "calibrate_track_selected[%d]\r\n", calibrate_track_selected);
 	}
 	
-	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
 	
 	cmd_ack_info.board_id = g_src_board_id;
 	cmd_ack_info.rsp_cmd_type = calibrate_track_request->cmd_type;
@@ -800,6 +902,79 @@ void parse_calibrate_track_request(struct calibrate_track_request_struct *calibr
 	
 	return;
 }
+
+
+
+
+
+
+void print_replenish_complete_request(struct replenish_medicine_complete_struct *replenish_medicine_complete_request)  
+{  
+    UsartPrintf(USART_DEBUG, "\r\n    ========= 补货完成报文-打印开始=========\r\n");  
+	UsartPrintf(USART_DEBUG, "\r\n	  包消息类型:0x%02x", replenish_medicine_complete_request->cmd_type);  
+	UsartPrintf(USART_DEBUG, "\r\n	  包总长度:0x%02x", replenish_medicine_complete_request->packet_len); 
+
+    UsartPrintf(USART_DEBUG, "\r\n    单板号:0x%02x", replenish_medicine_complete_request->info.board_id); 
+		
+	UsartPrintf(USART_DEBUG, "\r\n    包校验和:0x%02x\r\n", replenish_medicine_complete_request->checksum);  
+  
+    UsartPrintf(USART_DEBUG, "\r\n    =========  补货完成报文-打印结束=========\r\n");  
+}
+
+
+void parse_replenish_complete_request(struct replenish_medicine_complete_struct *replenish_medicine_complete_request)  
+{  
+	uint8_t check_sum = 0;
+	struct msg_ack_info_struct cmd_ack_info;
+	struct motor_control_info_struct  motor_control;
+
+	cmd_ack_info.status = 0;
+	
+	replenish_medicine_complete_request->start_code = calibrate_track_request_buf[0];  
+	replenish_medicine_complete_request->packet_len = calibrate_track_request_buf[1];  
+	replenish_medicine_complete_request->cmd_type = calibrate_track_request_buf[2];
+	
+	check_sum = add_checksum(calibrate_track_request_buf, replenish_medicine_complete_request->packet_len);
+	replenish_medicine_complete_request->checksum = calibrate_track_request_buf[replenish_medicine_complete_request->packet_len];  
+	
+	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
+	
+	if(check_sum != replenish_medicine_complete_request->checksum)
+	{
+		
+		UsartPrintf(USART_DEBUG, "check sum fail : 0x%02x, 0x%02x\r\n", check_sum, replenish_medicine_complete_request->checksum);  
+		send_command_ack(&cmd_ack_info);
+		return;
+	}
+	
+	replenish_medicine_complete_request->info.board_id = calibrate_track_request_buf[3];
+
+	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
+
+	UsartPrintf(USART_DEBUG, "board_id: 0x%02x\r\n", replenish_medicine_complete_request->info.board_id);  
+	
+	if(replenish_medicine_complete_request->info.board_id == g_src_board_id)
+	{
+		calibrate_track_selected = 255;
+	}
+	
+	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
+	
+	cmd_ack_info.board_id = g_src_board_id;
+	cmd_ack_info.rsp_cmd_type = replenish_medicine_complete_request->cmd_type;
+	
+	cmd_ack_info.status = 1;
+	send_command_ack((void *)&cmd_ack_info);
+	
+	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
+	
+	return;
+}
+
+
+
+
+
 
 
 
@@ -861,9 +1036,7 @@ int uart1_shared_buf_preparse(unsigned char *src, int len)
 				buf_bitmap |= TEST_REQUEST_BUF;  
 				memcpy(board_test_buf, uart1_shared_rx_buf, pkt_len);  
 				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_TEST_REQUEST!!\r\n");
-			}  
-
-			
+			}  			
 			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_MSG_ACK)) //收到状态上报响应
 			{  
 				buf_bitmap |= CMD_ACK_BUF;  
@@ -959,8 +1132,8 @@ void packet_parser(unsigned char *src, int len)
     struct replenish_medicine_request_struct replenish_medicine_request;
     struct test_request_struct test_request;
     struct calibrate_track_request_struct calibrate_track_request; 
+    struct replenish_medicine_complete_struct replenish_medicine_complete_request; 
 
-	
 	do
 	{
 		uart1_shared_rx_buf = src + chk_offset;
@@ -1010,6 +1183,14 @@ void packet_parser(unsigned char *src, int len)
 				
 				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_TEST_REQUEST!!\r\n");
 			}  
+
+			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_ADD_MEDICINE_COMPLETE)) //收到状态上报响应
+			{  
+				memcpy(replenish_medicine_complete_request_buf, uart1_shared_rx_buf, pkt_len);	
+				parse_replenish_complete_request(&replenish_medicine_complete_request);  
+				print_replenish_complete_request(&replenish_medicine_complete_request);  
+				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_ADD_MEDICINE_COMPLETE!!\r\n");
+			} 
 			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_MSG_ACK)) //收到状态上报响应
 			{  
 				memcpy(message_ack_buf, uart1_shared_rx_buf, pkt_len);	
@@ -1024,6 +1205,8 @@ void packet_parser(unsigned char *src, int len)
 				print_status_report_request(&status_report_request);  
 				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_STATUS_REPORT_REQUEST!!\r\n");
 			} 
+
+			
 			else 
 			{
 				UsartPrintf(USART_DEBUG, "Received Data is Error, drop!!\r\n");

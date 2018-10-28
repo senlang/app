@@ -32,12 +32,12 @@
 
 /*请求出货指令*/
 #define PUSH_MEDICINE_REQUEST_INFO_SIZE 4 //即(1字节	1字节	2字节)   
-#define PUSH_MEDICINE_REQUEST_PACKET_SIZE (IPUC + PUSH_MEDICINE_REQUEST_INFO_SIZE * MAX_PUSH_CNT + CHECKSUM_SIZE)  
+#define PUSH_MEDICINE_REQUEST_PACKET_SIZE (IPUC + PUSH_MEDICINE_REQUEST_INFO_SIZE + CHECKSUM_SIZE)  
 
 
 /*请求补货指令*/
 #define REPLENISH_MEDICINE_REQUEST_INFO_SIZE 4 //即(1字节	1字节	2字节)   
-#define REPLENISH_MEDICINE_REQUEST_PACKET_SIZE (IPUC + REPLENISH_MEDICINE_REQUEST_INFO_SIZE * MAX_PUSH_CNT + CHECKSUM_SIZE)  
+#define REPLENISH_MEDICINE_REQUEST_PACKET_SIZE (IPUC + REPLENISH_MEDICINE_REQUEST_INFO_SIZE + CHECKSUM_SIZE)  
 
 /*货道校准指令*/
 #define CILIBRATE_TRACK_REQUEST_INFO_SIZE 2 //即(1字节	1字节)   
@@ -56,12 +56,12 @@
 
 /*出货完成*/
 #define PUSH_MEDICINE_COMPLETE_INFO_SIZE 3 //即(1字节	1字节	1字节)   
-#define PUSH_MEDICINE_COMPLETE_PACKET_SIZE (IPUC + PUSH_MEDICINE_COMPLETE_INFO_SIZE * MAX_PUSH_CNT + CHECKSUM_SIZE)  
+#define PUSH_MEDICINE_COMPLETE_PACKET_SIZE (IPUC + PUSH_MEDICINE_COMPLETE_INFO_SIZE + CHECKSUM_SIZE)  
 
 
 /*补货完成*/
 #define REPLENISH_MEDICINE_CONPLETE_REQUEST_INFO_SIZE 2 //即(1字节	字节)   
-#define REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE (IPUC + REPLENISH_MEDICINE_CONPLETE_REQUEST_INFO_SIZE * MAX_PUSH_CNT + CHECKSUM_SIZE)  
+#define REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE (IPUC + REPLENISH_MEDICINE_CONPLETE_REQUEST_INFO_SIZE + CHECKSUM_SIZE)  
 
 
 /*指令应答*/
@@ -293,9 +293,7 @@ struct push_medicine_complete_struct
 /*补货完成 */
 struct replenish_medicine_complete_request_info_struct  
 {  
-    uint8_t board_id;  
-    uint8_t medicine_track_number;  
-    uint16_t push_time;  	
+    uint8_t board_id;  	
 }; 
 
 struct replenish_medicine_complete_struct  
@@ -384,6 +382,10 @@ void send_status_report_request(void);
 void push_test(void);
 void replenish_test(void);
 void test_test(void);
+void calibrate_test(void);
+void replenish_complete_test(void);
+
+
 
 void BoardId_Init(void);
 void packet_parser(unsigned char *src, int len);

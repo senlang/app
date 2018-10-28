@@ -23,9 +23,12 @@
 
 //硬件驱动
 #include "delay.h"
+#include "usart.h"
 
 
 KEY_STATUS key_status;
+extern unsigned char calibrate_track_selected;
+extern unsigned char calibrate_enable;
 
 
 /*
@@ -51,9 +54,9 @@ void Key_Init(void)
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 	
 	gpioInitStructure.GPIO_Mode = GPIO_Mode_IPU;
-	gpioInitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_11 | GPIO_Pin_12;
+	gpioInitStructure.GPIO_Pin = GPIO_Pin_1 | GPIO_Pin_0;
 	gpioInitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOC, &gpioInitStructure);
+	GPIO_Init(GPIOB, &gpioInitStructure);
 
 	memset(&key_status, 0, sizeof(KEY_STATUS));
 }
@@ -105,16 +108,21 @@ _Bool KeyScan(GPIO_TypeDef* GPIOX, unsigned int NUM)
 unsigned char Keyboard(void)
 {
 	unsigned char ret_val = 0;
-	if(KeyScan(GPIOB, KEY0) == KEYDOWN)							//有第二次按下，说明为双击
+	
+	if(calibrate_enable == 0)
+	return;
+	
+	if(KeyScan(GPIOB, KEY0) == KEYDOWN)						//有第二次按下，说明为双击
 	{
-			RTOS_TimeDly(5);									//让此任务进入阻塞态，这不影响代码正常的运行
-			if(KeyScan(GPIOB, KEY0) == KEYDOWN)					//等待释放，无此句，双击后会跟一个单击动作
-			key_status.Key0Stat = KEYDOWN;			
+		RTOS_TimeDly(5);									//让此任务进入阻塞态，这不影响代码正常的运行
+		if(KeyScan(GPIOB, KEY0) == KEYDOWN)					//等待释放，无此句，双击后会跟一个单击动作
+		key_status.Key0Stat = KEYDOWN;			
 	}
 	else
 	{
 		key_status.Key0Stat = KEYUP;
-	}	
+	}
+	//UsartPrintf(USART_DEBUG, "key_status.Key0Stat[%d]\r\n",key_status.Key0Stat);
 
 	if((key_status.Key0Stat == KEYDOWN) && (key_status.Key0OldStat == KEYUP))
 	{
@@ -132,10 +140,11 @@ unsigned char Keyboard(void)
 	{
 		key_status.Key0StatChange = KEY_UPKEEP;
 	}
+	key_status.Key0OldStat = key_status.Key0Stat;
 
 	
 	
-	if(KeyScan(GPIOB, KEY1) == KEYDOWN)							//有第二次按下，说明为双击
+	if(KeyScan(GPIOB, KEY1) == KEYDOWN)							//有第二次按下，说明为已按下
 	{
 			RTOS_TimeDly(5);									//让此任务进入阻塞态，这不影响代码正常的运行
 			if(KeyScan(GPIOB, KEY1) == KEYDOWN)					//等待释放，无此句，双击后会跟一个单击动作
@@ -147,10 +156,8 @@ unsigned char Keyboard(void)
 	}
 
 	
-	if(key_status.Key0Stat ^ key_status.Key1Stat)
-	{
-		ret_val = 1;
-	}
+	//UsartPrintf(USART_DEBUG, "key_status.Key1Stat[%d]\r\n",key_status.Key1Stat);
+
 
 	if((key_status.Key1Stat == KEYDOWN) && (key_status.Key1OldStat == KEYUP))
 	{
@@ -168,6 +175,16 @@ unsigned char Keyboard(void)
 	{
 		key_status.Key1StatChange = KEY_UPKEEP;
 	}
+	key_status.Key1OldStat = key_status.Key1Stat;
+
+
+	if(key_status.Key0Stat ^ key_status.Key1Stat)
+	{
+		ret_val = 1;
+	}
+
+	
+	UsartPrintf(USART_DEBUG, "key_status.Key0StatChange[%d]key_status.Key1StatChange[%d]\r\n", key_status.Key0StatChange, key_status.Key1StatChange);
 
 	return ret_val;	
 }

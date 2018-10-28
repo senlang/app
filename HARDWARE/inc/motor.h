@@ -44,6 +44,7 @@ void Conveyor_Init(void);
 void Conveyor_set(CONVEYOR_ENUM status);
 
 void Motor_Start(void);
+void track_calibrate(void);
 
 
 #endif
