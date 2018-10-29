@@ -97,8 +97,9 @@ void KEY_Task(void *pdata);
 
 
 
-OS_EVENT *SemOfMotor;          //Motor控制信号量
+OS_EVENT *SemOfMotor;        //Motor控制信号量
 OS_EVENT *SemOfUart1RecvData;          //
+OS_EVENT *SemOfKey;          // 按键控制信号量
 
 
 
@@ -122,11 +123,14 @@ void Hardware_Init(void)
 	
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);								//中断控制器分组设置
 
+
 	delay_init();																//systick初始化
 	
 	Led_Init();																	//LED初始化
 
 	Key_Init();																	//按键初始化
+
+	EXTIX_Init();
 
 	Motor_Init();
 
@@ -300,14 +304,23 @@ void TRACK_Task(void *pdata)
 *	说明：		按键任务
 ************************************************************
 */
+extern int xxx;
 void KEY_Task(void *pdata)
 {
+    INT8U            err;
+	SemOfKey = OSSemCreate(0);
+	
 	while(1)
 	{
+		OSSemPend(SemOfKey, 0u, &err);
 		Keyboard();
 		track_calibrate();
-		RTOS_TimeDly(100); 								//挂起任务500ms
+		UsartPrintf(USART_DEBUG, "xxx = %d----------\r\n", xxx);		//提示任务开始执行
+		//RTOS_TimeDly(200); 								//挂起任务500ms
 	}
+
+	
+	OSSemDel(SemOfKey, 0, &err);
 }
 
 

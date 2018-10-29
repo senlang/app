@@ -164,6 +164,7 @@ void Motor_Start(void)
 
 	
 	UsartPrintf(USART_DEBUG, "push_cnt[%d]-------------\r\n", push_cnt);
+	calibrate_track_selected = 255;
 	
 	for(i = 0; i < push_cnt; i++)
 	{
@@ -215,7 +216,7 @@ void Motor_Start(void)
 	//}
 
 }
-
+#if 0
 void track_calibrate(void)
 {
 	//UsartPrintf(USART_DEBUG, "calibrate_track_selected[%d]calibrate_enable[%d]\r\n", calibrate_track_selected, calibrate_enable);
@@ -255,5 +256,40 @@ void track_calibrate(void)
 	}
 
 }
+#else
 
+void track_calibrate(void)
+{
+	//UsartPrintf(USART_DEBUG, "calibrate_track_selected[%d]calibrate_enable[%d]\r\n", calibrate_track_selected, calibrate_enable);
+
+	if((calibrate_track_selected == 255))
+	{
+		Motor_Set(MOTOR_STOP);
+		set_track(calibrate_track_selected, MOTOR_STOP);
+		calibrate_enable = 0;
+		return;
+	}
+
+	calibrate_enable = 1;	
+	if((key_status.Key0Stat == KEYUP)&&(key_status.Key1Stat == KEYUP))
+	{
+		Motor_Set(MOTOR_STOP);
+		set_track(calibrate_track_selected, MOTOR_STOP);
+	}
+	
+	if((key_status.Key0Stat == KEYDOWN))
+	{
+		Motor_Set(MOTOR_RUN_FORWARD);
+		set_track(calibrate_track_selected, MOTOR_RUN_FORWARD);
+	}
+
+	if((key_status.Key1Stat== KEYDOWN))
+	{
+		Motor_Set(MOTOR_RUN_BACKWARD);
+		set_track(calibrate_track_selected, MOTOR_RUN_BACKWARD);
+	}
+}
+
+
+#endif
 

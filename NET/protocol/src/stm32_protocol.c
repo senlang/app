@@ -743,7 +743,6 @@ void parse_board_test_request(struct test_request_struct *test_request)
 	
 	if(check_sum != test_request->checksum)
 	{
-		
 		UsartPrintf(USART_DEBUG, "check sum fail : 0x%02x, 0x%02x\r\n", check_sum, test_request->checksum);  
 		send_command_ack(&cmd_ack_info);
 		return;

@@ -37,6 +37,8 @@ typedef enum{
 
 extern void Key_Init(void);
 
+extern void EXTIX_Init(void);
+
 _Bool KeyScan(GPIO_TypeDef* GPIOX, unsigned int NUM);
 
 extern unsigned char Keyboard(void);
