@@ -14,7 +14,7 @@
 #define CHECKSUM_SIZE 1 
 
 #define MAX_PUSH_CNT	16
-#define TOTAL_PUSH_CNT	(100)
+#define TOTAL_PUSH_CNT	(16)
 
 #define TRACK_MAX	96
 #define BOARD_ID_MAX 8

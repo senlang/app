@@ -121,12 +121,18 @@ int down_shared_buf_copy(unsigned char *src, int len)
 int uart2_receive_data(void)
 {
 	int retval = -1;
+	int i = 0;
 
 	if(UART2_IO_Receive() == 0)
 	return retval;
 
 	//UsartPrintf(USART_DEBUG, "%s[%d]\r\n", down_recv_data_info.buf, down_recv_data_info.dataLen);
+	for(i = 0; i < down_recv_data_info.dataLen; i++)
+	{
+		UsartPrintf(USART_DEBUG, "0x%02x,", down_recv_data_info.buf[i]);
+	}
 	
+	UsartPrintf(USART_DEBUG, "\r\n");
 	UART1_IO_Send(down_recv_data_info.buf, down_recv_data_info.dataLen);
 
 	//packet_parser(down_recv_data_info.buf, down_recv_data_info.dataLen);

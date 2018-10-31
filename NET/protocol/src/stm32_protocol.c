@@ -92,6 +92,7 @@ unsigned char calibrate_enable = 0;
 
 
 extern OS_EVENT *SemOfMotor;          //Motor控制信号量
+extern OS_EVENT *SemOfKey;          // 按键控制信号量
 
 
 
@@ -605,7 +606,7 @@ void parse_push_medicine_request(struct push_medicine_request_struct *push_medic
 			memcpy(&motor_struct[motor_enqueue_idx].info, &push_medicine_request->info[valid_cnt], sizeof(struct motor_control_info_struct));
 			
 			motor_enqueue_idx++;
-			if(motor_enqueue_idx >= TOTAL_PUSH_CNT - 1)
+			if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
 			motor_enqueue_idx = 0;
 
 
@@ -693,7 +694,7 @@ void parse_replenish_medicine_request(struct replenish_medicine_request_struct *
 			memcpy(&motor_struct[motor_enqueue_idx].info, &replenish_medicine_request->info[valid_cnt], sizeof(struct motor_control_info_struct));
 			
 			motor_enqueue_idx++;
-			if(motor_enqueue_idx >= TOTAL_PUSH_CNT - 1)
+			if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
 			motor_enqueue_idx = 0;
 
 
@@ -787,7 +788,7 @@ void parse_board_test_request(struct test_request_struct *test_request)
 
 				
 				motor_enqueue_idx++;
-				if(motor_enqueue_idx >= TOTAL_PUSH_CNT - 1)
+				if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
 				motor_enqueue_idx = 0;
 
 				UsartPrintf(USART_DEBUG, "send sem,motor_enqueue_idx[%d]-------------\r\n", motor_enqueue_idx);
@@ -893,6 +894,7 @@ void parse_calibrate_track_request(struct calibrate_track_request_struct *calibr
 		motor_control.board_id = calibrate_track_request->info.board_id;		
 		calibrate_track_request->info.medicine_track_number = calibrate_track_request_buf[4];
 		calibrate_track_selected = calibrate_track_request->info.medicine_track_number;
+		OSSemPost(SemOfKey);
 
 		UsartPrintf(USART_DEBUG, "calibrate_track_selected[%d]\r\n", calibrate_track_selected);
 	}
@@ -962,6 +964,7 @@ void parse_replenish_complete_request(struct replenish_medicine_complete_struct 
 	if(replenish_medicine_complete_request->info.board_id == g_src_board_id)
 	{
 		calibrate_track_selected = 255;
+		OSSemPost(SemOfKey);
 	}
 	
 	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);

@@ -177,7 +177,9 @@ int main(void)
 	//创建应用任务
 	
 	OSTaskCreate(IWDG_Task, (void *)0, (OS_STK*)&IWDG_TASK_STK[IWDG_STK_SIZE - 1], IWDG_TASK_PRIO);
+
 	OSTaskCreate(UART1_RECEIVE_Task, (void *)0, (OS_STK*)&UP_RECEIVE_TASK_STK[UP_RECEIVE_STK_SIZE - 1], UP_RECEIVE_TASK_PRIO);
+
 	OSTaskCreate(UART2_RECEIVE_Task, (void *)0, (OS_STK*)&DOWN_RECEIVE_TASK_STK[DOWN_RECEIVE_STK_SIZE - 1], DOWN_RECEIVE_TASK_PRIO);
 	
 	OSTaskCreate(HEART_Task, (void *)0, (OS_STK*)&HEART_TASK_STK[HEART_STK_SIZE - 1], HEART_TASK_PRIO);
@@ -318,7 +320,7 @@ void KEY_Task(void *pdata)
 		OSSemPend(SemOfKey, 0u, &err);
 		Keyboard();
 		track_calibrate();
-		UsartPrintf(USART_DEBUG, "xxx = %d----------\r\n", xxx);		//提示任务开始执行
+		//UsartPrintf(USART_DEBUG, "xxx = %d----------\r\n", xxx);		//提示任务开始执行
 	}
 	OSSemDel(SemOfKey, 0, &err);
 }

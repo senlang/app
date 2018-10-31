@@ -213,7 +213,7 @@ void Motor_Start(void)
 
 		motor_dequeue_idx++;
 
-		if (motor_dequeue_idx == MAX_PUSH_CNT)
+		if (motor_dequeue_idx == TOTAL_PUSH_CNT)
 		{
 			motor_dequeue_idx = 0;
 		}
