@@ -221,8 +221,8 @@ unsigned char Keyboard(void)
 {
 	unsigned char ret_val = 0;
 	
-	if(calibrate_enable == 0)
-	return;
+	//if(calibrate_enable == 0)
+	//return;
 	
 	if(KeyScan(GPIOB, KEY0) == KEYDOWN)						//有第二次按下，说明为双击
 	{

@@ -37,6 +37,7 @@ extern int motor_dequeue_idx;
 extern unsigned char calibrate_track_selected;
 extern KEY_STATUS key_status;
 extern unsigned char calibrate_enable;
+extern struct status_report_request_info_struct  heart_info;
 
 /*
 ************************************************************
@@ -175,16 +176,21 @@ void Motor_Start(void)
 		if(motor_struct[motor_dequeue_idx].motor_run == MOTOR_RUN_FORWARD)
 		{
 			Motor_Set(MOTOR_RUN_FORWARD);
+			heart_info.board_id = motor_struct[motor_dequeue_idx].info.board_id;
+			heart_info.board_status = PUSHING_STATUS;
+			heart_info.medicine_track_number = motor_struct[motor_dequeue_idx].info.medicine_track_number;
 		}
 		else if(motor_struct[motor_dequeue_idx].motor_run == MOTOR_RUN_BACKWARD)
 		{
 			Motor_Set(MOTOR_RUN_BACKWARD);
+			heart_info.board_id = motor_struct[motor_dequeue_idx].info.board_id;
+			heart_info.board_status = REPLENISHING_STATUS;
+			heart_info.medicine_track_number = motor_struct[motor_dequeue_idx].info.medicine_track_number;
 		}
 		
-		Conveyor_set(CONVEYOR_RUN);
+		//Conveyor_set(CONVEYOR_RUN);
 		
 		set_track(motor_struct[motor_dequeue_idx].info.medicine_track_number, MOTOR_RUN_FORWARD);
-		
 
 		delay_s = motor_struct[motor_dequeue_idx].info.push_time/10;
 		delay_ms = (motor_struct[motor_dequeue_idx].info.push_time%10) * 100;
@@ -198,6 +204,11 @@ void Motor_Start(void)
 		
 		set_track(motor_struct[motor_dequeue_idx].info.medicine_track_number, MOTOR_STOP);
 		Motor_Set(MOTOR_STOP);
+		
+		heart_info.board_id = motor_struct[motor_dequeue_idx].info.board_id;
+		heart_info.board_status = STANDBY_STATUS;
+		heart_info.medicine_track_number = 0;
+
 
 
 		motor_dequeue_idx++;
@@ -260,7 +271,7 @@ void track_calibrate(void)
 
 void track_calibrate(void)
 {
-	//UsartPrintf(USART_DEBUG, "calibrate_track_selected[%d]calibrate_enable[%d]\r\n", calibrate_track_selected, calibrate_enable);
+	UsartPrintf(USART_DEBUG, "calibrate_track_selected[%d]calibrate_enable[%d]\r\n", calibrate_track_selected, calibrate_enable);
 
 	if((calibrate_track_selected == 255))
 	{

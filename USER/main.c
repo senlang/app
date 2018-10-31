@@ -52,7 +52,7 @@ void UP_SEND_Task(void *pdata);
 #define DOWN_RECEIVE_TASK_PRIO		11 //
 #define DOWN_RECEIVE_STK_SIZE		512
 OS_STK DOWN_RECEIVE_TASK_STK[DOWN_RECEIVE_STK_SIZE]; //
-void DOWN_RECEIVE_Task(void *pdata);
+void UART2_RECEIVE_Task(void *pdata);
 
 //UART2 下行数据发送
 #define DOWN_SEND_TASK_PRIO		12 //
@@ -102,6 +102,7 @@ OS_EVENT *SemOfUart1RecvData;          //
 OS_EVENT *SemOfKey;          // 按键控制信号量
 
 
+extern struct status_report_request_info_struct  heart_info;
 
 
 
@@ -177,7 +178,7 @@ int main(void)
 	
 	OSTaskCreate(IWDG_Task, (void *)0, (OS_STK*)&IWDG_TASK_STK[IWDG_STK_SIZE - 1], IWDG_TASK_PRIO);
 	OSTaskCreate(UART1_RECEIVE_Task, (void *)0, (OS_STK*)&UP_RECEIVE_TASK_STK[UP_RECEIVE_STK_SIZE - 1], UP_RECEIVE_TASK_PRIO);
-	OSTaskCreate(DOWN_RECEIVE_Task, (void *)0, (OS_STK*)&DOWN_RECEIVE_TASK_STK[DOWN_RECEIVE_STK_SIZE - 1], DOWN_RECEIVE_TASK_PRIO);
+	OSTaskCreate(UART2_RECEIVE_Task, (void *)0, (OS_STK*)&DOWN_RECEIVE_TASK_STK[DOWN_RECEIVE_STK_SIZE - 1], DOWN_RECEIVE_TASK_PRIO);
 	
 	OSTaskCreate(HEART_Task, (void *)0, (OS_STK*)&HEART_TASK_STK[HEART_STK_SIZE - 1], HEART_TASK_PRIO);
 	
@@ -241,13 +242,13 @@ void UART1_RECEIVE_Task(void *pdata)
 
 }
 
-void DOWN_RECEIVE_Task(void *pdata)
+void UART2_RECEIVE_Task(void *pdata)
 {
 
 	while(1)
 	{
 		uart2_receive_data();
-		RTOS_TimeDly(1000);
+		RTOS_TimeDly(10);
 	}
 
 
@@ -262,6 +263,8 @@ void HEART_Task(void *pdata)
 		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务60s
 		Led_Set(LED_ON);
 		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务60s
+
+		board_send_message(STATUS_REPORT_REQUEST, &heart_info);
 	}
 }
 
@@ -316,10 +319,7 @@ void KEY_Task(void *pdata)
 		Keyboard();
 		track_calibrate();
 		UsartPrintf(USART_DEBUG, "xxx = %d----------\r\n", xxx);		//提示任务开始执行
-		//RTOS_TimeDly(200); 								//挂起任务500ms
 	}
-
-	
 	OSSemDel(SemOfKey, 0, &err);
 }
 
@@ -328,7 +328,7 @@ void SENSOR_Task(void *pdata)
 {
 	while(1)
 	{	
-		#if 1
+		#if 0
 		push_test();
 		RTOS_TimeDlyHMSM(0, 0, 0, 100);	//
 		replenish_test();

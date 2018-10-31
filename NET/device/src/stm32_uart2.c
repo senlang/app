@@ -301,7 +301,7 @@ int UART2_IO_Receive(void)
 	len = down_recv_data_info.dataLen;	
 	if(UART2_IO_WaitRecive() != REV_OK)
 	{
-		UsartPrintf(USART_DEBUG, "UART2 No Data!!!!!!!!!!!\r\n");
+		//UsartPrintf(USART_DEBUG, "UART2 No Data!!!!!!!!!!!\r\n");
 		return 0;
 	}
 

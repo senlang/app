@@ -110,6 +110,26 @@ enum {
 };  
 
 
+typedef enum{  
+	STANDBY_STATUS = 1,
+    PUSHING_STATUS = 2,
+	REPLENISHING_STATUS = 3,
+	TESTING_STATUS = 4,
+	FAULT_STATUS = 0xFF,
+}BOARD_STATUS_CODE;  
+
+
+typedef enum{  
+	TRACK_FAULT = 1,
+	CONVEYOR_FAULT = 2,
+	REFRIGERATION_FAULT = 3,
+	OTHER_FAULT = 0x0F,
+}FAULT_CODE;  
+
+
+
+
+
 typedef enum{
 	MOTOR_FORWARD_TEST = 0,
     MOTOR_BACKWARD_TEST = 1,
@@ -378,7 +398,7 @@ struct motor_control_struct
 int uart1_shared_buf_preparse(unsigned char *src, int len);
 void parse_up_rx_info(void); 
 
-void send_status_report_request(void); 
+void send_status_report_request(void *input_data); 
 void push_test(void);
 void replenish_test(void);
 void test_test(void);
@@ -389,5 +409,7 @@ void replenish_complete_test(void);
 
 void BoardId_Init(void);
 void packet_parser(unsigned char *src, int len);
+int board_send_message(int msg_type, void *input_data);
+
 
 #endif

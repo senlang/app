@@ -73,6 +73,7 @@ static unsigned char message_ack_buf[COMMAND_ACK_PACKET_SIZE];
 static unsigned char txr_buf[MAX_PAYLOAD_LEN + 32];  
 
 
+struct status_report_request_info_struct  heart_info;
 
 struct motor_control_struct  motor_struct[TOTAL_PUSH_CNT];
 struct push_medicine_request_struct push_srtuct[TOTAL_PUSH_CNT];
@@ -118,8 +119,10 @@ void BoardId_Init(void)
 	g_src_board_id = GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_7)<<3 | GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_8)<<2 | 
 		GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_9)<<1 | GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_13);
 
-
-	
+	memset(&heart_info, 0x00, sizeof(heart_info));
+	heart_info.board_id = g_src_board_id;
+	heart_info.board_status = STANDBY_STATUS;
+		
 	UsartPrintf(USART_DEBUG, "g_src_board_id:0x%x\r\n", g_src_board_id); 
 }
 
@@ -140,6 +143,7 @@ void BoardId_Init(void)
   
     return checksum;  
 }  
+
 
 void send_command_ack( void *input_data)  
 {  
@@ -164,7 +168,7 @@ void send_command_ack( void *input_data)
 } 
 
 
-void send_status_report_request(void)  
+void send_status_report_request(void *input_data)  
 {  
     uint8_t send_statu_report_request_data[STATUS_REPORT_REQUEST_PACKET_SIZE];  
 
@@ -173,19 +177,22 @@ void send_status_report_request(void)
 	send_statu_report_request_data[0] = START_CODE;
 	send_statu_report_request_data[1] = STATUS_REPORT_REQUEST_PACKET_SIZE;
 	send_statu_report_request_data[2] = CMD_STATUS_REPORT_REQUEST;
-	
+
+	#if 0
 	send_statu_report_request_data[3] = g_src_board_id;
 	send_statu_report_request_data[4] = g_board_status;
 	send_statu_report_request_data[5] = g_error_code;
 	
 	send_statu_report_request_data[6] = test[0];
 	send_statu_report_request_data[7] = test[1];
-
+	#else
+	memcpy(&send_statu_report_request_data[3], input_data, sizeof(struct status_report_request_info_struct));
+	#endif
 	
-    send_statu_report_request_data[8] = add_checksum(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE);  
+    send_statu_report_request_data[7] = add_checksum(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE);  
 	//UART1_IO_Send(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE);  
 	
-	UART2_IO_Send(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE);  
+	UART1_IO_Send(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE);  
 }  
 
 
@@ -449,7 +456,7 @@ int board_send_message(int msg_type, void *input_data)
 	switch(msg_type)
 	{
 		case STATUS_REPORT_REQUEST:
-			send_status_report_request();
+			send_status_report_request(input_data);
 		break;
 
 		case PUSH_MEDICINE_REQUEST:
@@ -613,7 +620,7 @@ void parse_push_medicine_request(struct push_medicine_request_struct *push_medic
 	}
 	cmd_ack_info.board_id = g_src_board_id;
 	cmd_ack_info.rsp_cmd_type = push_medicine_request->cmd_type;
-	//send_command_ack(&cmd_ack_info);
+	send_command_ack(&cmd_ack_info);
 	
 	return;
 }
@@ -929,12 +936,12 @@ void parse_replenish_complete_request(struct replenish_medicine_complete_struct 
 
 	cmd_ack_info.status = 0;
 	
-	replenish_medicine_complete_request->start_code = calibrate_track_request_buf[0];  
-	replenish_medicine_complete_request->packet_len = calibrate_track_request_buf[1];  
-	replenish_medicine_complete_request->cmd_type = calibrate_track_request_buf[2];
+	replenish_medicine_complete_request->start_code = replenish_medicine_complete_request_buf[0];  
+	replenish_medicine_complete_request->packet_len = replenish_medicine_complete_request_buf[1];  
+	replenish_medicine_complete_request->cmd_type = replenish_medicine_complete_request_buf[2];
 	
-	check_sum = add_checksum(calibrate_track_request_buf, replenish_medicine_complete_request->packet_len);
-	replenish_medicine_complete_request->checksum = calibrate_track_request_buf[replenish_medicine_complete_request->packet_len];  
+	check_sum = add_checksum(replenish_medicine_complete_request_buf, replenish_medicine_complete_request->packet_len);
+	replenish_medicine_complete_request->checksum = replenish_medicine_complete_request_buf[replenish_medicine_complete_request->packet_len];  
 	
 	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
 	
@@ -946,7 +953,7 @@ void parse_replenish_complete_request(struct replenish_medicine_complete_struct 
 		return;
 	}
 	
-	replenish_medicine_complete_request->info.board_id = calibrate_track_request_buf[3];
+	replenish_medicine_complete_request->info.board_id = replenish_medicine_complete_request_buf[3];
 
 	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
 

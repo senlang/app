@@ -121,9 +121,7 @@ int down_shared_buf_copy(unsigned char *src, int len)
 int uart2_receive_data(void)
 {
 	int retval = -1;
-	int i = 0;
 
-	//UsartPrintf(USART_DEBUG, "%s[%d]BDSIOInfo.dataLen = %d\r\n", __FUNCTION__, __LINE__, BDSIOInfo.dataLen);
 	if(UART2_IO_Receive() == 0)
 	return retval;
 
@@ -131,10 +129,9 @@ int uart2_receive_data(void)
 	
 	UART1_IO_Send(down_recv_data_info.buf, down_recv_data_info.dataLen);
 
-	packet_parser(down_recv_data_info.buf, down_recv_data_info.dataLen);
+	//packet_parser(down_recv_data_info.buf, down_recv_data_info.dataLen);
 		
 	UART2_IO_ClearRecive();
-	
 	return 0;
 }
 
