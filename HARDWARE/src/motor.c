@@ -281,7 +281,7 @@ void track_calibrate(void)
 		return;
 	}
 
-	calibrate_enable = 1;	
+	calibrate_enable = 1;
 	if((key_status.Key0Stat == KEYUP)&&(key_status.Key1Stat == KEYUP))
 	{
 		Motor_Set(MOTOR_STOP);

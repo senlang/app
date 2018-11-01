@@ -945,7 +945,7 @@ void parse_replenish_complete_request(struct replenish_medicine_complete_struct 
 	check_sum = add_checksum(replenish_medicine_complete_request_buf, replenish_medicine_complete_request->packet_len);
 	replenish_medicine_complete_request->checksum = replenish_medicine_complete_request_buf[replenish_medicine_complete_request->packet_len];  
 	
-	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
+	//UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
 	
 	if(check_sum != replenish_medicine_complete_request->checksum)
 	{
@@ -957,9 +957,9 @@ void parse_replenish_complete_request(struct replenish_medicine_complete_struct 
 	
 	replenish_medicine_complete_request->info.board_id = replenish_medicine_complete_request_buf[3];
 
-	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
+	//UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
 
-	UsartPrintf(USART_DEBUG, "board_id: 0x%02x\r\n", replenish_medicine_complete_request->info.board_id);  
+	//UsartPrintf(USART_DEBUG, "board_id: 0x%02x\r\n", replenish_medicine_complete_request->info.board_id);  
 	
 	if(replenish_medicine_complete_request->info.board_id == g_src_board_id)
 	{
@@ -967,7 +967,7 @@ void parse_replenish_complete_request(struct replenish_medicine_complete_struct 
 		OSSemPost(SemOfKey);
 	}
 	
-	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
+	//UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
 	
 	cmd_ack_info.board_id = g_src_board_id;
 	cmd_ack_info.rsp_cmd_type = replenish_medicine_complete_request->cmd_type;
@@ -975,7 +975,7 @@ void parse_replenish_complete_request(struct replenish_medicine_complete_struct 
 	cmd_ack_info.status = 1;
 	send_command_ack((void *)&cmd_ack_info);
 	
-	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
+	//UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
 	
 	return;
 }
@@ -1146,18 +1146,26 @@ void packet_parser(unsigned char *src, int len)
 	do
 	{
 		uart1_shared_rx_buf = src + chk_offset;
+		
+		//UsartPrintf(USART_DEBUG, "chk_offset[%d]\r\n", chk_offset);
+		if(*uart1_shared_rx_buf != START_CODE)
+		{
+			UsartPrintf(USART_DEBUG, "start code error: 0x%02x\r\n", *(uart1_shared_rx_buf));
+			chk_offset++;
+			continue;
+		}
 
-		UsartPrintf(USART_DEBUG, "start code = 0x%02x, cmd = 0x%02x!!\r\n", *(uart1_shared_rx_buf), *(uart1_shared_rx_buf + 2));
+		UsartPrintf(USART_DEBUG, "start code = 0x%02x, boardid = 0x%02x, cmd = 0x%02x!!\r\n", *(uart1_shared_rx_buf), *(uart1_shared_rx_buf + 3), *(uart1_shared_rx_buf + 2));
 		
 		pkt_len = *(uart1_shared_rx_buf + 1) + 1;//data + checksum
 		board_id = *(uart1_shared_rx_buf + 3);
 		if(board_id != g_src_board_id)
 		{
+			UsartPrintf(USART_DEBUG, "Board Id not match, forward!!!%d - %d!!\r\n", board_id, g_src_board_id);
 			UART2_IO_Send(uart1_shared_rx_buf, pkt_len);	
 		}
 		else
 		{
-
 			if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_REQUEST)) //收到状态上报响应
 			{  
 				memcpy(push_medicine_request_buf, uart1_shared_rx_buf, pkt_len);  
@@ -1214,20 +1222,16 @@ void packet_parser(unsigned char *src, int len)
 				print_status_report_request(&status_report_request);  
 				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_STATUS_REPORT_REQUEST!!\r\n");
 			} 
-
-			
 			else 
 			{
 				UsartPrintf(USART_DEBUG, "Received Data is Error, drop!!\r\n");
 				break;
 			}
-
-			UsartPrintf(USART_DEBUG, "buf_bitmap = 0x%08x!!\r\n", buf_bitmap);
 		}
 		
 		chk_offset = chk_offset + pkt_len;
 		//UsartPrintf(USART_DEBUG, "chk_offset = %d, len = %d!!\r\n", chk_offset, len);
-	}while(chk_offset >0 && (chk_offset + 1) < len);
+	}while(chk_offset > 0 && chk_offset < len);
 		
 }
 
