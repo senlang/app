@@ -139,7 +139,7 @@ void Conveyor_set(CONVEYOR_ENUM status)
 		GPIO_WriteBit(GPIOA, GPIO_Pin_0, Bit_RESET);
 		GPIO_WriteBit(GPIOA, GPIO_Pin_1, Bit_RESET);
 	}
-	else if(CONVEYOR_RUN== status)
+	else if(CONVEYOR_RUN == status)
 	{	
 		GPIO_WriteBit(GPIOA, GPIO_Pin_0, Bit_SET);
 		GPIO_WriteBit(GPIOA, GPIO_Pin_1, Bit_SET);

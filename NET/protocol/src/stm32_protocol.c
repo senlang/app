@@ -191,8 +191,8 @@ void send_status_report_request(void *input_data)
 	#endif
 	
     send_statu_report_request_data[7] = add_checksum(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE);  
-	//UART1_IO_Send(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE);  
-	
+
+	//UART2_IO_Send(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE);  
 	UART1_IO_Send(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE);  
 }  
 
@@ -749,7 +749,7 @@ void parse_board_test_request(struct test_request_struct *test_request)
 	
 	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
 	
-	if(check_sum != test_request->checksum)
+	if(0)//(check_sum != test_request->checksum)
 	{
 		UsartPrintf(USART_DEBUG, "check sum fail : 0x%02x, 0x%02x\r\n", check_sum, test_request->checksum);  
 		send_command_ack(&cmd_ack_info);
@@ -1183,7 +1183,6 @@ void packet_parser(unsigned char *src, int len)
 				
 				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_REPLENISH_MEDICINE_REQUEST!!\r\n");
 			}  
-
 			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_CALIBRATE_TRACK_REQUEST)) //收到状态上报响应
 			{  
 				memcpy(calibrate_track_request_buf, uart1_shared_rx_buf, pkt_len);  
@@ -1191,7 +1190,6 @@ void packet_parser(unsigned char *src, int len)
 				print_calibrate_request(&calibrate_track_request);	
 				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_CALIBRATE_TRACK_REQUEST!!\r\n");
 			}  	
-			
 			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_TEST_REQUEST)) //收到状态上报响应
 			{  
 				memcpy(board_test_buf, uart1_shared_rx_buf, pkt_len);  
@@ -1200,7 +1198,6 @@ void packet_parser(unsigned char *src, int len)
 				
 				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_TEST_REQUEST!!\r\n");
 			}  
-
 			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_ADD_MEDICINE_COMPLETE)) //收到状态上报响应
 			{  
 				memcpy(replenish_medicine_complete_request_buf, uart1_shared_rx_buf, pkt_len);	

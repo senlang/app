@@ -86,7 +86,7 @@ void MOTOR_Task(void *pdata);
 #define TRACK_TASK_PRIO		15
 #define TRACK_STK_SIZE		512
 OS_STK TRACK_TASK_STK[TRACK_STK_SIZE];
-void TRACK_Task(void *pdata);
+void Conveyor_Task(void *pdata);
 
 
 //°´¼üÈÎÎñ
@@ -186,7 +186,7 @@ int main(void)
 	
 	OSTaskCreate(MOTOR_Task, (void *)0, (OS_STK*)&MOTOR_TASK_STK[MOTOR_STK_SIZE- 1], MOTOR_TASK_PRIO);
 
-	OSTaskCreate(TRACK_Task, (void *)0, (OS_STK*)&TRACK_TASK_STK[TRACK_STK_SIZE- 1], TRACK_TASK_PRIO);
+	OSTaskCreate(Conveyor_Task, (void *)0, (OS_STK*)&TRACK_TASK_STK[TRACK_STK_SIZE- 1], TRACK_TASK_PRIO);
 
 	OSTaskCreate(SENSOR_Task, (void *)0, (OS_STK*)&SENSOR_TASK_STK[SENSOR_STK_SIZE- 1], SENSOR_TASK_PRIO);
 
@@ -288,7 +288,7 @@ void MOTOR_Task(void *pdata)
 
 
 
-void TRACK_Task(void *pdata)
+void Conveyor_Task(void *pdata)
 {
 	while(1)
 	{	
