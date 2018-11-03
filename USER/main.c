@@ -97,9 +97,9 @@ void KEY_Task(void *pdata);
 
 
 
-OS_EVENT *SemOfMotor;        //Motor控制信号量
-OS_EVENT *SemOfUart1RecvData;          //
-OS_EVENT *SemOfKey;          // 按键控制信号量
+OS_EVENT *SemOfMotor;        	//Motor控制信号量
+OS_EVENT *SemOfUart1RecvData;	//uart1 串口接收数据信号量
+OS_EVENT *SemOfKey;				// 按键控制信号量
 
 
 extern struct status_report_request_info_struct  heart_info;
@@ -121,9 +121,7 @@ extern struct status_report_request_info_struct  heart_info;
 */
 void Hardware_Init(void)
 {
-	
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);								//中断控制器分组设置
-
 
 	delay_init();																//systick初始化
 	
@@ -151,8 +149,7 @@ void Hardware_Init(void)
 
 	BoardId_Init();
 
-	UsartPrintf(USART_DEBUG, "01.Hardware init OK\r\n");							//提示初始化完成
-
+	UsartPrintf(USART_DEBUG, "01.Hardware init OK\r\n");						//提示初始化完成
 }
 
 /*
@@ -252,8 +249,6 @@ void UART2_RECEIVE_Task(void *pdata)
 		uart2_receive_data();
 		RTOS_TimeDly(10);
 	}
-
-
 }
 
 
@@ -309,7 +304,6 @@ void Conveyor_Task(void *pdata)
 *	说明：		按键任务
 ************************************************************
 */
-extern int xxx;
 void KEY_Task(void *pdata)
 {
     INT8U            err;
@@ -320,7 +314,6 @@ void KEY_Task(void *pdata)
 		OSSemPend(SemOfKey, 0u, &err);
 		Keyboard();
 		track_calibrate();
-		//UsartPrintf(USART_DEBUG, "xxx = %d----------\r\n", xxx);		//提示任务开始执行
 	}
 	OSSemDel(SemOfKey, 0, &err);
 }

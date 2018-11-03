@@ -31,8 +31,6 @@ extern unsigned char calibrate_track_selected;
 extern unsigned char calibrate_enable;
 extern OS_EVENT *SemOfKey;          //Motor控制信号量
 
-int xxx = 0;
-
 /*
 ************************************************************
 *	函数名称：	Key_Init
@@ -43,7 +41,7 @@ int xxx = 0;
 *
 *	返回参数：	无
 *
-*	说明：		SW2-PD2		SW3-PC11	SW4-PC12	SW5-PC13	
+*	说明：		SW1-PB1		SW2-PB0	
 *				按下为低电平		释放为高电平
 ************************************************************
 */
@@ -64,7 +62,7 @@ void Key_Init(void)
 	//初始化KEY0-->GPIOB.1,KEY1-->GPIOB.0  上拉输入
  	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);//使能PORTB时钟
 
-	GPIO_InitStructure.GPIO_Pin  = GPIO_Pin_1|GPIO_Pin_0;//PE2~4
+	GPIO_InitStructure.GPIO_Pin  = GPIO_Pin_1|GPIO_Pin_0;//PB1~0
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU; //设置成上拉输入
  	GPIO_Init(GPIOB, &GPIO_InitStructure);//初始化GPIOB1,0
 	
@@ -319,7 +317,6 @@ void EXTI1_IRQHandler(void)
 		}
 		else if(KeyScan(GPIOB, KEY0) == KEYUP)
 		{
-			//xxx--;
 			UsartPrintf(USART_DEBUG, "UP-------------\r\n");
 		}
 		
@@ -351,7 +348,6 @@ void EXTI0_IRQHandler(void)
 		}
 		else if(KeyScan(GPIOB, KEY1) == KEYUP)
 		{
-			//xxx--;
 			UsartPrintf(USART_DEBUG, "UP-------------\r\n");
 		}
 		OSSemPost(SemOfKey);

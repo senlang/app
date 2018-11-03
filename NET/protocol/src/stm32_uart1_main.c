@@ -61,7 +61,7 @@ int uart1_receive_data(void)
 	return retval;
 
 
-	UsartPrintf(USART_DEBUG, "uart1 receive[%d]\r\n",up_recv_data_info.dataLen);
+	UsartPrintf(USART_DEBUG, "uart1 receive[%d]",up_recv_data_info.dataLen);
 	for(i = 0; i < up_recv_data_info.dataLen; i++)
 	{
 		UsartPrintf(USART_DEBUG, "0x%02x,", up_recv_data_info.buf[i]);
