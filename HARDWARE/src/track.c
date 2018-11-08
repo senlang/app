@@ -29,8 +29,6 @@
 
 
 
-
-
 track_elem X_value[10] = {
 
 	{GPIOB, GPIO_Pin_12},

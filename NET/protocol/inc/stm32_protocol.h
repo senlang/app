@@ -131,10 +131,10 @@ typedef enum{
 
 
 typedef enum{
-	MOTOR_FORWARD_TEST = 0,
-    MOTOR_BACKWARD_TEST = 1,
-	TRACK_RUN_TEST = 2,
-	REFRIGERATION_RUN_TEST = 3,
+	MOTOR_FORWARD_TEST = 1,
+	MOTOR_BACKWARD_TEST = 2,
+	REFRIGERATION_TEST = 3,
+	CONVEYOR_RUN_TEST = 4,
 }BOARD_TEST_MODE;  
 
 
@@ -217,15 +217,25 @@ struct push_medicine_request_struct
 	uint8_t start_code; 
 	uint8_t packet_len;
 	uint8_t cmd_type;
-	struct motor_control_info_struct info[32];
+	struct motor_control_info_struct info[1];
 	uint8_t checksum; 
 };  
 
 struct push_medicine_paramter
 {  
 	uint8_t push_cnt;
-	struct motor_control_info_struct info[32];
+	struct motor_control_info_struct info[1];
 };  
+#if 0
+struct push_medicine__struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	uint8_t cmd_type;;
+	uint8_t checksum; 
+};
+#endif
 
 
 
@@ -242,14 +252,14 @@ struct replenish_medicine_request_struct
 	uint8_t start_code; 
 	uint8_t packet_len;
 	uint8_t cmd_type;
-	struct replenish_medicine_request_info_struct info[32];
+	struct replenish_medicine_request_info_struct info[1];
 	uint8_t checksum; 
 };  
 
 struct replenish_medicine_paramter
 {  
 	uint8_t push_cnt;
-	struct replenish_medicine_request_info_struct info[32];
+	struct replenish_medicine_request_info_struct info[1];
 };  
 
 
@@ -389,6 +399,7 @@ struct msg_ack_struct
 struct motor_control_struct  
 {  
 	uint8_t motor_run;
+	uint8_t motor_work_mode;
 	struct motor_control_info_struct info;
 };  
 

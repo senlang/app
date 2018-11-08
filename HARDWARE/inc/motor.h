@@ -47,4 +47,9 @@ void Motor_Start(void);
 void track_calibrate(void);
 
 
+void Conveyor_run(void);
+
+uint8_t Conveyor_check(void);
+
+
 #endif

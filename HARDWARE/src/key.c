@@ -226,7 +226,8 @@ unsigned char Keyboard(void)
 	{
 		RTOS_TimeDly(5);									//让此任务进入阻塞态，这不影响代码正常的运行
 		if(KeyScan(GPIOB, KEY0) == KEYDOWN)					//等待释放，无此句，双击后会跟一个单击动作
-		key_status.Key0Stat = KEYDOWN;			
+		key_status.Key0Stat = KEYDOWN;
+
 	}
 	else
 	{

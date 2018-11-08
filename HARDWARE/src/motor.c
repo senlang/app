@@ -28,6 +28,7 @@
 #include "delay.h"
 #include "key.h"
 
+#include "stdlib.h"
 
 MOTOR_STATUS MotorStatus;
 extern struct motor_control_struct  motor_struct[TOTAL_PUSH_CNT];
@@ -38,6 +39,12 @@ extern unsigned char calibrate_track_selected;
 extern KEY_STATUS key_status;
 extern unsigned char calibrate_enable;
 extern struct status_report_request_info_struct  heart_info;
+
+
+extern uint16_t drag_push_time[BOARD_ID_MAX];  
+extern uint16_t drag_push_time_calc_pre;
+extern uint16_t drag_push_time_calc;
+
 
 /*
 ************************************************************
@@ -91,6 +98,9 @@ void Conveyor_Init()
 	GPIO_Init(GPIOA, &gpioInitStrcut);
 	
 	Conveyor_set(CONVEYOR_STOP);
+
+	
+	memset(&drag_push_time[0], 0x00, sizeof(drag_push_time));
 }
 
 
@@ -147,6 +157,43 @@ void Conveyor_set(CONVEYOR_ENUM status)
 	MotorStatus.ConveyoeSta = status;
 }
 
+int cmp(const void *a,const void *b)
+{
+    return *(uint16_t *)b - *(uint16_t *)a;
+}
+
+
+void Conveyor_run(void)
+{
+	uint8_t delay_s = 0;
+
+	qsort(drag_push_time, BOARD_ID_MAX, sizeof(drag_push_time[0]),cmp);
+
+	delay_s = drag_push_time[0]/10;
+
+	drag_push_time_calc_pre = drag_push_time_calc_pre = 0;
+	memset(&drag_push_time[0], 0x00, sizeof(drag_push_time));
+	Conveyor_set(CONVEYOR_RUN);
+
+	UsartPrintf(USART_DEBUG, "delay_s[%d]-------------\r\n", delay_s);
+	RTOS_TimeDlyHMSM(0, 0, delay_s + 10, 0);
+	
+	Conveyor_set(CONVEYOR_STOP);
+	
+}
+
+uint8_t Conveyor_check(void)
+{
+	if(0 == drag_push_time_calc_pre && 0 == drag_push_time_calc)
+	return 0;//不必启动传送带
+
+	if(drag_push_time_calc == drag_push_time_calc_pre)
+	return 1;
+	
+	drag_push_time_calc = drag_push_time_calc_pre;
+	return 0;
+}
+
 
 
 
@@ -158,6 +205,7 @@ void Motor_Start(void)
 	uint16_t last_keep_time = 0;
 	uint8_t delay_s = 0;
 	uint16_t delay_ms = 0;
+	struct push_medicine_complete_request_info_struct  push_complete_info;
 
 	
 	UsartPrintf(USART_DEBUG, "Motor_Start,motor_enqueue_idx[%d]motor_dequeue_idx[%d]-------------\r\n", motor_enqueue_idx, motor_dequeue_idx);
@@ -173,6 +221,7 @@ void Motor_Start(void)
 		UsartPrintf(USART_DEBUG, "motor_struct[%d] medicine_track_number = 0x%04x\r\n", motor_dequeue_idx, motor_struct[motor_dequeue_idx].info.medicine_track_number);
 		UsartPrintf(USART_DEBUG, "motor_struct[%d] push_time = 0x%04x\r\n", motor_dequeue_idx, motor_struct[motor_dequeue_idx].info.push_time);
 
+		memset(&push_complete_info, 0x00, sizeof(push_complete_info));
 		if(motor_struct[motor_dequeue_idx].motor_run == MOTOR_RUN_FORWARD)
 		{
 			Motor_Set(MOTOR_RUN_FORWARD);
@@ -209,8 +258,16 @@ void Motor_Start(void)
 		heart_info.board_status = STANDBY_STATUS;
 		heart_info.medicine_track_number = 0;
 
-
-
+		UsartPrintf(USART_DEBUG, "motor_struct[motor_enqueue_idx].motor_work_mode[0x%02x]\r\n", motor_struct[motor_dequeue_idx].motor_work_mode);
+		#if 1
+		if(motor_struct[motor_dequeue_idx].motor_work_mode == CMD_PUSH_MEDICINE_REQUEST)
+		{
+			push_complete_info.board_id = motor_struct[motor_dequeue_idx].info.board_id;
+			push_complete_info.medicine_track_number = motor_struct[motor_dequeue_idx].info.medicine_track_number;
+			board_send_message(PUSH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
+		}
+		#endif
+		
 		motor_dequeue_idx++;
 
 		if (motor_dequeue_idx == TOTAL_PUSH_CNT)

@@ -37,7 +37,6 @@
 
 
 DATA_IO_INFO up_recv_data_info;
-DATA_IO_INFO up_send_data_info;
 
 extern OS_EVENT *SemOfUart1RecvData;          //
 

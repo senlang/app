@@ -32,8 +32,7 @@
 #include <stdarg.h>	//C¿â
 #include <string.h>
 
-DATA_IO_INFO down_recv_data_info;
-DATA_IO_INFO down_send_data_info;
+UART_DATA_INFO down_recv_data_info;
 void UART2_IO_ClearRecive(void);
 
 /**

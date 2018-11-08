@@ -45,8 +45,11 @@
 static uint8_t  g_src_board_id = 0;  
 static uint8_t g_board_status = 0;  
 static uint8_t g_error_code = 0;  
-static uint8_t test[2] = {1,2};  
+static uint8_t test[2] = {1,2}; 
 
+uint16_t drag_push_time[BOARD_ID_MAX];  
+uint16_t drag_push_time_calc_pre = 0;
+uint16_t drag_push_time_calc = 0;
 
 
 
@@ -74,14 +77,10 @@ static unsigned char txr_buf[MAX_PAYLOAD_LEN + 32];
 
 
 struct status_report_request_info_struct  heart_info;
-
 struct motor_control_struct  motor_struct[TOTAL_PUSH_CNT];
-struct push_medicine_request_struct push_srtuct[TOTAL_PUSH_CNT];
+
 int motor_enqueue_idx = 0;
 int motor_dequeue_idx = 0;
-
-
-struct replenish_medicine_request_info_struct replenish_srtuct[TOTAL_PUSH_CNT];
 
 int enqueue_replenish_index = 0;
 int dequeue_replenish_index = 0;
@@ -192,7 +191,6 @@ void send_status_report_request(void *input_data)
 	
     send_statu_report_request_data[7] = add_checksum(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE);  
 
-	//UART2_IO_Send(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE);  
 	UART1_IO_Send(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE);  
 }  
 
@@ -222,9 +220,32 @@ void send_push_medicine_request( void *input_data)
 	}
 	send_push_medicine_request_data[IPUC + PUSH_MEDICINE_REQUEST_INFO_SIZE * push_medicine_info->push_cnt] = add_checksum(send_push_medicine_request_data, IPUC + PUSH_MEDICINE_REQUEST_INFO_SIZE * push_medicine_info->push_cnt);  
 
-	UART2_IO_Send(send_push_medicine_request_data, IPUC + PUSH_MEDICINE_REQUEST_INFO_SIZE * push_medicine_info->push_cnt + CHECKSUM_SIZE);  
+	UART1_IO_Send(send_push_medicine_request_data, IPUC + PUSH_MEDICINE_REQUEST_INFO_SIZE * push_medicine_info->push_cnt + CHECKSUM_SIZE);  
 } 
 
+
+
+void send_push_medicine_complete_request( void *input_data)  
+{  
+	int i = 0;
+	uint8_t send_push_medicine_complete_request_data[PUSH_MEDICINE_COMPLETE_PACKET_SIZE];
+	struct push_medicine_complete_request_info_struct *push_medicine_complete_info = (struct push_medicine_complete_request_info_struct *)input_data;
+
+
+	memset(send_push_medicine_complete_request_data, 0x00, PUSH_MEDICINE_REQUEST_PACKET_SIZE);
+	
+	send_push_medicine_complete_request_data[0] = START_CODE;
+	send_push_medicine_complete_request_data[1] = PUSH_MEDICINE_COMPLETE_PACKET_SIZE - 1;
+	send_push_medicine_complete_request_data[2] = CMD_PUSH_MEDICINE_COMPLETE;
+
+	send_push_medicine_complete_request_data[3] = push_medicine_complete_info->board_id;
+	
+	send_push_medicine_complete_request_data[4] = push_medicine_complete_info->medicine_track_number;
+	
+	send_push_medicine_complete_request_data[5] = add_checksum(send_push_medicine_complete_request_data, PUSH_MEDICINE_REQUEST_PACKET_SIZE - 1);  
+
+	UART1_IO_Send(send_push_medicine_complete_request_data, PUSH_MEDICINE_REQUEST_PACKET_SIZE);  
+} 
 
 
 
@@ -254,7 +275,7 @@ void send_replinish_medicine_request( void *input_data)
 	}
 	send_replinish_medicine_request_data[IPUC + REPLENISH_MEDICINE_REQUEST_INFO_SIZE * replenish_medicine_info->push_cnt] = add_checksum(send_replinish_medicine_request_data, IPUC + REPLENISH_MEDICINE_REQUEST_INFO_SIZE * replenish_medicine_info->push_cnt);  
 
-	UART2_IO_Send(send_replinish_medicine_request_data, IPUC + REPLENISH_MEDICINE_REQUEST_INFO_SIZE * replenish_medicine_info->push_cnt + CHECKSUM_SIZE);  
+	UART1_IO_Send(send_replinish_medicine_request_data, IPUC + REPLENISH_MEDICINE_REQUEST_INFO_SIZE * replenish_medicine_info->push_cnt + CHECKSUM_SIZE);  
 } 
 
 
@@ -454,6 +475,7 @@ void replenish_complete_test(void)
 
 int board_send_message(int msg_type, void *input_data)
 {
+    //UsartPrintf(USART_DEBUG, "board_send_message:0x%02x\r\n",  msg_type);  
 	switch(msg_type)
 	{
 		case STATUS_REPORT_REQUEST:
@@ -463,6 +485,11 @@ int board_send_message(int msg_type, void *input_data)
 		case PUSH_MEDICINE_REQUEST:
 			send_push_medicine_request(input_data);
 		break;
+
+		case PUSH_MEDICINE_COMPLETE_REQUEST:
+			send_push_medicine_complete_request(input_data);
+		break;
+
 
 		case REPLENISH_MEDICINE_COMPLETE_REQUEST:
 			send_replinish_medicine_request(input_data);
@@ -603,6 +630,7 @@ void parse_push_medicine_request(struct push_medicine_request_struct *push_medic
 			push_medicine_request->info[valid_cnt].push_time = push_medicine_request_buf[5 + i * PUSH_MEDICINE_REQUEST_INFO_SIZE]<<8|push_medicine_request_buf[6 + i * PUSH_MEDICINE_REQUEST_INFO_SIZE];
 
 			motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_FORWARD;
+			motor_struct[motor_enqueue_idx].motor_work_mode = CMD_PUSH_MEDICINE_REQUEST;
 			memcpy(&motor_struct[motor_enqueue_idx].info, &push_medicine_request->info[valid_cnt], sizeof(struct motor_control_info_struct));
 			
 			motor_enqueue_idx++;
@@ -626,6 +654,31 @@ void parse_push_medicine_request(struct push_medicine_request_struct *push_medic
 	return;
 }
 
+
+uint8_t preparse_push_medicine_request(struct push_medicine_request_struct *push_medicine_request, char *buffer)  
+{  
+	uint8_t check_sum = 0;
+	
+	push_medicine_request->start_code= buffer[0];  
+	push_medicine_request->packet_len= buffer[1];  
+	push_medicine_request->cmd_type= buffer[2];
+	
+	check_sum = add_checksum(buffer, push_medicine_request->packet_len);
+	push_medicine_request->checksum = buffer[push_medicine_request->packet_len];  
+	
+	if(check_sum != push_medicine_request->checksum)
+	{
+		
+		UsartPrintf(USART_DEBUG, "check sum fail : 0x%02x, 0x%02x\r\n", check_sum, push_medicine_request->checksum);  
+		return FALSE;
+	} 
+
+	push_medicine_request->info[0].board_id = buffer[3];
+	push_medicine_request->info[0].medicine_track_number = buffer[4];
+	push_medicine_request->info[0].push_time = buffer[5]<<8|buffer[6];
+	
+	return TRUE;
+}
 
 
 
@@ -691,6 +744,8 @@ void parse_replenish_medicine_request(struct replenish_medicine_request_struct *
 			replenish_medicine_request->info[valid_cnt].push_time = replenish_medicine_request_buf[5 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE]<<8|replenish_medicine_request_buf[6 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE];
 
 			motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_BACKWARD;
+			motor_struct[motor_enqueue_idx].motor_work_mode = CMD_REPLENISH_MEDICINE_REQUEST;
+			
 			memcpy(&motor_struct[motor_enqueue_idx].info, &replenish_medicine_request->info[valid_cnt], sizeof(struct motor_control_info_struct));
 			
 			motor_enqueue_idx++;
@@ -779,6 +834,8 @@ void parse_board_test_request(struct test_request_struct *test_request)
 				motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_FORWARD;
 				else
 				motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_BACKWARD;
+
+				motor_struct[motor_enqueue_idx].motor_work_mode = CMD_TEST_REQUEST;
 				
 				memcpy(&motor_struct[motor_enqueue_idx].info, &motor_control, sizeof(struct motor_control_info_struct));
 
@@ -794,24 +851,7 @@ void parse_board_test_request(struct test_request_struct *test_request)
 				UsartPrintf(USART_DEBUG, "send sem,motor_enqueue_idx[%d]-------------\r\n", motor_enqueue_idx);
 				OSSemPost(SemOfMotor);
 		}
-		/*
-		else if(test_request->info.test_mode == MOTOR_BACKWARD_TEST)
-		{
-			
-			if(enqueue_replenish_index < TOTAL_PUSH_CNT)
-			{
-				memcpy(&replenish_srtuct[enqueue_replenish_index], &motor_control, sizeof(struct motor_control_info_struct));
-				enqueue_replenish_index ++;
-			}
-			
-			if(enqueue_replenish_index == TOTAL_PUSH_CNT)
-			enqueue_replenish_index = 0;
-			
-			OSSemPost(SemOfMotor);
-		}
-		*/
-		
-		else if(test_request->info.test_mode == TRACK_RUN_TEST)
+		else if(test_request->info.test_mode == CONVEYOR_RUN_TEST)
 		{
 			if(MotorStatus.ConveyoeSta = 1)
 			Conveyor_set(CONVEYOR_STOP);
@@ -819,7 +859,7 @@ void parse_board_test_request(struct test_request_struct *test_request)
 			Conveyor_set(CONVEYOR_RUN);
 		}
 
-		else if(test_request->info.test_mode == REFRIGERATION_RUN_TEST)
+		else if(test_request->info.test_mode == REFRIGERATION_TEST)
 		{
 
 		}
@@ -1134,6 +1174,8 @@ void packet_parser(unsigned char *src, int len)
 	int pkt_len = 0;
 	int board_id = 0;
 	unsigned char *uart1_shared_rx_buf; 
+	char cmd_type = 0;
+	uint16_t time = 0;
 
 	struct status_report_request_struct  status_report_request;
 	struct msg_ack_struct  cmd_ack;
@@ -1158,7 +1200,22 @@ void packet_parser(unsigned char *src, int len)
 		UsartPrintf(USART_DEBUG, "start code = 0x%02x, boardid = 0x%02x, cmd = 0x%02x!!\r\n", *(uart1_shared_rx_buf), *(uart1_shared_rx_buf + 3), *(uart1_shared_rx_buf + 2));
 		
 		pkt_len = *(uart1_shared_rx_buf + 1) + 1;//data + checksum
+
 		board_id = *(uart1_shared_rx_buf + 3);
+
+		if(1 == g_src_board_id)
+		{
+			cmd_type = *(uart1_shared_rx_buf + 2);
+			if(cmd_type == CMD_PUSH_MEDICINE_REQUEST)
+			{
+				if(preparse_push_medicine_request(&push_medicine_request, uart1_shared_rx_buf) == TRUE)
+				{
+					drag_push_time[push_medicine_request.info[0].board_id] += push_medicine_request.info[0].push_time;
+					drag_push_time_calc_pre += push_medicine_request.info[0].push_time;
+				}
+			}
+		}
+		
 		if(board_id != g_src_board_id)
 		{
 			UsartPrintf(USART_DEBUG, "Board Id not match, forward!!!%d - %d!!\r\n", board_id, g_src_board_id);

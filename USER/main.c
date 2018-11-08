@@ -30,52 +30,35 @@ void IWDG_Task(void *pdata);
 
 //心跳任务
 #define HEART_TASK_PRIO		7
-#define HEART_STK_SIZE		512
+#define HEART_STK_SIZE		256
 OS_STK HEART_TASK_STK[HEART_STK_SIZE]; //
 void HEART_Task(void *pdata);
 
 
 
 //UART1 下行数据接收
-#define UP_RECEIVE_TASK_PRIO		9 //
-#define UP_RECEIVE_STK_SIZE		512
+#define UP_RECEIVE_TASK_PRIO		8 //
+#define UP_RECEIVE_STK_SIZE		768
 OS_STK UP_RECEIVE_TASK_STK[UP_RECEIVE_STK_SIZE]; //
 void UART1_RECEIVE_Task(void *pdata);
 
-//UART1 上行数据发送
-#define UP_SEND_TASK_PRIO		10 //
-#define UP_SEND_STK_SIZE		512
-OS_STK UP_SEND_TASK_STK[UP_SEND_STK_SIZE]; //
-void UP_SEND_Task(void *pdata);
-
 //UART2 上行数据接收
-#define DOWN_RECEIVE_TASK_PRIO		11 //
+#define DOWN_RECEIVE_TASK_PRIO		9 //
 #define DOWN_RECEIVE_STK_SIZE		512
 OS_STK DOWN_RECEIVE_TASK_STK[DOWN_RECEIVE_STK_SIZE]; //
 void UART2_RECEIVE_Task(void *pdata);
 
-//UART2 下行数据发送
-#define DOWN_SEND_TASK_PRIO		12 //
-#define DOWN_SEND_STK_SIZE		512
-OS_STK UP_SEND_TASK_STK[DOWN_SEND_STK_SIZE]; //
-void DOWN_SEND_Task(void *pdata);
-
 
 //传感器任务
-#define SENSOR_TASK_PRIO	13
-#define SENSOR_STK_SIZE		512
+#define SENSOR_TASK_PRIO	10
+#define SENSOR_STK_SIZE		128
 OS_STK SENSOR_TASK_STK[SENSOR_STK_SIZE]; 
 void SENSOR_Task(void *pdata);
 
 
-
-
-
-
-
 //电机控制
-#define MOTOR_TASK_PRIO		14
-#define MOTOR_STK_SIZE		512
+#define MOTOR_TASK_PRIO		11
+#define MOTOR_STK_SIZE		256
 OS_STK MOTOR_TASK_STK[MOTOR_STK_SIZE];
 void MOTOR_Task(void *pdata);
 
@@ -83,15 +66,15 @@ void MOTOR_Task(void *pdata);
 
 
 //传送带控制任务
-#define TRACK_TASK_PRIO		15
-#define TRACK_STK_SIZE		512
+#define TRACK_TASK_PRIO		12
+#define TRACK_STK_SIZE		256
 OS_STK TRACK_TASK_STK[TRACK_STK_SIZE];
 void Conveyor_Task(void *pdata);
 
 
 //按键任务
-#define KEY_TASK_PRIO		16
-#define KEY_STK_SIZE		256
+#define KEY_TASK_PRIO		13
+#define KEY_STK_SIZE		128
 OS_STK KEY_TASK_STK[KEY_STK_SIZE];
 void KEY_Task(void *pdata);
 
@@ -100,6 +83,7 @@ void KEY_Task(void *pdata);
 OS_EVENT *SemOfMotor;        	//Motor控制信号量
 OS_EVENT *SemOfUart1RecvData;	//uart1 串口接收数据信号量
 OS_EVENT *SemOfKey;				// 按键控制信号量
+OS_EVENT *SemOfConveyor;        	//Motor控制信号量
 
 
 extern struct status_report_request_info_struct  heart_info;
@@ -148,8 +132,10 @@ void Hardware_Init(void)
 	Iwdg_Init(4, 1250); 														//64分频，每秒625次，重载1250次，2s
 
 	BoardId_Init();
+	UsartPrintf(USART_DEBUG, "0x08010000 - 0x00010000 test\r\n");
 
 	UsartPrintf(USART_DEBUG, "01.Hardware init OK\r\n");						//提示初始化完成
+	
 }
 
 /*
@@ -254,12 +240,20 @@ void UART2_RECEIVE_Task(void *pdata)
 
 void HEART_Task(void *pdata)
 {
+	uint8_t conveyor = 0;
 	while(1)
 	{	
 		Led_Set(LED_OFF);
-		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务60s
+		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
 		Led_Set(LED_ON);
-		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务60s
+		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
+
+		conveyor = Conveyor_check();
+		
+		//UsartPrintf(USART_DEBUG, "conveyor = %d\r\n", conveyor);		//提示任务开始执行
+
+		if(conveyor == 1)
+		OSSemPost(SemOfConveyor);
 
 		board_send_message(STATUS_REPORT_REQUEST, &heart_info);
 	}
@@ -285,9 +279,13 @@ void MOTOR_Task(void *pdata)
 
 void Conveyor_Task(void *pdata)
 {
+    INT8U            err;
+	SemOfConveyor= OSSemCreate(0);
+	
 	while(1)
-	{	
-		RTOS_TimeDlyHMSM(0, 0, 0, 500);	
+	{
+		OSSemPend(SemOfConveyor, 0u, &err);
+		Conveyor_run();
 	}
 }
 
@@ -317,6 +315,7 @@ void KEY_Task(void *pdata)
 	}
 	OSSemDel(SemOfKey, 0, &err);
 }
+extern void iap_load_app(u32 appxaddr);
 
 
 void SENSOR_Task(void *pdata)
@@ -336,6 +335,8 @@ void SENSOR_Task(void *pdata)
 		#endif
 		
 		RTOS_TimeDlyHMSM(0, 0, 15, 0);	//
+		//UsartPrintf(USART_DEBUG, "will jump\r\n");
+		//iap_load_app(0x08010000);
 	}
 }
 
