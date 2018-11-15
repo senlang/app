@@ -30,6 +30,8 @@
 
 #include "stdlib.h"
 
+#define CONVEYOR_DELAY 10
+
 MOTOR_STATUS MotorStatus;
 extern struct motor_control_struct  motor_struct[TOTAL_PUSH_CNT];
 extern int motor_enqueue_idx;
@@ -163,7 +165,7 @@ int cmp(const void *a,const void *b)
 }
 
 
-void Conveyor_run(void)
+int Conveyor_run(void)
 {
 	uint8_t delay_s = 0;
 
@@ -173,18 +175,32 @@ void Conveyor_run(void)
 
 	drag_push_time_calc_pre = drag_push_time_calc_pre = 0;
 	memset(&drag_push_time[0], 0x00, sizeof(drag_push_time));
+
+	
+	UsartPrintf(USART_DEBUG, "Conveyor_run %ds-------------\r\n", delay_s);
+	if(delay_s == 0)
+	return delay_s;
+	
 	Conveyor_set(CONVEYOR_RUN);
 
-	UsartPrintf(USART_DEBUG, "delay_s[%d]-------------\r\n", delay_s);
-	RTOS_TimeDlyHMSM(0, 0, delay_s + 10, 0);
+	RTOS_TimeDlyHMSM(0, 0, delay_s + CONVEYOR_DELAY, 0);
 	
 	Conveyor_set(CONVEYOR_STOP);
+
+	//Door_set(MOTOR_RUN_FORWARD);
+	//RTOS_TimeDlyHMSM(0, 0, 8, 0);
+	//Door_set(MOTOR_STOP);
+	//RTOS_TimeDlyHMSM(0, 0, 30, 0);
+	//Door_set(MOTOR_RUN_BACKWARD);
+	//RTOS_TimeDlyHMSM(0, 0, 8, 0);
+	//Door_set(MOTOR_STOP);
 	
+	return delay_s;
 }
 
 uint8_t Conveyor_check(void)
 {
-	if(0 == drag_push_time_calc_pre && 0 == drag_push_time_calc)
+	if((0 == drag_push_time_calc_pre && 0 == drag_push_time_calc)||(drag_push_time_calc_pre == 0))
 	return 0;//不必启动传送带
 
 	if(drag_push_time_calc == drag_push_time_calc_pre)
@@ -360,4 +376,46 @@ void track_calibrate(void)
 
 
 #endif
+
+
+void Door_Init(void)
+{
+	
+	GPIO_InitTypeDef gpioInitStrcut;
+
+	//使能时钟
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+	
+	//IO配置
+	gpioInitStrcut.GPIO_Mode = GPIO_Mode_Out_PP;
+	gpioInitStrcut.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;
+	gpioInitStrcut.GPIO_Speed = GPIO_Speed_50MHz;
+	//IO初始化
+	GPIO_Init(GPIOA, &gpioInitStrcut);
+	
+	Door_set(MOTOR_STOP);
+}
+
+
+
+void Door_set(MOTOR_ENUM status)
+{
+	if(MOTOR_STOP == status)
+	{	
+		GPIO_WriteBit(GPIOA, GPIO_Pin_6, Bit_RESET);
+		GPIO_WriteBit(GPIOA, GPIO_Pin_7, Bit_RESET);
+	}
+	else if(MOTOR_RUN_FORWARD== status)
+	{	
+		GPIO_WriteBit(GPIOA, GPIO_Pin_6, Bit_SET);
+		GPIO_WriteBit(GPIOA, GPIO_Pin_7, Bit_RESET);
+	}
+	else if(MOTOR_RUN_BACKWARD== status)
+	{	
+		GPIO_WriteBit(GPIOA, GPIO_Pin_6, Bit_RESET);
+		GPIO_WriteBit(GPIOA, GPIO_Pin_7, Bit_SET);
+	}
+	MotorStatus.DoorSta = status;
+}
+
 

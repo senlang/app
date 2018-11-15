@@ -123,7 +123,7 @@ void BoardId_Init(void)
 	heart_info.board_id = g_src_board_id;
 	heart_info.board_status = STANDBY_STATUS;
 		
-	UsartPrintf(USART_DEBUG, "g_src_board_id:0x%x\r\n", g_src_board_id); 
+	UsartPrintf(USART_DEBUG, " Current Board ID:0x%x\r\n", g_src_board_id); 
 }
 
 
@@ -853,15 +853,31 @@ void parse_board_test_request(struct test_request_struct *test_request)
 		}
 		else if(test_request->info.test_mode == CONVEYOR_RUN_TEST)
 		{
-			if(MotorStatus.ConveyoeSta = 1)
-			Conveyor_set(CONVEYOR_STOP);
-			else
-			Conveyor_set(CONVEYOR_RUN);
+			
+			UsartPrintf(USART_DEBUG, "Enter CONVEYOR_RUN_TEST, ConveyoeSta = %d\r\n", MotorStatus.ConveyoeSta);
+			drag_push_time_calc_pre= 50;	//传送带运行50 *0.1 s
+			drag_push_time[0] = 50;
+			//if(MotorStatus.ConveyoeSta = 1)
+			//Conveyor_set(CONVEYOR_STOP);
+			//else
+			//Conveyor_set(CONVEYOR_RUN);
 		}
 
 		else if(test_request->info.test_mode == REFRIGERATION_TEST)
 		{
 
+		}
+		else if(test_request->info.test_mode == CALIBRATE_TRACK_TEST)
+		{
+			if(calibrate_track_selected == 255)
+			{
+				calibrate_track_selected = motor_control.medicine_track_number;
+				OSSemPost(SemOfKey);
+			}
+			else
+				calibrate_track_selected = 255;
+
+			UsartPrintf(USART_DEBUG, "calibrate_track_selected[%d]\r\n", calibrate_track_selected);
 		}
 
 	}

@@ -67,14 +67,14 @@ void MOTOR_Task(void *pdata);
 
 //传送带控制任务
 #define TRACK_TASK_PRIO		12
-#define TRACK_STK_SIZE		256
+#define TRACK_STK_SIZE		384
 OS_STK TRACK_TASK_STK[TRACK_STK_SIZE];
 void Conveyor_Task(void *pdata);
 
 
 //按键任务
 #define KEY_TASK_PRIO		13
-#define KEY_STK_SIZE		128
+#define KEY_STK_SIZE		256
 OS_STK KEY_TASK_STK[KEY_STK_SIZE];
 void KEY_Task(void *pdata);
 
@@ -105,6 +105,8 @@ extern struct status_report_request_info_struct  heart_info;
 */
 void Hardware_Init(void)
 {
+	int i = 0;
+	
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);								//中断控制器分组设置
 
 	delay_init();																//systick初始化
@@ -116,6 +118,8 @@ void Hardware_Init(void)
 	EXTIX_Init();
 
 	Motor_Init();
+	
+	Door_Init();
 
 	Conveyor_Init();
 
@@ -132,9 +136,20 @@ void Hardware_Init(void)
 	Iwdg_Init(4, 1250); 														//64分频，每秒625次，重载1250次，2s
 
 	BoardId_Init();
-	UsartPrintf(USART_DEBUG, "0x08010000 - 0x00010000 test\r\n");
 
-	UsartPrintf(USART_DEBUG, "01.Hardware init OK\r\n");						//提示初始化完成
+	for(i = 0; i < 10; i++)
+	{
+
+		Led_Set(LED_OFF);
+		delay_ms(100);
+		Led_Set(LED_ON);
+		delay_ms(100);
+	}
+
+	
+	//UsartPrintf(USART_DEBUG, "0x08010000 - 0x00010000 test\r\n");
+
+	UsartPrintf(USART_DEBUG, "Hardware init OK\r\n");						//提示初始化完成
 	
 }
 
@@ -240,20 +255,12 @@ void UART2_RECEIVE_Task(void *pdata)
 
 void HEART_Task(void *pdata)
 {
-	uint8_t conveyor = 0;
 	while(1)
 	{	
 		Led_Set(LED_OFF);
 		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
 		Led_Set(LED_ON);
 		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
-
-		conveyor = Conveyor_check();
-		
-		//UsartPrintf(USART_DEBUG, "conveyor = %d\r\n", conveyor);		//提示任务开始执行
-
-		if(conveyor == 1)
-		OSSemPost(SemOfConveyor);
 
 		board_send_message(STATUS_REPORT_REQUEST, &heart_info);
 	}
@@ -279,13 +286,30 @@ void MOTOR_Task(void *pdata)
 
 void Conveyor_Task(void *pdata)
 {
-    INT8U            err;
+    INT8U   err;
+	uint8_t conveyor = 0;
+	
 	SemOfConveyor= OSSemCreate(0);
 	
 	while(1)
 	{
-		OSSemPend(SemOfConveyor, 0u, &err);
-		Conveyor_run();
+		conveyor = Conveyor_check();
+		UsartPrintf(USART_DEBUG, "conveyor = %d\r\n", conveyor);		//提示任务开始执行
+		
+		if(conveyor == 1)
+		{
+			if(Conveyor_run() != 0 )
+			{
+				Door_set(MOTOR_RUN_FORWARD);
+				RTOS_TimeDlyHMSM(0, 0, 10, 0);
+				Door_set(MOTOR_RUN_BACKWARD);
+				RTOS_TimeDlyHMSM(0, 0, 10, 0);
+				Door_set(MOTOR_STOP);
+			}
+			
+			conveyor = 0;
+		}
+		RTOS_TimeDlyHMSM(0, 0, 2, 0);
 	}
 }
 

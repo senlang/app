@@ -8,6 +8,7 @@ typedef struct
 {
 	_Bool MotorSta;
 	_Bool ConveyoeSta;
+	_Bool DoorSta;
 } MOTOR_STATUS;
 
 extern MOTOR_STATUS MotorStatus;
@@ -29,6 +30,12 @@ typedef enum
 }CONVEYOR_ENUM;
 
 
+typedef enum
+{
+	DOOR_OPEN = 0,	//¿ª
+	DOOR_CLOSE,		//¹Ø
+}DOOR_SET_ENUM;
+
 
 
 
@@ -47,9 +54,10 @@ void Motor_Start(void);
 void track_calibrate(void);
 
 
-void Conveyor_run(void);
+int Conveyor_run(void);
 
 uint8_t Conveyor_check(void);
-
+void Door_set(MOTOR_ENUM status);
+void Door_Init(void);
 
 #endif

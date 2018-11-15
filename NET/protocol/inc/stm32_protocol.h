@@ -135,6 +135,7 @@ typedef enum{
 	MOTOR_BACKWARD_TEST = 2,
 	REFRIGERATION_TEST = 3,
 	CONVEYOR_RUN_TEST = 4,
+	CALIBRATE_TRACK_TEST = 5,
 }BOARD_TEST_MODE;  
 
 
@@ -156,9 +157,9 @@ typedef enum{
 
 #define CMD_SETTING_REQUEST 0x60	//设置参数指令
 
-#define CMD_PUSH_MEDICINE_COMPLETE 0x70	//出货完成
+#define CMD_ADD_MEDICINE_COMPLETE 0x70	//补货完成
 
-#define CMD_ADD_MEDICINE_COMPLETE 0x80	//补货完成
+#define CMD_PUSH_MEDICINE_COMPLETE 0xA0	//出货完成
 
 #define CMD_MSG_ACK 0xF0	//指令应答
 
