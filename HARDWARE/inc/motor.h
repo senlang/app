@@ -37,6 +37,12 @@ typedef enum
 }DOOR_SET_ENUM;
 
 
+typedef enum
+{
+	SENSOR_NO_DETECT = 0,	//开
+	SENSOR_DETECT,		//关
+}SENSOR_DETECT_ENUM;
+
 
 
 /*电机控制初始化*/
@@ -51,13 +57,20 @@ void Conveyor_Init(void);
 void Conveyor_set(CONVEYOR_ENUM status);
 
 void Motor_Start(void);
-void track_calibrate(void);
 
+void track_calibrate(void);
 
 int Conveyor_run(void);
 
 uint8_t Conveyor_check(void);
-void Door_set(MOTOR_ENUM status);
+
 void Door_Init(void);
+
+void Door_set(MOTOR_ENUM status);
+
+void Sensor_Init(void);
+
+unsigned char Sensor_Detect(void);
+
 
 #endif

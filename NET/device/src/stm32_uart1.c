@@ -319,7 +319,6 @@ void USART1_IRQHandler(void)
 int UART1_IO_Receive(void)
 {
 	unsigned short len = 0;
-	int i = 0;
 	
 	len = up_recv_data_info.dataLen;
 

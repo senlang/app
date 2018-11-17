@@ -63,11 +63,9 @@ OS_STK MOTOR_TASK_STK[MOTOR_STK_SIZE];
 void MOTOR_Task(void *pdata);
 
 
-
-
 //传送带控制任务
 #define TRACK_TASK_PRIO		12
-#define TRACK_STK_SIZE		384
+#define TRACK_STK_SIZE		512
 OS_STK TRACK_TASK_STK[TRACK_STK_SIZE];
 void Conveyor_Task(void *pdata);
 
@@ -121,6 +119,8 @@ void Hardware_Init(void)
 	
 	Door_Init();
 
+	Sensor_Init();
+
 	Conveyor_Init();
 
 	Track_Init();
@@ -131,8 +131,6 @@ void Hardware_Init(void)
 	
 	Usart2_Init(115200);
 	
-	//Check_PowerOn(); 															//上电自检
-
 	Iwdg_Init(4, 1250); 														//64分频，每秒625次，重载1250次，2s
 
 	BoardId_Init();
@@ -145,12 +143,9 @@ void Hardware_Init(void)
 		Led_Set(LED_ON);
 		delay_ms(100);
 	}
-
 	
 	//UsartPrintf(USART_DEBUG, "0x08010000 - 0x00010000 test\r\n");
-
-	UsartPrintf(USART_DEBUG, "Hardware init OK\r\n");						//提示初始化完成
-	
+	UsartPrintf(USART_DEBUG, "Hardware init OK\r\n");						//提示初始化完成	
 }
 
 /*
@@ -286,8 +281,8 @@ void MOTOR_Task(void *pdata)
 
 void Conveyor_Task(void *pdata)
 {
-    INT8U   err;
 	uint8_t conveyor = 0;
+	uint8_t run_time = 10;
 	
 	SemOfConveyor= OSSemCreate(0);
 	
@@ -301,12 +296,22 @@ void Conveyor_Task(void *pdata)
 			if(Conveyor_run() != 0 )
 			{
 				Door_set(MOTOR_RUN_FORWARD);
-				RTOS_TimeDlyHMSM(0, 0, 10, 0);
-				Door_set(MOTOR_RUN_BACKWARD);
-				RTOS_TimeDlyHMSM(0, 0, 10, 0);
+				RTOS_TimeDlyHMSM(0, 0, run_time, 0);
+				do{
+					if(Sensor_Detect() == SENSOR_DETECT)
+					{
+						Door_set(MOTOR_STOP);
+					}
+					else
+					{
+						Door_set(MOTOR_RUN_BACKWARD);
+						run_time--;
+					}
+					RTOS_TimeDlyHMSM(0, 0, 1, 0);
+				}while(run_time > 0);
 				Door_set(MOTOR_STOP);
+				run_time = 0;
 			}
-			
 			conveyor = 0;
 		}
 		RTOS_TimeDlyHMSM(0, 0, 2, 0);

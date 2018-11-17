@@ -50,11 +50,6 @@ int down_data_parse(void)
   
 int down_shared_buf_copy(unsigned char *src, int len)
 {  
-	int chk_offset = 0;
-	
-	//if(len > RX_BD_MAX_DATA_SIZE)
-	//return -1;
-	
 	#if 0
 	do
 	{

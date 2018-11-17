@@ -43,9 +43,9 @@
 
 
 static uint8_t  g_src_board_id = 0;  
-static uint8_t g_board_status = 0;  
-static uint8_t g_error_code = 0;  
-static uint8_t test[2] = {1,2}; 
+//static uint8_t g_board_status = 0;  
+//static uint8_t g_error_code = 0;  
+//static uint8_t test[2] = {1,2}; 
 
 uint16_t drag_push_time[BOARD_ID_MAX];  
 uint16_t drag_push_time_calc_pre = 0;
@@ -73,7 +73,7 @@ static unsigned char message_ack_buf[COMMAND_ACK_PACKET_SIZE];
 
 
 
-static unsigned char txr_buf[MAX_PAYLOAD_LEN + 32];  
+//static unsigned char txr_buf[MAX_PAYLOAD_LEN + 32];  
 
 
 struct status_report_request_info_struct  heart_info;
@@ -227,7 +227,6 @@ void send_push_medicine_request( void *input_data)
 
 void send_push_medicine_complete_request( void *input_data)  
 {  
-	int i = 0;
 	uint8_t send_push_medicine_complete_request_data[PUSH_MEDICINE_COMPLETE_PACKET_SIZE];
 	struct push_medicine_complete_request_info_struct *push_medicine_complete_info = (struct push_medicine_complete_request_info_struct *)input_data;
 
@@ -286,7 +285,6 @@ void send_replinish_medicine_request( void *input_data)
 /*单板测试*/
 void send_board_test_request(void *input_data)  
 {  
-	int i = 0;
 	uint8_t send_board_test_request_data[BOARD_TEST_REQUEST_PACKET_SIZE];
 	struct test_request_info_struct *test_info = (struct test_request_info_struct *)input_data;
 
@@ -329,7 +327,6 @@ void send_board_test_request(void *input_data)
 /*货道校准测试*/
 void calibrate_track_test_request(void *input_data)  
 {  
-	int i = 0;
 	uint8_t calibrate_track_request_data[CILIBRATE_TRACK_REQUEST_PACKET_SIZE];
 	struct calibrate_track_request_info_struct *test_info = (struct calibrate_track_request_info_struct *)input_data;
 
@@ -367,7 +364,6 @@ void calibrate_track_test_request(void *input_data)
 /*补货完成测试*/
 void replenish_complete_test_request(void *input_data)  
 {  
-	int i = 0;
 	uint8_t replenish_complete_request_data[REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE];
 	struct replenish_medicine_complete_request_info_struct *test_info = (struct replenish_medicine_complete_request_info_struct *)input_data;
 
@@ -398,9 +394,8 @@ void replenish_complete_test_request(void *input_data)
 
 void push_test(void)
 {
-	int i = 0;
 	struct push_medicine_paramter push_paramter;
-	
+	int i;
 	push_paramter.push_cnt = 1;
 
 	for(i = 0; i < push_paramter.push_cnt; i++)
@@ -417,9 +412,8 @@ void push_test(void)
 
 void replenish_test(void)
 {
-	int i = 0;
 	struct replenish_medicine_paramter replenish_paramter;
-	
+	int i;
 	replenish_paramter.push_cnt = 1;
 
 	for(i = 0; i < replenish_paramter.push_cnt; i++)
@@ -434,7 +428,6 @@ void replenish_test(void)
 
 void test_test(void)
 {
-	int i = 0;
 	struct test_request_info_struct test_request_info;
 	
 	test_request_info.board_id = 0x01;
@@ -450,7 +443,6 @@ void test_test(void)
 
 void calibrate_test(void)
 {
-	int i = 0;
 	struct calibrate_track_request_info_struct calibrate_track_request_info;
 	
 	calibrate_track_request_info.board_id = 0x01;
@@ -462,7 +454,6 @@ void calibrate_test(void)
 
 void replenish_complete_test(void)
 {
-	int i = 0;
 	struct replenish_medicine_complete_request_info_struct replenish_medicine_complete_request_info;
 	
 	replenish_medicine_complete_request_info.board_id = 0x01;
@@ -559,7 +550,6 @@ void parse_status_report_request(struct status_report_request_struct *status_rep
 void print_push_medicine_request(struct push_medicine_request_struct *push_medicine_request)  
 {  
   	uint8_t request_cnt = 0;
-	uint8_t valid_cnt = 0;
 	uint8_t i = 0;
 
 	request_cnt = (push_medicine_request->packet_len - IPUC)/PUSH_MEDICINE_REQUEST_INFO_SIZE;
@@ -686,7 +676,6 @@ uint8_t preparse_push_medicine_request(struct push_medicine_request_struct *push
 void print_replenish_medicine_request(struct replenish_medicine_request_struct *replenish_medicine_request)  
 {  
   	uint8_t request_cnt = 0;
-	uint8_t valid_cnt = 0;
 	uint8_t i = 0;
 
 	request_cnt = (replenish_medicine_request->packet_len - IPUC)/REPLENISH_MEDICINE_REQUEST_INFO_SIZE;
@@ -918,8 +907,8 @@ void parse_calibrate_track_request(struct calibrate_track_request_struct *calibr
 {  
 	uint8_t check_sum = 0;
 	struct msg_ack_info_struct cmd_ack_info;
-	struct motor_control_info_struct  motor_control;
-
+	struct motor_control_info_struct motor_control;
+	
 	cmd_ack_info.status = 0;
 	
 	calibrate_track_request->start_code = calibrate_track_request_buf[0];  
@@ -990,7 +979,6 @@ void parse_replenish_complete_request(struct replenish_medicine_complete_struct 
 {  
 	uint8_t check_sum = 0;
 	struct msg_ack_info_struct cmd_ack_info;
-	struct motor_control_info_struct  motor_control;
 
 	cmd_ack_info.status = 0;
 	
@@ -1191,7 +1179,6 @@ void packet_parser(unsigned char *src, int len)
 	int board_id = 0;
 	unsigned char *uart1_shared_rx_buf; 
 	char cmd_type = 0;
-	uint16_t time = 0;
 
 	struct status_report_request_struct  status_report_request;
 	struct msg_ack_struct  cmd_ack;

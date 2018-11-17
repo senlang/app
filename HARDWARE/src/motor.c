@@ -211,9 +211,6 @@ uint8_t Conveyor_check(void)
 }
 
 
-
-
-
 void Motor_Start(void)
 {
 	int push_cnt = 0;
@@ -418,4 +415,48 @@ void Door_set(MOTOR_ENUM status)
 	MotorStatus.DoorSta = status;
 }
 
+void Sensor_Init(void)
+{
+	GPIO_InitTypeDef gpioInitStructure;
+	
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+	
+	gpioInitStructure.GPIO_Mode = GPIO_Mode_IPU;
+	gpioInitStructure.GPIO_Pin = GPIO_Pin_0;
+	gpioInitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOC, &gpioInitStructure);
+}
+
+_Bool Sensor_Status(void)
+{
+	if(!GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_0))//未发现接入为低
+	{
+		return SENSOR_NO_DETECT;
+	}
+	else									//发现接入为高
+	{
+		return SENSOR_DETECT;
+	}
+}
+
+
+unsigned char Sensor_Detect(void)
+{
+	unsigned char ret_val = 0;
+	
+	if(Sensor_Status() == SENSOR_DETECT)
+	{
+		RTOS_TimeDly(20);					
+		if(Sensor_Status() == SENSOR_DETECT)
+		ret_val = SENSOR_DETECT;			
+	}
+	else
+	{
+		ret_val = SENSOR_NO_DETECT;
+	}
+	
+	UsartPrintf(USART_DEBUG, "Sensor_Detect = %d\r\n", ret_val);		//提示任务开始执行
+	return ret_val;
+}
 
