@@ -175,7 +175,7 @@ void send_status_report_request(void *input_data)
 	memset(send_statu_report_request_data, 0x00, STATUS_REPORT_REQUEST_PACKET_SIZE);
 	
 	send_statu_report_request_data[0] = START_CODE;
-	send_statu_report_request_data[1] = STATUS_REPORT_REQUEST_PACKET_SIZE;
+	send_statu_report_request_data[1] = STATUS_REPORT_REQUEST_PACKET_SIZE - 1;
 	send_statu_report_request_data[2] = CMD_STATUS_REPORT_REQUEST;
 
 	#if 0
@@ -1290,5 +1290,17 @@ void packet_parser(unsigned char *src, int len)
 		//UsartPrintf(USART_DEBUG, "chk_offset = %d, len = %d!!\r\n", chk_offset, len);
 	}while(chk_offset > 0 && chk_offset < len);
 		
+}
+
+
+
+void mcu_push_medicine_complete(void)
+{
+	struct push_medicine_complete_request_info_struct  push_complete_info;
+	
+	memset(&push_complete_info, 0x00, sizeof(push_complete_info));
+	push_complete_info.board_id = 0xff;
+	
+	board_send_message(PUSH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
 }
 

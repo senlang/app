@@ -34,7 +34,7 @@ typedef enum
 {
 	DOOR_OPEN = 0,	//开
 	DOOR_CLOSE,		//关
-}DOOR_SET_ENUM;
+}Door_Detect_ENUM;
 
 
 typedef enum
@@ -42,6 +42,7 @@ typedef enum
 	SENSOR_NO_DETECT = 0,	//开
 	SENSOR_DETECT,		//关
 }SENSOR_DETECT_ENUM;
+
 
 
 
@@ -64,13 +65,17 @@ int Conveyor_run(void);
 
 uint8_t Conveyor_check(void);
 
-void Door_Init(void);
+void Door_Control_Init(void);
 
-void Door_set(MOTOR_ENUM status);
+void Door_Control_Set(MOTOR_ENUM status);
 
 void Sensor_Init(void);
 
 unsigned char Sensor_Detect(void);
+
+void Door_Key_Init(void);
+
+unsigned char Door_Key_Detect(unsigned char door_detect);
 
 
 #endif

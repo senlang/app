@@ -117,7 +117,9 @@ void Hardware_Init(void)
 
 	Motor_Init();
 	
-	Door_Init();
+	Door_Control_Init();
+	
+	Door_Key_Init();
 
 	Sensor_Init();
 
@@ -250,14 +252,22 @@ void UART2_RECEIVE_Task(void *pdata)
 
 void HEART_Task(void *pdata)
 {
+	int heart_count = 0;
+	
 	while(1)
 	{	
 		Led_Set(LED_OFF);
 		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
 		Led_Set(LED_ON);
 		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
+		heart_count++;
 
-		board_send_message(STATUS_REPORT_REQUEST, &heart_info);
+		if(heart_count == 5)
+		{
+			UsartPrintf(USART_DEBUG, "Heart Report--------\r\n");
+			board_send_message(STATUS_REPORT_REQUEST, &heart_info);
+			heart_count = 0;
+		}
 	}
 }
 
@@ -277,8 +287,6 @@ void MOTOR_Task(void *pdata)
 	OSSemDel(SemOfMotor, 0, &err);
 }
 
-
-
 void Conveyor_Task(void *pdata)
 {
 	uint8_t conveyor = 0;
@@ -288,29 +296,36 @@ void Conveyor_Task(void *pdata)
 	
 	while(1)
 	{
-		conveyor = Conveyor_check();
-		UsartPrintf(USART_DEBUG, "conveyor = %d\r\n", conveyor);		//提示任务开始执行
-		
+		conveyor = Conveyor_check();		
 		if(conveyor == 1)
 		{
 			if(Conveyor_run() != 0 )
 			{
-				Door_set(MOTOR_RUN_FORWARD);
+				mcu_push_medicine_complete();//所有单板出货完成
+				
+				Door_Control_Set(MOTOR_RUN_BACKWARD);
+				do{
+					RTOS_TimeDlyHMSM(0, 0, 0, 100);
+				}while(Door_Key_Detect(DOOR_OPEN) == SENSOR_NO_DETECT);
+				Door_Control_Set(MOTOR_STOP);
+				UsartPrintf(USART_DEBUG, "Open The DOor, End!!!!!!!!!!\r\n");
+			
 				RTOS_TimeDlyHMSM(0, 0, run_time, 0);
+				Door_Control_Set(MOTOR_RUN_FORWARD);
 				do{
 					if(Sensor_Detect() == SENSOR_DETECT)
 					{
-						Door_set(MOTOR_STOP);
+						Door_Control_Set(MOTOR_STOP);
+						UsartPrintf(USART_DEBUG, "Close Door Detect Somebody, Stop!!!!!!!!!!\r\n");
 					}
 					else
 					{
-						Door_set(MOTOR_RUN_BACKWARD);
-						run_time--;
+						Door_Control_Set(MOTOR_RUN_BACKWARD);
 					}
-					RTOS_TimeDlyHMSM(0, 0, 1, 0);
-				}while(run_time > 0);
-				Door_set(MOTOR_STOP);
-				run_time = 0;
+					RTOS_TimeDlyHMSM(0, 0, 0, 100);
+				}while(Door_Key_Detect(DOOR_CLOSE) == SENSOR_NO_DETECT);
+				Door_Control_Set(MOTOR_STOP);
+				UsartPrintf(USART_DEBUG, "Close The DOor, End!!!!!!!!!!\r\n");
 			}
 			conveyor = 0;
 		}

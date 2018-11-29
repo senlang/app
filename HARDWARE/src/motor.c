@@ -187,13 +187,13 @@ int Conveyor_run(void)
 	
 	Conveyor_set(CONVEYOR_STOP);
 
-	//Door_set(MOTOR_RUN_FORWARD);
+	//Door_Control_Set(MOTOR_RUN_FORWARD);
 	//RTOS_TimeDlyHMSM(0, 0, 8, 0);
-	//Door_set(MOTOR_STOP);
+	//Door_Control_Set(MOTOR_STOP);
 	//RTOS_TimeDlyHMSM(0, 0, 30, 0);
-	//Door_set(MOTOR_RUN_BACKWARD);
+	//Door_Control_Set(MOTOR_RUN_BACKWARD);
 	//RTOS_TimeDlyHMSM(0, 0, 8, 0);
-	//Door_set(MOTOR_STOP);
+	//Door_Control_Set(MOTOR_STOP);
 	
 	return delay_s;
 }
@@ -375,7 +375,7 @@ void track_calibrate(void)
 #endif
 
 
-void Door_Init(void)
+void Door_Control_Init(void)
 {
 	
 	GPIO_InitTypeDef gpioInitStrcut;
@@ -390,12 +390,12 @@ void Door_Init(void)
 	//IO初始化
 	GPIO_Init(GPIOA, &gpioInitStrcut);
 	
-	Door_set(MOTOR_STOP);
+	Door_Control_Set(MOTOR_STOP);
 }
 
 
 
-void Door_set(MOTOR_ENUM status)
+void Door_Control_Set(MOTOR_ENUM status)
 {
 	if(MOTOR_STOP == status)
 	{	
@@ -459,4 +459,65 @@ unsigned char Sensor_Detect(void)
 	UsartPrintf(USART_DEBUG, "Sensor_Detect = %d\r\n", ret_val);		//提示任务开始执行
 	return ret_val;
 }
+
+
+void Door_Key_Init(void)
+{
+	GPIO_InitTypeDef gpioInitStructure;
+	
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+	
+	gpioInitStructure.GPIO_Mode = GPIO_Mode_IPU;
+	gpioInitStructure.GPIO_Pin = GPIO_Pin_0;
+	gpioInitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOC, &gpioInitStructure);
+}
+
+_Bool Door_Key_Status(unsigned char door_detect)
+{
+	GPIO_TypeDef* GPIOx;
+	uint16_t GPIO_Pin;
+	
+	if(door_detect = DOOR_OPEN)
+	{
+		GPIOx = GPIOC;
+		GPIO_Pin = GPIO_Pin_0;
+	}
+	else
+	{
+		GPIOx = GPIOC;
+		GPIO_Pin = GPIO_Pin_0;
+	}
+
+	if(!GPIO_ReadInputDataBit(GPIOx, GPIO_Pin))//未发现接入为低
+	{
+		return SENSOR_NO_DETECT;
+	}
+	else									//发现接入为高
+	{
+		return SENSOR_DETECT;
+	}
+}
+
+
+unsigned char Door_Key_Detect(unsigned char door_detect)
+{
+	unsigned char ret_val = 0;
+	
+	if(Door_Key_Status(door_detect) == SENSOR_DETECT)
+	{
+		RTOS_TimeDly(20);					
+		if(Door_Key_Status(door_detect) == SENSOR_DETECT)
+		ret_val = SENSOR_DETECT;			
+	}
+	else
+	{
+		ret_val = SENSOR_NO_DETECT;
+	}
+	
+	UsartPrintf(USART_DEBUG, "Door_Key_Detect = %d\r\n", ret_val);		//提示任务开始执行
+	return ret_val;
+}
+
 
