@@ -12,6 +12,7 @@
 #include "motor.h"
 #include "iwdg.h"
 #include "motor.h"
+#include "track.h"
 
 //C库
 #include <string.h>
@@ -139,14 +140,12 @@ void Hardware_Init(void)
 
 	for(i = 0; i < 10; i++)
 	{
-
-		Led_Set(LED_OFF);
+		Led_Set(LED_1, LED_ON);
 		delay_ms(100);
-		Led_Set(LED_ON);
+		Led_Set(LED_1, LED_OFF);
 		delay_ms(100);
 	}
 	
-	//UsartPrintf(USART_DEBUG, "0x08010000 - 0x00010000 test\r\n");
 	UsartPrintf(USART_DEBUG, "Hardware init OK\r\n");						//提示初始化完成	
 }
 
@@ -256,9 +255,9 @@ void HEART_Task(void *pdata)
 	
 	while(1)
 	{	
-		Led_Set(LED_OFF);
+		Led_Set(LED_1, LED_OFF);
 		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
-		Led_Set(LED_ON);
+		Led_Set(LED_1, LED_ON);
 		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
 		heart_count++;
 
@@ -270,7 +269,7 @@ void HEART_Task(void *pdata)
 		}
 	}
 }
-
+#if 1
 void MOTOR_Task(void *pdata)
 {
     INT8U            err;
@@ -284,7 +283,7 @@ void MOTOR_Task(void *pdata)
 		Motor_Start();
 	}
 
-	OSSemDel(SemOfMotor, 0, &err);
+	//OSSemDel(SemOfMotor, 0, &err);
 }
 
 void Conveyor_Task(void *pdata)
@@ -357,7 +356,7 @@ void KEY_Task(void *pdata)
 		Keyboard();
 		track_calibrate();
 	}
-	OSSemDel(SemOfKey, 0, &err);
+//	OSSemDel(SemOfKey, 0, &err);
 }
 extern void iap_load_app(u32 appxaddr);
 
@@ -383,5 +382,5 @@ void SENSOR_Task(void *pdata)
 		//iap_load_app(0x08010000);
 	}
 }
-
+#endif
 

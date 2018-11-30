@@ -1,5 +1,5 @@
-#ifndef _MOTOR_H_
-#define _MOTOR_H_
+#ifndef _TRACK_H_
+#define _TRACK_H_
 
 
 #include "stm32f10x.h"

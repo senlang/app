@@ -27,7 +27,6 @@
 
 
 KEY_STATUS key_status;
-extern unsigned char calibrate_track_selected;
 extern unsigned char calibrate_enable;
 extern OS_EVENT *SemOfKey;          //Motor控制信号量
 
@@ -60,11 +59,15 @@ void Key_Init(void)
 	#else
  	GPIO_InitTypeDef GPIO_InitStructure;
 	//初始化KEY0-->GPIOB.1,KEY1-->GPIOB.0  上拉输入
- 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);//使能PORTB时钟
+ 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB|RCC_APB2Periph_GPIOE, ENABLE);//使能PORTB时钟
 
-	GPIO_InitStructure.GPIO_Pin  = GPIO_Pin_1|GPIO_Pin_0;//PB1~0
+	GPIO_InitStructure.GPIO_Pin  = GPIO_Pin_8|GPIO_Pin_9;//PB1~0
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU; //设置成上拉输入
  	GPIO_Init(GPIOB, &GPIO_InitStructure);//初始化GPIOB1,0
+
+	GPIO_InitStructure.GPIO_Pin  = GPIO_Pin_4;//PE4
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU; //设置成上拉输入
+ 	GPIO_Init(GPIOE, &GPIO_InitStructure);//初始化GPIOB1,0
 	
 	#endif
 	memset(&key_status, 0, sizeof(KEY_STATUS));
@@ -86,19 +89,14 @@ void Key_Init(void)
 _Bool KeyScan(GPIO_TypeDef* GPIOX, unsigned int NUM)
 {
 	
-	if(GPIOX == GPIOB)
+	if(!GPIO_ReadInputDataBit(GPIOX, NUM))	//按下  为低
 	{
-		if(!GPIO_ReadInputDataBit(GPIOB, NUM))	//按下  为低
-		{
-			return KEYDOWN;
-		}
-		else									//弹起  为高
-		{
-			return KEYUP;
-		}
+		return KEYDOWN;
 	}
-	return KEYUP;								//默认返回按键释放
-	
+	else									//弹起  为高
+	{
+		return KEYUP;
+	}
 }
 
 /*
@@ -269,31 +267,39 @@ void EXTIX_Init(void)
 
     Key_Init();	 //	按键端口初始化
 
-  	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO,ENABLE);	//使能复用功能时钟
+  	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);	//使能复用功能时钟
 
-  //GPIOB.1 中断线以及中断初始化配置   下降沿触发
-  	GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource1);
+  	//GPIOB.8 中断线以及中断初始化配置   下降沿触发
+  	GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource8);
 
-  	EXTI_InitStructure.EXTI_Line=EXTI_Line1;	//KEY1
+  	EXTI_InitStructure.EXTI_Line=EXTI_Line8;	//KEY1
   	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;	
   	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
   	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
   	EXTI_Init(&EXTI_InitStructure);	 	//根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
 
- //GPIOB.0	  中断线以及中断初始化配置 下降沿触发 //KEY1
-  	GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource0);
-  	EXTI_InitStructure.EXTI_Line=EXTI_Line0;
+ 	//GPIOB.9	  中断线以及中断初始化配置 下降沿触发 //KEY1
+  	GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource9);
+  	EXTI_InitStructure.EXTI_Line=EXTI_Line9;
   	EXTI_Init(&EXTI_InitStructure);	  	//根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
 
 
-    NVIC_InitStructure.NVIC_IRQChannel = EXTI1_IRQn;			//使能按键KEY2所在的外部中断通道
+	//GPIOE.4 中断线以及中断初始化配置	 下降沿触发
+	GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource4);
+  	EXTI_InitStructure.EXTI_Line=EXTI_Line4;
+	EXTI_Init(&EXTI_InitStructure);	  //根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
+
+
+    NVIC_InitStructure.NVIC_IRQChannel = EXTI9_5_IRQn;			//使能按键KEY2所在的外部中断通道
   	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;	//抢占优先级2， 
   	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x02;					//子优先级2
   	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;								//使能外部中断通道
   	NVIC_Init(&NVIC_InitStructure);
 
 
-  	NVIC_InitStructure.NVIC_IRQChannel = EXTI0_IRQn;			//使能按键KEY1所在的外部中断通道
+
+
+  	NVIC_InitStructure.NVIC_IRQChannel = EXTI4_IRQn;			//使能按键KEY1所在的外部中断通道
   	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;	//抢占优先级2 
   	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;					//子优先级1 
   	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;								//使能外部中断通道
@@ -302,17 +308,45 @@ void EXTIX_Init(void)
 }
 
 
-//外部中断1服务程序
-void EXTI1_IRQHandler(void)
+//外部中断4服务程序 
+void EXTI4_IRQHandler(void)
 {
 #ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.
-		 OSIntEnter();	  
+	OSIntEnter();	  
 #endif  	
-	if(EXTI_GetITStatus(EXTI_Line1)==SET)//是8线的中断
+	if(EXTI_GetITStatus(EXTI_Line4)==SET)//是8线的中断
+	{
+		UsartPrintf(USART_DEBUG, "KEY2 CHECK:");
+		if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN) 					//有第二次按下，说明为双击
+		{		
+			UsartPrintf(USART_DEBUG, "DOWN-------------\r\n");
+		}
+		else if(KeyScan(GPIOE, KEY2) == KEYUP)
+		{
+			UsartPrintf(USART_DEBUG, "UP-------------\r\n");
+		}
+		OSSemPost(SemOfKey);
+	}
+	EXTI_ClearITPendingBit(EXTI_Line4);  //清除LINE2上的中断标志位	
+#ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.
+	 OSIntExit();	 
+#endif  
+
+}
+
+ //外部中断5~9服务程序
+void EXTI9_5_IRQHandler(void)
+{		 		
+#ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.
+	OSIntEnter();    
+#endif  		
+
+
+	if(EXTI_GetITStatus(EXTI_Line8)==SET)//是8线的中断
 	{
 		
 		UsartPrintf(USART_DEBUG, "KEY0 CHECK:");
-		if(KeyScan(GPIOB, KEY0) == KEYDOWN)						//有第二次按下，说明为双击
+		if(KeyScan(GPIOB, KEY0) == KEYDOWN) 					//有第二次按下，说明为双击
 		{		
 			UsartPrintf(USART_DEBUG, "DOWN-------------\r\n");
 		}
@@ -323,24 +357,11 @@ void EXTI1_IRQHandler(void)
 		
 		OSSemPost(SemOfKey);
 	}
-		 
-	EXTI_ClearITPendingBit(EXTI_Line1);  //清除LINE2上的中断标志位  
-
-#ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.
-	 OSIntExit();	 
-#endif  
-
-}
+			 
+	EXTI_ClearITPendingBit(EXTI_Line8);  //清除LINE2上的中断标志位	
 
 
-
-//外部中断0服务程序 
-void EXTI0_IRQHandler(void)
-{
-#ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.
-	OSIntEnter();	  
-#endif  	
-	if(EXTI_GetITStatus(EXTI_Line0)==SET)//是8线的中断
+	if(EXTI_GetITStatus(EXTI_Line9)==SET)//是8线的中断
 	{
 		UsartPrintf(USART_DEBUG, "KEY1 CHECK:");
 		if(KeyScan(GPIOB, KEY1) == KEYDOWN) 					//有第二次按下，说明为双击
@@ -353,12 +374,12 @@ void EXTI0_IRQHandler(void)
 		}
 		OSSemPost(SemOfKey);
 	}
-	EXTI_ClearITPendingBit(EXTI_Line0);  //清除LINE2上的中断标志位	
+	EXTI_ClearITPendingBit(EXTI_Line9);  //清除LINE2上的中断标志位
+	
 #ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.
-	 OSIntExit();	 
-#endif  
-
-}
+	OSIntExit();    
+#endif    			  
+} 
 
 
 

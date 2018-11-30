@@ -55,15 +55,15 @@ uint16_t drag_push_time_calc = 0;
 
 static uint32_t buf_bitmap = 0;  
   
-static unsigned char status_report_request_buf[STATUS_REPORT_REQUEST_PACKET_SIZE];  
-static unsigned char push_medicine_request_buf[PUSH_MEDICINE_REQUEST_PACKET_SIZE];  
-static unsigned char replenish_medicine_request_buf[REPLENISH_MEDICINE_REQUEST_PACKET_SIZE];  
-static unsigned char calibrate_track_request_buf[CILIBRATE_TRACK_REQUEST_PACKET_SIZE];
-static unsigned char replenish_medicine_complete_request_buf[REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE];
+static uint8_t status_report_request_buf[STATUS_REPORT_REQUEST_PACKET_SIZE];  
+static uint8_t push_medicine_request_buf[PUSH_MEDICINE_REQUEST_PACKET_SIZE];  
+static uint8_t replenish_medicine_request_buf[REPLENISH_MEDICINE_REQUEST_PACKET_SIZE];  
+static uint8_t calibrate_track_request_buf[CILIBRATE_TRACK_REQUEST_PACKET_SIZE];
+static uint8_t replenish_medicine_complete_request_buf[REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE];
 
 
-static unsigned char board_test_buf[BOARD_TEST_REQUEST_PACKET_SIZE]; 
-static unsigned char message_ack_buf[COMMAND_ACK_PACKET_SIZE]; 
+static uint8_t board_test_buf[BOARD_TEST_REQUEST_PACKET_SIZE]; 
+static uint8_t message_ack_buf[COMMAND_ACK_PACKET_SIZE]; 
 
 
 
@@ -85,8 +85,7 @@ int motor_dequeue_idx = 0;
 int enqueue_replenish_index = 0;
 int dequeue_replenish_index = 0;
 
-
-unsigned char calibrate_track_selected = 255;
+uint16_t calibrate_track_selected = 255;
 unsigned char calibrate_enable = 0;
 
 
@@ -101,23 +100,18 @@ void BoardId_Init(void)
 	GPIO_InitTypeDef gpioInitStrcut;
 
 	//使能时钟
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOB, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOE, ENABLE);
 	
 	//IO配置
 	gpioInitStrcut.GPIO_Mode = GPIO_Mode_IPU;
-	gpioInitStrcut.GPIO_Pin = GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_8;
+	gpioInitStrcut.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_3;
 	gpioInitStrcut.GPIO_Speed = GPIO_Speed_50MHz;
 	//IO初始化
-	GPIO_Init(GPIOB, &gpioInitStrcut);
+	GPIO_Init(GPIOE, &gpioInitStrcut);
 
-	//IO配置
-	gpioInitStrcut.GPIO_Mode = GPIO_Mode_IPU;
-	gpioInitStrcut.GPIO_Pin = GPIO_Pin_13;
-	//IO初始化
-	GPIO_Init(GPIOC, &gpioInitStrcut);
 
-	g_src_board_id = GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_7)<<3 | GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_8)<<2 | 
-		GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_9)<<1 | GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_13);
+	g_src_board_id = GPIO_ReadInputDataBit(GPIOE, GPIO_Pin_0)<<3 | GPIO_ReadInputDataBit(GPIOE, GPIO_Pin_1)<<2 | 
+		GPIO_ReadInputDataBit(GPIOE, GPIO_Pin_2)<<1 | GPIO_ReadInputDataBit(GPIOE, GPIO_Pin_3);
 
 	memset(&heart_info, 0x00, sizeof(heart_info));
 	heart_info.board_id = g_src_board_id;
@@ -490,8 +484,8 @@ int board_send_message(int msg_type, void *input_data)
 			send_command_ack(input_data);
 		break;
 		
-		defualt:
-		break;
+		//defualt:
+		//break;
 	}
 	return 0;
 }
@@ -536,15 +530,15 @@ void print_status_report_request(struct status_report_request_struct  *status_re
 
 void parse_status_report_request(struct status_report_request_struct *status_report_request)  
 {  
-  
+
 	status_report_request->start_code= status_report_request_buf[0];  
 
 	status_report_request->packet_len= status_report_request_buf[1];  
 	status_report_request->cmd_type= status_report_request_buf[2];
 
 	status_report_request->info.board_id = status_report_request_buf[3];
-    
-  	status_report_request->checksum = status_report_request_buf[8];  
+
+	status_report_request->checksum = status_report_request_buf[7];  
 }  
 
 void print_push_medicine_request(struct push_medicine_request_struct *push_medicine_request)  
@@ -645,7 +639,7 @@ void parse_push_medicine_request(struct push_medicine_request_struct *push_medic
 }
 
 
-uint8_t preparse_push_medicine_request(struct push_medicine_request_struct *push_medicine_request, char *buffer)  
+uint8_t preparse_push_medicine_request(struct push_medicine_request_struct *push_medicine_request, uint8_t *buffer)  
 {  
 	uint8_t check_sum = 0;
 	
@@ -910,6 +904,7 @@ void parse_calibrate_track_request(struct calibrate_track_request_struct *calibr
 	struct motor_control_info_struct motor_control;
 	
 	cmd_ack_info.status = 0;
+	memset(&motor_control, 0x00, sizeof(motor_control));
 	
 	calibrate_track_request->start_code = calibrate_track_request_buf[0];  
 	calibrate_track_request->packet_len = calibrate_track_request_buf[1];  
@@ -1053,11 +1048,11 @@ int uart1_shared_buf_preparse(unsigned char *src, int len)
 		board_id = *(uart1_shared_rx_buf + 3);
 		if(board_id != g_src_board_id)
 		{
+			UsartPrintf(USART_DEBUG, "Board Mismatch, Forward to %d!!\r\n", board_id);
 			UART2_IO_Send(uart1_shared_rx_buf, pkt_len);	
 		}
 		else
 		{
-
 			if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_STATUS_REPORT_REQUEST)) //收到状态上报请求
 			{  
 				buf_bitmap |= STATUS_REPORT_REQUEST_BUF;  

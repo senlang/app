@@ -37,33 +37,33 @@ track_elem X_value[10] = {
 	{GPIOB, GPIO_Pin_14},
 	{GPIOB, GPIO_Pin_15},	
 
-	{GPIOC, GPIO_Pin_6},
-	{GPIOC, GPIO_Pin_7},
+	{GPIOD, GPIO_Pin_8},
+	{GPIOD, GPIO_Pin_9},
 
-	{GPIOC, GPIO_Pin_8},
-	{GPIOC, GPIO_Pin_9},
+	{GPIOD, GPIO_Pin_10},
+	{GPIOD, GPIO_Pin_11},
 
-	{GPIOA, GPIO_Pin_8},
-	{GPIOA, GPIO_Pin_11}
+	{GPIOD, GPIO_Pin_12},
+	{GPIOD, GPIO_Pin_13}
 };
 
 
 track_elem Y_value[10] = {
 
-	{GPIOA, GPIO_Pin_12},
-	{GPIOA, GPIO_Pin_15},
+	{GPIOD, GPIO_Pin_14},
+	{GPIOD, GPIO_Pin_15},
+
+	{GPIOC, GPIO_Pin_6},
+	{GPIOC, GPIO_Pin_7},	
+
+	{GPIOC, GPIO_Pin_8},
+	{GPIOC, GPIO_Pin_9},
 
 	{GPIOC, GPIO_Pin_10},
-	{GPIOC, GPIO_Pin_11},	
+	{GPIOC, GPIO_Pin_11},
 
 	{GPIOC, GPIO_Pin_12},
-	{GPIOD, GPIO_Pin_2},
-
-	{GPIOB, GPIO_Pin_3},
-	{GPIOB, GPIO_Pin_4},
-
-	{GPIOB, GPIO_Pin_5},
-	{GPIOB, GPIO_Pin_6}
+	{GPIOD, GPIO_Pin_2}
 };
 
 
@@ -75,23 +75,17 @@ void Track_Init(void)
 	int i = 0;
 
 	//使能时钟
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD, ENABLE);
 	
 	//IO配置
 	gpioInitStrcut.GPIO_Mode = GPIO_Mode_Out_PP;
-	gpioInitStrcut.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_11 | GPIO_Pin_12 | GPIO_Pin_15;
+	gpioInitStrcut.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
 	gpioInitStrcut.GPIO_Speed = GPIO_Speed_50MHz;
 	//IO初始化
-	GPIO_Init(GPIOA, &gpioInitStrcut);
-
-
-
-
-	gpioInitStrcut.GPIO_Mode = GPIO_Mode_Out_PP;
-	gpioInitStrcut.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15 | GPIO_Pin_3 | GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6;
-	gpioInitStrcut.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOB, &gpioInitStrcut);
-	
+
+
+
 
 	gpioInitStrcut.GPIO_Mode = GPIO_Mode_Out_PP;
 	gpioInitStrcut.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10 | GPIO_Pin_11 | GPIO_Pin_12;
@@ -99,6 +93,11 @@ void Track_Init(void)
 	GPIO_Init(GPIOC, &gpioInitStrcut);
 	
 
+	gpioInitStrcut.GPIO_Mode = GPIO_Mode_Out_PP;
+	gpioInitStrcut.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10 | GPIO_Pin_11 | GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
+	gpioInitStrcut.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOD, &gpioInitStrcut);
+	
 
 	gpioInitStrcut.GPIO_Mode = GPIO_Mode_Out_PP;
 	gpioInitStrcut.GPIO_Pin = GPIO_Pin_2;

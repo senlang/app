@@ -15,7 +15,7 @@
 //Copyright(C) 广州市星翼电子科技有限公司 2009-2019
 //All rights reserved									  
 //////////////////////////////////////////////////////////////////////////////////	
-
+#if 0
 iapfun jump2app; 
 u16 iapbuf[1024];   
 //appxaddr:应用程序的起始地址
@@ -55,4 +55,5 @@ void iap_load_app(u32 appxaddr)
 		jump2app();									//跳转到APP.
 	}
 }		 
+#endif
 

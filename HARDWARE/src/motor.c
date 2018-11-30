@@ -27,6 +27,7 @@
 #include "stm32_protocol.h"
 #include "delay.h"
 #include "key.h"
+#include "track.h"
 
 #include "stdlib.h"
 
@@ -215,8 +216,8 @@ void Motor_Start(void)
 {
 	int push_cnt = 0;
 	int i = 0;
-	uint16_t last_keep_time = 0;
-	uint8_t delay_s = 0;
+	//uint16_t last_keep_time = 0;
+	uint16_t delay_s = 0;
 	uint16_t delay_ms = 0;
 	struct push_medicine_complete_request_info_struct  push_complete_info;
 
@@ -252,13 +253,13 @@ void Motor_Start(void)
 		
 		//Conveyor_set(CONVEYOR_RUN);
 		
-		set_track(motor_struct[motor_dequeue_idx].info.medicine_track_number, MOTOR_RUN_FORWARD);
+		set_track((uint16_t)motor_struct[motor_dequeue_idx].info.medicine_track_number, MOTOR_RUN_FORWARD);
 
 		delay_s = motor_struct[motor_dequeue_idx].info.push_time/10;
 		delay_ms = (motor_struct[motor_dequeue_idx].info.push_time%10) * 100;
 
 		UsartPrintf(USART_DEBUG, "delay_s[%d]delay_ms[%d]\r\n", delay_s, delay_ms);
-		last_keep_time = delay_s;
+		//last_keep_time = delay_s;
 			
 		RTOS_TimeDlyHMSM(0, 0, delay_s, delay_ms);
 		
@@ -374,7 +375,7 @@ void track_calibrate(void)
 
 #endif
 
-
+/*取货门电机控制初始化*/
 void Door_Control_Init(void)
 {
 	
@@ -415,6 +416,7 @@ void Door_Control_Set(MOTOR_ENUM status)
 	MotorStatus.DoorSta = status;
 }
 
+/*人体检查*/
 void Sensor_Init(void)
 {
 	GPIO_InitTypeDef gpioInitStructure;
@@ -460,18 +462,18 @@ unsigned char Sensor_Detect(void)
 	return ret_val;
 }
 
-
+/*开关门按钮检查*/
 void Door_Key_Init(void)
 {
 	GPIO_InitTypeDef gpioInitStructure;
 	
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 	
 	gpioInitStructure.GPIO_Mode = GPIO_Mode_IPU;
-	gpioInitStructure.GPIO_Pin = GPIO_Pin_0;
+	gpioInitStructure.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5;
 	gpioInitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOC, &gpioInitStructure);
+	GPIO_Init(GPIOB, &gpioInitStructure);
 }
 
 _Bool Door_Key_Status(unsigned char door_detect)
@@ -479,15 +481,15 @@ _Bool Door_Key_Status(unsigned char door_detect)
 	GPIO_TypeDef* GPIOx;
 	uint16_t GPIO_Pin;
 	
-	if(door_detect = DOOR_OPEN)
+	if(door_detect == DOOR_OPEN)
 	{
-		GPIOx = GPIOC;
-		GPIO_Pin = GPIO_Pin_0;
+		GPIOx = GPIOB;
+		GPIO_Pin = GPIO_Pin_4;
 	}
 	else
 	{
-		GPIOx = GPIOC;
-		GPIO_Pin = GPIO_Pin_0;
+		GPIOx = GPIOB;
+		GPIO_Pin = GPIO_Pin_5;
 	}
 
 	if(!GPIO_ReadInputDataBit(GPIOx, GPIO_Pin))//未发现接入为低

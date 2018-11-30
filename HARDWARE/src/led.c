@@ -49,7 +49,7 @@ void Led_Init(void)
 	GPIO_InitTypeDef gpioInitStrcut;
 
 	//使能时钟
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC|RCC_APB2Periph_GPIOD, ENABLE);
 	
 	//IO配置
 	gpioInitStrcut.GPIO_Mode = GPIO_Mode_Out_PP;
@@ -57,8 +57,15 @@ void Led_Init(void)
 	gpioInitStrcut.GPIO_Speed = GPIO_Speed_50MHz;
 	//IO初始化
 	GPIO_Init(GPIOC, &gpioInitStrcut);
+
+
+	gpioInitStrcut.GPIO_Pin = GPIO_Pin_12;
+	GPIO_Init(GPIOD, &gpioInitStrcut);
+
+	
     
-    Led_Set(LED_OFF);
+    Led_Set(LED_1, LED_OFF);
+    Led_Set(LED_2, LED_OFF);
 }
 
 /*
@@ -74,9 +81,16 @@ void Led_Init(void)
 *	说明：		
 ************************************************************
 */
-void Led_Set(LED_ENUM status)
+void Led_Set(LED_SELECT_ENUM gpio, LED_STATUS_ENUM status)
 {
-
-	GPIO_WriteBit(GPIOC, GPIO_Pin_3, status != LED_ON ? Bit_SET : Bit_RESET);
-	ledStatus.Led2Sta = status;
+	if(gpio == LED_1)
+	{
+		GPIO_WriteBit(GPIOC, GPIO_Pin_3, status != LED_ON ? Bit_SET : Bit_RESET);
+		ledStatus.Led1Sta = status;
+	}
+	else
+	{
+		GPIO_WriteBit(GPIOD, GPIO_Pin_12, status != LED_ON ? Bit_SET : Bit_RESET);
+		ledStatus.Led2Sta = status;
+	}
 }

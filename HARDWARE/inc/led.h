@@ -9,12 +9,8 @@
 
 typedef struct
 {
-
+	_Bool Led1Sta;
 	_Bool Led2Sta;
-	_Bool Led3Sta;
-	_Bool Led4Sta;
-	_Bool Led5Sta;
-
 } LED_STATUS;
 
 extern LED_STATUS ledStatus;
@@ -25,14 +21,23 @@ typedef enum
 	LED_OFF = 0,
 	LED_ON
 
-} LED_ENUM;
+} LED_STATUS_ENUM;
+
+
+typedef enum
+{
+
+	LED_1 = 0,
+	LED_2
+
+} LED_SELECT_ENUM;
 
 
 
 
 void Led_Init(void);
 
-void Led_Set(LED_ENUM status);
+void Led_Set(LED_SELECT_ENUM gpio, LED_STATUS_ENUM status);
 
 
 #endif
