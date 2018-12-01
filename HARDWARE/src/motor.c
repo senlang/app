@@ -358,8 +358,8 @@ void track_calibrate(void)
 
 	if((calibrate_track_selected == 255))
 	{
-		Motor_Set(MOTOR_STOP);
-		set_track(calibrate_track_selected, MOTOR_STOP);
+		//Motor_Set(MOTOR_STOP);
+		//set_track(calibrate_track_selected, MOTOR_STOP);
 		calibrate_enable = 0;
 		return;
 	}

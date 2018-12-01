@@ -24,7 +24,7 @@
 //硬件驱动
 #include "delay.h"
 #include "usart.h"
-
+#include "motor.h"
 
 KEY_STATUS key_status;
 extern unsigned char calibrate_enable;
@@ -320,12 +320,13 @@ void EXTI4_IRQHandler(void)
 		if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN) 					//有第二次按下，说明为双击
 		{		
 			UsartPrintf(USART_DEBUG, "DOWN-------------\r\n");
+			//Motor_Set(MOTOR_STOP);
+			//set_track(calibrate_track_selected, MOTOR_STOP);
 		}
 		else if(KeyScan(GPIOE, KEY2) == KEYUP)
 		{
 			UsartPrintf(USART_DEBUG, "UP-------------\r\n");
 		}
-		OSSemPost(SemOfKey);
 	}
 	EXTI_ClearITPendingBit(EXTI_Line4);  //清除LINE2上的中断标志位	
 #ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.

@@ -307,6 +307,7 @@ struct push_medicine_complete_request_info_struct
 {  
     uint8_t board_id;  
     uint8_t medicine_track_number;  
+    uint8_t track_status;  
 }; 
 
 struct push_medicine_complete_struct  

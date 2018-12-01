@@ -220,7 +220,8 @@ void send_push_medicine_request( void *input_data)
 
 
 void send_push_medicine_complete_request( void *input_data)  
-{  
+{
+	int i = 0;  
 	uint8_t send_push_medicine_complete_request_data[PUSH_MEDICINE_COMPLETE_PACKET_SIZE];
 	struct push_medicine_complete_request_info_struct *push_medicine_complete_info = (struct push_medicine_complete_request_info_struct *)input_data;
 
@@ -235,9 +236,20 @@ void send_push_medicine_complete_request( void *input_data)
 	
 	send_push_medicine_complete_request_data[4] = push_medicine_complete_info->medicine_track_number;
 	
-	send_push_medicine_complete_request_data[5] = add_checksum(send_push_medicine_complete_request_data, PUSH_MEDICINE_REQUEST_PACKET_SIZE - 1);  
+	send_push_medicine_complete_request_data[5] = push_medicine_complete_info->track_status;
+	
+	send_push_medicine_complete_request_data[PUSH_MEDICINE_COMPLETE_PACKET_SIZE - 1] = add_checksum(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE - 1);  
 
-	UART1_IO_Send(send_push_medicine_complete_request_data, PUSH_MEDICINE_REQUEST_PACKET_SIZE);  
+
+	
+	UsartPrintf(USART_DEBUG, "Start:");
+	for(i = 0; i < PUSH_MEDICINE_COMPLETE_PACKET_SIZE; i++)
+	{
+		UsartPrintf(USART_DEBUG, "[0x%2x]", send_push_medicine_complete_request_data[i]);
+	}
+	UsartPrintf(USART_DEBUG, "\r\n: End");
+
+	UART1_IO_Send(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE);  
 } 
 
 
@@ -1295,7 +1307,7 @@ void mcu_push_medicine_complete(void)
 	
 	memset(&push_complete_info, 0x00, sizeof(push_complete_info));
 	push_complete_info.board_id = 0xff;
-	
+	push_complete_info.track_status= 0;
 	board_send_message(PUSH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
 }
 
