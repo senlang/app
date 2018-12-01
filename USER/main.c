@@ -164,6 +164,21 @@ void Hardware_Init(void)
 */
 int main(void)
 {	
+	#if 0
+	int i = 0;
+	Led_Init();																	//LED初始化
+
+	while(1)
+	{
+		for(i=0; i< 72000; i++)
+		;
+		Led_Set(LED_1, LED_ON);
+		
+		for(i=0; i< 72000; i++)
+		;
+		Led_Set(LED_1, LED_OFF);
+	}
+	#else
 	Hardware_Init();								//硬件初始化
 
 	OSInit();										//RTOS初始化
@@ -189,7 +204,7 @@ int main(void)
 	UsartPrintf(USART_DEBUG, "OSStart\r\n");		//提示任务开始执行
 	
 	OSStart();										//开始执行任务
-	
+	#endif
 	return 0;
 
 }
@@ -307,7 +322,7 @@ void Conveyor_Task(void *pdata)
 					RTOS_TimeDlyHMSM(0, 0, 0, 100);
 				}while(Door_Key_Detect(DOOR_OPEN) == SENSOR_NO_DETECT);
 				Door_Control_Set(MOTOR_STOP);
-				UsartPrintf(USART_DEBUG, "Open The DOor, End!!!!!!!!!!\r\n");
+				UsartPrintf(USART_DEBUG, "Open The Door, End!!!!!!!!!!\r\n");
 			
 				RTOS_TimeDlyHMSM(0, 0, run_time, 0);
 				Door_Control_Set(MOTOR_RUN_FORWARD);
@@ -319,7 +334,7 @@ void Conveyor_Task(void *pdata)
 					}
 					else
 					{
-						Door_Control_Set(MOTOR_RUN_BACKWARD);
+						Door_Control_Set(MOTOR_RUN_FORWARD);
 					}
 					RTOS_TimeDlyHMSM(0, 0, 0, 100);
 				}while(Door_Key_Detect(DOOR_CLOSE) == SENSOR_NO_DETECT);

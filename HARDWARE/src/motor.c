@@ -53,14 +53,13 @@ extern uint16_t drag_push_time_calc;
 ************************************************************
 *	函数名称：	Motor_Init
 *
-*	函数功能：	Motor初始化
+*	函数功能：	货道控制初始化
 *
 *	入口参数：	无
 *
 *	返回参数：	无
 *
-*	说明：		LED4-PB6	LED5-PB7	LED6-PB8	LED7-PB9
-				高电平关灯		低电平开灯
+*	说明：		
 ************************************************************
 */
 void Motor_Init(void)
@@ -84,8 +83,21 @@ void Motor_Init(void)
 	motor_dequeue_idx = 0;
 }
 
+/*
+************************************************************
+*	函数名称：	Conveyor_Init
+*
+*	函数功能：	传送带电机初始化
+*
+*	入口参数：	无
+*
+*	返回参数：	无
+*
+*	说明：		
+************************************************************
+*/
 
-void Conveyor_Init()
+void Conveyor_Init(void)
 {
 	
 	GPIO_InitTypeDef gpioInitStrcut;
@@ -113,9 +125,9 @@ void Conveyor_Init()
 ************************************************************
 *	函数名称：	Motor_Set
 *
-*	函数功能：	LED4控制
+*	函数功能：	电机正反转控制
 *
-*	入口参数：	status：LED_ON-开灯	LED_OFF-关灯
+*	入口参数：	status：
 *
 *	返回参数：	无
 *
@@ -378,67 +390,81 @@ void track_calibrate(void)
 /*取货门电机控制初始化*/
 void Door_Control_Init(void)
 {
-	
+	return;
+	/*
 	GPIO_InitTypeDef gpioInitStrcut;
 
 	//使能时钟
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOD | RCC_APB2Periph_GPIOC, ENABLE);
 	
 	//IO配置
 	gpioInitStrcut.GPIO_Mode = GPIO_Mode_Out_PP;
-	gpioInitStrcut.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;
+	gpioInitStrcut.GPIO_Pin = GPIO_Pin_13;
 	gpioInitStrcut.GPIO_Speed = GPIO_Speed_50MHz;
 	//IO初始化
-	GPIO_Init(GPIOA, &gpioInitStrcut);
+	GPIO_Init(GPIOD, &gpioInitStrcut);
+
+
+	//IO配置
+	gpioInitStrcut.GPIO_Mode = GPIO_Mode_Out_PP;
+	gpioInitStrcut.GPIO_Pin = GPIO_Pin_11;
+	gpioInitStrcut.GPIO_Speed = GPIO_Speed_50MHz;
+	//IO初始化
+	GPIO_Init(GPIOC, &gpioInitStrcut);
 	
 	Door_Control_Set(MOTOR_STOP);
+	*/
 }
 
 
 
 void Door_Control_Set(MOTOR_ENUM status)
 {
+	Motor_Set(status);
+	set_track(98, status);
+	#if 0
 	if(MOTOR_STOP == status)
 	{	
-		GPIO_WriteBit(GPIOA, GPIO_Pin_6, Bit_RESET);
-		GPIO_WriteBit(GPIOA, GPIO_Pin_7, Bit_RESET);
+		GPIO_WriteBit(GPIOD, GPIO_Pin_13, Bit_RESET);
+		GPIO_WriteBit(GPIOC, GPIO_Pin_11, Bit_RESET);
 	}
 	else if(MOTOR_RUN_FORWARD== status)
 	{	
-		GPIO_WriteBit(GPIOA, GPIO_Pin_6, Bit_SET);
-		GPIO_WriteBit(GPIOA, GPIO_Pin_7, Bit_RESET);
+		GPIO_WriteBit(GPIOD, GPIO_Pin_13, Bit_SET);
+		GPIO_WriteBit(GPIOC, GPIO_Pin_11, Bit_RESET);
 	}
 	else if(MOTOR_RUN_BACKWARD== status)
 	{	
-		GPIO_WriteBit(GPIOA, GPIO_Pin_6, Bit_RESET);
-		GPIO_WriteBit(GPIOA, GPIO_Pin_7, Bit_SET);
+		GPIO_WriteBit(GPIOD, GPIO_Pin_13, Bit_RESET);
+		GPIO_WriteBit(GPIOC, GPIO_Pin_11, Bit_SET);
 	}
+	#endif
 	MotorStatus.DoorSta = status;
 }
 
-/*人体检查*/
+/*人体检查PB4*/
 void Sensor_Init(void)
 {
 	GPIO_InitTypeDef gpioInitStructure;
 	
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 	
 	gpioInitStructure.GPIO_Mode = GPIO_Mode_IPU;
-	gpioInitStructure.GPIO_Pin = GPIO_Pin_0;
+	gpioInitStructure.GPIO_Pin = GPIO_Pin_1;
 	gpioInitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOC, &gpioInitStructure);
+	GPIO_Init(GPIOB, &gpioInitStructure);
 }
 
 _Bool Sensor_Status(void)
 {
-	if(!GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_0))//未发现接入为低
+	if(!GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_4))//未发现接入为低
 	{
-		return SENSOR_NO_DETECT;
+		return SENSOR_DETECT;
 	}
 	else									//发现接入为高
 	{
-		return SENSOR_DETECT;
+		return SENSOR_NO_DETECT;
 	}
 }
 
@@ -467,13 +493,22 @@ void Door_Key_Init(void)
 {
 	GPIO_InitTypeDef gpioInitStructure;
 	
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOD, ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-	
+
+	/*关门检测*/
 	gpioInitStructure.GPIO_Mode = GPIO_Mode_IPU;
-	gpioInitStructure.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5;
+	gpioInitStructure.GPIO_Pin = GPIO_Pin_3;
 	gpioInitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOB, &gpioInitStructure);
+
+	/*开门检测*/
+	gpioInitStructure.GPIO_Mode = GPIO_Mode_IPU;
+	gpioInitStructure.GPIO_Pin = GPIO_Pin_7;
+	gpioInitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOD, &gpioInitStructure);
+
+	
 }
 
 _Bool Door_Key_Status(unsigned char door_detect)
@@ -483,22 +518,22 @@ _Bool Door_Key_Status(unsigned char door_detect)
 	
 	if(door_detect == DOOR_OPEN)
 	{
-		GPIOx = GPIOB;
-		GPIO_Pin = GPIO_Pin_4;
+		GPIOx = GPIOD;
+		GPIO_Pin = GPIO_Pin_7;
 	}
 	else
 	{
 		GPIOx = GPIOB;
-		GPIO_Pin = GPIO_Pin_5;
+		GPIO_Pin = GPIO_Pin_3;
 	}
 
 	if(!GPIO_ReadInputDataBit(GPIOx, GPIO_Pin))//未发现接入为低
 	{
-		return SENSOR_NO_DETECT;
+		return SENSOR_DETECT;
 	}
 	else									//发现接入为高
 	{
-		return SENSOR_DETECT;
+		return SENSOR_NO_DETECT;
 	}
 }
 
