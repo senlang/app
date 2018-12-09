@@ -134,17 +134,19 @@ void Hardware_Init(void)
 	
 	Usart2_Init(115200);
 	
-	Iwdg_Init(4, 1250); 														//64分频，每秒625次，重载1250次，2s
+	
 
 	BoardId_Init();
 
 	for(i = 0; i < 10; i++)
 	{
 		Led_Set(LED_1, LED_ON);
-		delay_ms(100);
+		delay_ms(50);
 		Led_Set(LED_1, LED_OFF);
-		delay_ms(100);
+		delay_ms(50);
 	}
+	
+	Iwdg_Init(4, 1250); 														//64分频，每秒625次，重载1250次，2s
 	
 	UsartPrintf(USART_DEBUG, "Hardware init OK\r\n");						//提示初始化完成	
 }
@@ -315,14 +317,16 @@ void Conveyor_Task(void *pdata)
 		{
 			if(Conveyor_run() != 0 )
 			{
-				mcu_push_medicine_complete();//所有单板出货完成
 				
 				Door_Control_Set(MOTOR_RUN_BACKWARD);
 				do{
 					RTOS_TimeDlyHMSM(0, 0, 0, 100);
 				}while(Door_Key_Detect(DOOR_OPEN) == SENSOR_NO_DETECT);
-				Door_Control_Set(MOTOR_STOP);
+				
+				mcu_push_medicine_complete();//所有单板出货完成,门已打开
+				
 				UsartPrintf(USART_DEBUG, "Open The Door, End!!!!!!!!!!\r\n");
+				Door_Control_Set(MOTOR_STOP);
 			
 				RTOS_TimeDlyHMSM(0, 0, run_time, 0);
 				Door_Control_Set(MOTOR_RUN_FORWARD);
