@@ -91,6 +91,7 @@ unsigned char calibrate_enable = 0;
 
 extern OS_EVENT *SemOfMotor;          //Motor控制信号量
 extern OS_EVENT *SemOfKey;          // 按键控制信号量
+extern OS_EVENT *SemOfConveyor;        	//Motor控制信号量
 
 
 
@@ -150,9 +151,9 @@ void send_command_ack( void *input_data)
 	send_cmd_ack_data[1] = COMMAND_ACK_PACKET_SIZE - 1;
 	send_cmd_ack_data[2] = CMD_MSG_ACK;
 
-	send_cmd_ack_data[3] = cmd_ack_info->board_id;
+	send_cmd_ack_data[3] = cmd_ack_info->rsp_cmd_type;
 	
-	send_cmd_ack_data[4] = cmd_ack_info->rsp_cmd_type;
+	send_cmd_ack_data[4] = cmd_ack_info->board_id;
 	
 	send_cmd_ack_data[5] = cmd_ack_info->status;
 
@@ -619,22 +620,32 @@ void parse_push_medicine_request(struct push_medicine_request_struct *push_medic
 	{
 		push_medicine_request->info[valid_cnt].board_id = push_medicine_request_buf[3 + i * PUSH_MEDICINE_REQUEST_INFO_SIZE];
 		UsartPrintf(USART_DEBUG, "board_id: 0x%02x, 0x%02x\r\n", push_medicine_request->info[valid_cnt].board_id, g_src_board_id);  
+
 		
 		if(push_medicine_request->info[valid_cnt].board_id == g_src_board_id)
 		{
 			push_medicine_request->info[valid_cnt].medicine_track_number = push_medicine_request_buf[4 + i * PUSH_MEDICINE_REQUEST_INFO_SIZE];
 			push_medicine_request->info[valid_cnt].push_time = push_medicine_request_buf[5 + i * PUSH_MEDICINE_REQUEST_INFO_SIZE]<<8|push_medicine_request_buf[6 + i * PUSH_MEDICINE_REQUEST_INFO_SIZE];
 
-			motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_FORWARD;
-			motor_struct[motor_enqueue_idx].motor_work_mode = CMD_PUSH_MEDICINE_REQUEST;
-			memcpy(&motor_struct[motor_enqueue_idx].info, &push_medicine_request->info[valid_cnt], sizeof(struct motor_control_info_struct));
-			
-			motor_enqueue_idx++;
-			if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
-			motor_enqueue_idx = 0;
-
-
-			valid_cnt++;
+			if((push_medicine_request->info[valid_cnt].medicine_track_number != 0) && (push_medicine_request->info[valid_cnt].push_time != 0))
+			{
+				motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_FORWARD;
+				motor_struct[motor_enqueue_idx].motor_work_mode = CMD_PUSH_MEDICINE_REQUEST;
+				memcpy(&motor_struct[motor_enqueue_idx].info, &push_medicine_request->info[valid_cnt], sizeof(struct motor_control_info_struct));
+				
+				motor_enqueue_idx++;
+				if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
+				motor_enqueue_idx = 0;
+				
+				valid_cnt++;
+			}
+			else if((push_medicine_request->info[valid_cnt].medicine_track_number == 0) && (push_medicine_request->info[valid_cnt].push_time == 0))
+			{
+				OSSemPost(SemOfConveyor);
+				cmd_ack_info.status = 1;
+				
+				UsartPrintf(USART_DEBUG, "Receive push complete!!!!!!!!!!!!\r\n");
+			}
 		}
 		
 		if(valid_cnt)

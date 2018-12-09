@@ -553,7 +553,7 @@ unsigned char Door_Key_Detect(unsigned char door_detect)
 		ret_val = SENSOR_NO_DETECT;
 	}
 	
-	UsartPrintf(USART_DEBUG, "Door_Key_Detect = %d\r\n", ret_val);		//提示任务开始执行
+	//UsartPrintf(USART_DEBUG, "Door_Key_Detect = %d\r\n", ret_val);		//提示任务开始执行
 	return ret_val;
 }
 

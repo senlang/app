@@ -307,17 +307,19 @@ void Conveyor_Task(void *pdata)
 {
 	uint8_t conveyor = 0;
 	uint8_t run_time = 10;
-	
+  INT8U            err;
+
 	SemOfConveyor= OSSemCreate(0);
 	
 	while(1)
-	{
+	{		
+		OSSemPend(SemOfConveyor, 0u, &err);
+		UsartPrintf(USART_DEBUG, "Will run conveyor!!!!!!!!!!\r\n");
 		conveyor = Conveyor_check();		
-		if(conveyor == 1)
+		//if(conveyor == 1)
 		{
 			if(Conveyor_run() != 0 )
 			{
-				
 				Door_Control_Set(MOTOR_RUN_BACKWARD);
 				do{
 					RTOS_TimeDlyHMSM(0, 0, 0, 100);
@@ -347,7 +349,6 @@ void Conveyor_Task(void *pdata)
 			}
 			conveyor = 0;
 		}
-		RTOS_TimeDlyHMSM(0, 0, 2, 0);
 	}
 }
 
