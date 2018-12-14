@@ -405,6 +405,12 @@ struct motor_control_struct
 	struct motor_control_info_struct info;
 };  
 
+struct track_work_struct  
+{  
+	uint8_t motor_run;
+    uint8_t medicine_track_number;  
+    uint16_t push_time;  
+};  
 
 
 

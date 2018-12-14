@@ -23,10 +23,11 @@
 
 //Í·ÎÄ¼þ
 #include "track.h"
-
+#include "delay.h"
 #include "usart.h"
 #include "stm32_protocol.h"
 
+extern struct track_work_struct track_struct[10][10];
 
 
 track_elem X_value[10] = {
@@ -158,5 +159,93 @@ uint8_t set_track(uint16_t track_num, uint8_t status)
 	return 1;
 }
 
+
+uint8_t set_track_x(uint8_t row, uint8_t status)
+{
+	track_elem x;	
+	x = X_value[row];
+
+	//UsartPrintf(USART_DEBUG, "x.GPIO_Pin[0x%04x]y.GPIO_Pin[0x%04x]\r\n", x.GPIO_Pin, y.GPIO_Pin);
+	if(0 == status)
+	{
+		GPIO_WriteBit(x.GPIOx, x.GPIO_Pin, Bit_RESET);
+	}
+	else if((1 == status) || (2== status))
+	{
+		GPIO_WriteBit(x.GPIOx, x.GPIO_Pin, Bit_SET);
+	}
+
+	return 1;
+}
+
+
+
+uint8_t set_track_y(uint16_t col, uint8_t status)
+{
+	track_elem y;
+
+	y = Y_value[col];
+	if(0 == status)
+	{
+		GPIO_WriteBit(y.GPIOx, y.GPIO_Pin, Bit_RESET);
+	}
+	else if((1 == status) || (2== status))
+	{
+		GPIO_WriteBit(y.GPIOx, y.GPIO_Pin, Bit_SET);
+	}
+
+	return 1;
+}
+
+
+int Track_run(MOTOR_ENUM run_mode)
+{
+	int x = 0, y = 0;
+	uint16_t time_elapsed = 0;
+	uint16_t all_finish = 0;
+	
+	Motor_Set(run_mode);
+	for(x = 0; x < 10; x++)
+	{
+		set_track_x(x, run_mode);
+		for(y = 0; y < 10; y++)
+		{
+			UsartPrintf(USART_DEBUG, "track_struct[%d][%d].push_time = %d\r\n", x, y, track_struct[x][y].push_time);
+			if(track_struct[x][y].push_time > 0)			
+			set_track_y(y, run_mode);
+		}
+
+		all_finish = 0;
+		do{
+			for(y = 0; y < 10; y++)
+			{
+			
+				//UsartPrintf(USART_DEBUG, "time_elapsed = %d, track_struct[%d][%d].push_time = %d\r\n", time_elapsed, x, y, track_struct[x][y].push_time);
+				if(time_elapsed >= track_struct[x][y].push_time)
+				{
+					set_track_y(y, MOTOR_STOP);
+					all_finish &= ~(1<<y);
+				}
+				else
+				{
+					all_finish |= 1<<y;
+				}
+				//UsartPrintf(USART_DEBUG, "all_finish = 0x%04x\r\n", all_finish);
+			}
+			time_elapsed += 1;
+			RTOS_TimeDlyHMSM(0, 0, 0, 100);
+
+			if(all_finish == 0)
+			break;
+		}while(1);
+
+		time_elapsed = 0;
+		set_track_x(x, MOTOR_STOP);
+	}
+	
+	Motor_Set(MOTOR_STOP);	
+	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
+	return 0;
+}
 
 

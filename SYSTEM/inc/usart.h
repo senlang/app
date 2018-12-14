@@ -171,5 +171,6 @@ void UART2_IO_ClearRecive(void);
 int uart1_receive_data(void);
 int uart2_receive_data(void);
 
+int parse_protocol(void);
 
 #endif /* __USART_H */

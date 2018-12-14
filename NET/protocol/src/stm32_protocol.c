@@ -51,6 +51,7 @@ uint16_t drag_push_time[BOARD_ID_MAX];
 uint16_t drag_push_time_calc_pre = 0;
 uint16_t drag_push_time_calc = 0;
 
+uint8_t track_work = 0;
 
 
 static uint32_t buf_bitmap = 0;  
@@ -78,6 +79,8 @@ static uint8_t message_ack_buf[COMMAND_ACK_PACKET_SIZE];
 
 struct status_report_request_info_struct  heart_info;
 struct motor_control_struct  motor_struct[TOTAL_PUSH_CNT];
+struct track_work_struct track_struct[10][10];
+
 
 int motor_enqueue_idx = 0;
 int motor_dequeue_idx = 0;
@@ -92,6 +95,7 @@ unsigned char calibrate_enable = 0;
 extern OS_EVENT *SemOfMotor;          //Motor控制信号量
 extern OS_EVENT *SemOfKey;          // 按键控制信号量
 extern OS_EVENT *SemOfConveyor;        	//Motor控制信号量
+extern OS_EVENT *SemOfTrack;        	//track 控制信号量
 
 
 
@@ -117,7 +121,9 @@ void BoardId_Init(void)
 	memset(&heart_info, 0x00, sizeof(heart_info));
 	heart_info.board_id = g_src_board_id;
 	heart_info.board_status = STANDBY_STATUS;
-		
+
+	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
+	
 	UsartPrintf(USART_DEBUG, " Current Board ID:0x%x\r\n", g_src_board_id); 
 }
 
@@ -215,7 +221,7 @@ void send_push_medicine_request( void *input_data)
 	}
 	send_push_medicine_request_data[IPUC + PUSH_MEDICINE_REQUEST_INFO_SIZE * push_medicine_info->push_cnt] = add_checksum(send_push_medicine_request_data, IPUC + PUSH_MEDICINE_REQUEST_INFO_SIZE * push_medicine_info->push_cnt);  
 
-	UART1_IO_Send(send_push_medicine_request_data, IPUC + PUSH_MEDICINE_REQUEST_INFO_SIZE * push_medicine_info->push_cnt + CHECKSUM_SIZE);  
+	UART2_IO_Send(send_push_medicine_request_data, IPUC + PUSH_MEDICINE_REQUEST_INFO_SIZE * push_medicine_info->push_cnt + CHECKSUM_SIZE);  
 } 
 
 
@@ -281,7 +287,7 @@ void send_replinish_medicine_request( void *input_data)
 	}
 	send_replinish_medicine_request_data[IPUC + REPLENISH_MEDICINE_REQUEST_INFO_SIZE * replenish_medicine_info->push_cnt] = add_checksum(send_replinish_medicine_request_data, IPUC + REPLENISH_MEDICINE_REQUEST_INFO_SIZE * replenish_medicine_info->push_cnt);  
 
-	UART1_IO_Send(send_replinish_medicine_request_data, IPUC + REPLENISH_MEDICINE_REQUEST_INFO_SIZE * replenish_medicine_info->push_cnt + CHECKSUM_SIZE);  
+	UART2_IO_Send(send_replinish_medicine_request_data, IPUC + REPLENISH_MEDICINE_REQUEST_INFO_SIZE * replenish_medicine_info->push_cnt + CHECKSUM_SIZE);  
 } 
 
 
@@ -582,6 +588,8 @@ void parse_push_medicine_request(struct push_medicine_request_struct *push_medic
 	uint8_t i = 0;
 	uint8_t check_sum = 0;
 	uint8_t try_cnt = 0;
+	uint8_t x = 0;
+	uint8_t y = 0;
 	
 	struct msg_ack_info_struct cmd_ack_info;
 	cmd_ack_info.status = 0;
@@ -632,25 +640,35 @@ void parse_push_medicine_request(struct push_medicine_request_struct *push_medic
 				motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_FORWARD;
 				motor_struct[motor_enqueue_idx].motor_work_mode = CMD_PUSH_MEDICINE_REQUEST;
 				memcpy(&motor_struct[motor_enqueue_idx].info, &push_medicine_request->info[valid_cnt], sizeof(struct motor_control_info_struct));
-				
+
+				x = push_medicine_request->info[valid_cnt].medicine_track_number/10;
+				y = push_medicine_request->info[valid_cnt].medicine_track_number%10;
+				UsartPrintf(USART_DEBUG, "medicine_track_number = %d, track_struct[%d][%d].push_time = %d\r\n", push_medicine_request->info[valid_cnt].medicine_track_number, x, y, track_struct[x][y].push_time);
+				track_struct[x][y].motor_run = MOTOR_RUN_FORWARD;
+				track_struct[x][y].medicine_track_number = push_medicine_request->info[valid_cnt].medicine_track_number;
+				track_struct[x][y].push_time = push_medicine_request->info[valid_cnt].push_time;
+
 				motor_enqueue_idx++;
 				if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
-				motor_enqueue_idx = 0;
-				
+				motor_enqueue_idx = 0;				
 				valid_cnt++;
+
 			}
 			else if((push_medicine_request->info[valid_cnt].medicine_track_number == 0) && (push_medicine_request->info[valid_cnt].push_time == 0))
 			{
-				OSSemPost(SemOfConveyor);
-				cmd_ack_info.status = 1;
+				//OSSemPost(SemOfConveyor);
+				OSSemPost(SemOfTrack);
 				
+				cmd_ack_info.status = 1;
+
+				track_work = MOTOR_RUN_FORWARD;
 				UsartPrintf(USART_DEBUG, "Receive push complete!!!!!!!!!!!!\r\n");
 			}
 		}
 		
 		if(valid_cnt)
 		{
-			OSSemPost(SemOfMotor);
+			//OSSemPost(SemOfMotor);
 			cmd_ack_info.status = 1;
 		}
 	}
@@ -687,7 +705,30 @@ uint8_t preparse_push_medicine_request(struct push_medicine_request_struct *push
 	return TRUE;
 }
 
+uint8_t preparse_replenish_medicine_request(struct replenish_medicine_request_struct *replenish_medicine_request, uint8_t *buffer)  
+{  
+	uint8_t check_sum = 0;
+	
+	replenish_medicine_request->start_code= buffer[0];  
+	replenish_medicine_request->packet_len= buffer[1];  
+	replenish_medicine_request->cmd_type= buffer[2];
+	
+	check_sum = add_checksum(buffer, replenish_medicine_request->packet_len);
+	replenish_medicine_request->checksum = buffer[replenish_medicine_request->packet_len];  
+	
+	if(check_sum != replenish_medicine_request->checksum)
+	{
+		
+		UsartPrintf(USART_DEBUG, "check sum fail : 0x%02x, 0x%02x\r\n", check_sum, replenish_medicine_request->checksum);  
+		return FALSE;
+	} 
 
+	replenish_medicine_request->info[0].board_id = buffer[3];
+	replenish_medicine_request->info[0].medicine_track_number = buffer[4];
+	replenish_medicine_request->info[0].push_time = buffer[5]<<8|buffer[6];
+	
+	return TRUE;
+}
 
 
 void print_replenish_medicine_request(struct replenish_medicine_request_struct *replenish_medicine_request)  
@@ -718,6 +759,10 @@ void parse_replenish_medicine_request(struct replenish_medicine_request_struct *
 	uint8_t i = 0;
 	uint8_t check_sum = 0;
 	struct msg_ack_info_struct cmd_ack_info;
+	uint8_t x = 0;
+	uint8_t y = 0;
+
+	
 	cmd_ack_info.status = 0;
 	
 	replenish_medicine_request->start_code= replenish_medicine_request_buf[0];  
@@ -729,8 +774,7 @@ void parse_replenish_medicine_request(struct replenish_medicine_request_struct *
 	replenish_medicine_request->checksum = replenish_medicine_request_buf[replenish_medicine_request->packet_len];  
 	
 	if(check_sum != replenish_medicine_request->checksum)
-	{
-		
+	{	
 		UsartPrintf(USART_DEBUG, "check sum fail : 0x%02x, 0x%02x\r\n", check_sum, replenish_medicine_request->checksum);  
 		send_command_ack(&cmd_ack_info);
 		return;
@@ -749,21 +793,42 @@ void parse_replenish_medicine_request(struct replenish_medicine_request_struct *
 			replenish_medicine_request->info[valid_cnt].medicine_track_number = replenish_medicine_request_buf[4 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE];
 			replenish_medicine_request->info[valid_cnt].push_time = replenish_medicine_request_buf[5 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE]<<8|replenish_medicine_request_buf[6 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE];
 
-			motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_BACKWARD;
-			motor_struct[motor_enqueue_idx].motor_work_mode = CMD_REPLENISH_MEDICINE_REQUEST;
-			
-			memcpy(&motor_struct[motor_enqueue_idx].info, &replenish_medicine_request->info[valid_cnt], sizeof(struct motor_control_info_struct));
-			
-			motor_enqueue_idx++;
-			if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
-			motor_enqueue_idx = 0;
+			if((replenish_medicine_request->info[valid_cnt].medicine_track_number != 0) && (replenish_medicine_request->info[valid_cnt].push_time != 0))
+			{
+				motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_BACKWARD;
+				motor_struct[motor_enqueue_idx].motor_work_mode = CMD_REPLENISH_MEDICINE_REQUEST;
+				
+				memcpy(&motor_struct[motor_enqueue_idx].info, &replenish_medicine_request->info[valid_cnt], sizeof(struct motor_control_info_struct));
+				
 
+				
+				x = (replenish_medicine_request->info[valid_cnt].medicine_track_number - 1)/10;
+				y = (replenish_medicine_request->info[valid_cnt].medicine_track_number - 1)%10;
+				track_struct[x][y].motor_run = MOTOR_RUN_FORWARD;
+				track_struct[x][y].medicine_track_number = replenish_medicine_request->info[valid_cnt].medicine_track_number;
+				track_struct[x][y].push_time = replenish_medicine_request->info[valid_cnt].push_time;
 
-			valid_cnt++;
+				motor_enqueue_idx++;
+				if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
+				motor_enqueue_idx = 0;
+				
+				valid_cnt++;
+
+			}
+			else if((replenish_medicine_request->info[valid_cnt].medicine_track_number == 0) && (replenish_medicine_request->info[valid_cnt].push_time == 0))
+			{
+				OSSemPost(SemOfTrack);
+				cmd_ack_info.status = 1;
+			
+				track_work = MOTOR_RUN_BACKWARD;
+				UsartPrintf(USART_DEBUG, "Receive replenish complete!!!!!!!!!!!!\r\n");
+			}
 		}
+
+
 		if(valid_cnt)
 		{
-			OSSemPost(SemOfMotor);
+			//OSSemPost(SemOfMotor);
 			cmd_ack_info.status = 1;
 		}
 	}
@@ -1233,6 +1298,13 @@ void packet_parser(unsigned char *src, int len)
 				{
 					drag_push_time[push_medicine_request.info[0].board_id] += push_medicine_request.info[0].push_time;
 					drag_push_time_calc_pre += push_medicine_request.info[0].push_time;
+				}
+			}
+			else if(cmd_type == CMD_REPLENISH_MEDICINE_REQUEST)
+			{
+				if(preparse_replenish_medicine_request(&replenish_medicine_request, uart1_shared_rx_buf) == TRUE)
+				{
+
 				}
 			}
 		}

@@ -33,6 +33,14 @@
 #include <string.h>
 
 UART_DATA_INFO down_recv_data_info;
+UART_DATA uasrt2_recv_data[UART_MAX_IDX];
+
+int uart2_enqueue_idx = 0;
+int uart2_dequeue_idx = 0;
+uint8_t uart_rece_flag = 1;
+
+
+
 void UART2_IO_ClearRecive(void);
 
 /**
@@ -220,17 +228,16 @@ void UART2_IO_Send(unsigned char *str, unsigned short len)
 _Bool UART2_IO_WaitRecive(void)
 {
 
-	if(down_recv_data_info.dataLen == 0) 						//如果接收计数为0 则说明没有处于接收数据中，所以直接跳出，结束函数
+	if(uasrt2_recv_data[uart2_enqueue_idx].dataLen == 0) 						//如果接收计数为0 则说明没有处于接收数据中，所以直接跳出，结束函数
 		return REV_WAIT;
 		
-	if(down_recv_data_info.dataLen == down_recv_data_info.dataLenPre)	//如果上一次的值和这次相同，则说明接收完毕
+	if(uasrt2_recv_data[uart2_enqueue_idx].dataLen == uasrt2_recv_data[uart2_enqueue_idx].dataLenPre)	//如果上一次的值和这次相同，则说明接收完毕
 	{
 		//down_recv_data_info.dataLen = 0;						//清0接收计数
-			
 		return REV_OK;								//返回接收完成标志
 	}
 		
-	down_recv_data_info.dataLenPre = down_recv_data_info.dataLen;		//置为相同
+	uasrt2_recv_data[uart2_enqueue_idx].dataLenPre = uasrt2_recv_data[uart2_enqueue_idx].dataLen;		//置为相同
 	return REV_WAIT;								//返回接收未完成标志
 
 }
@@ -250,11 +257,11 @@ _Bool UART2_IO_WaitRecive(void)
 */
 void UART2_IO_ClearRecive(void)
 {
-
-	down_recv_data_info.dataLen = 0;
+	uart2_enqueue_idx++;
+	if(uart2_enqueue_idx >= UART_MAX_IDX)
+	uart2_enqueue_idx = 0;
 	
-	memset(down_recv_data_info.buf, 0, sizeof(down_recv_data_info.buf));
-
+	memset(&uasrt2_recv_data[uart2_enqueue_idx], 0, sizeof(UART_DATA));
 }
 
 /*
@@ -270,6 +277,7 @@ void UART2_IO_ClearRecive(void)
 *	说明：		
 ************************************************************
 */
+#if 0
 void USART2_IRQHandler(void)
 {
 	
@@ -281,7 +289,7 @@ void USART2_IRQHandler(void)
 		down_recv_data_info.dataLen = 0; //防止串口被刷爆
 		
 		//UsartPrintf(USART_DEBUG, "irq,0x%02x\r\n", USART_ReceiveData(USART2));
-		down_recv_data_info.buf[down_recv_data_info.dataLen] = USART2->DR;
+		down_recv_data_info.buf[down_recv_data_info.dataLen] = USART_ReceiveData(USART2);
 
 		down_recv_data_info.dataLen++;
 		USART_ClearFlag(USART2, USART_FLAG_RXNE);
@@ -290,7 +298,6 @@ void USART2_IRQHandler(void)
 	RTOS_ExitInt();
 
 }
-
 
 int UART2_IO_Receive(void)
 {
@@ -304,4 +311,44 @@ int UART2_IO_Receive(void)
 
 	return len;
 }
+
+#else
+void USART2_IRQHandler(void)
+{
+	uint8_t len;
+	
+	RTOS_EnterInt();
+
+	if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET) //接收中断
+	{
+		len = uasrt2_recv_data[uart2_enqueue_idx].dataLen;
+		uasrt2_recv_data[uart2_enqueue_idx].buf[len] = USART2->DR;	//读取接收到的数据
+		if(len < UART_BUF_MAX_LEN - 1)
+		{
+			len++;
+			uasrt2_recv_data[uart2_enqueue_idx].dataLen = len;
+		}
+		
+		USART_ClearFlag(USART2, USART_FLAG_RXNE);
+	}
+	
+	RTOS_ExitInt();
+
+}
+
+int UART2_IO_Receive(void)
+{
+	if(uart2_enqueue_idx == uart2_dequeue_idx - 1)//数据阻塞未处理
+	uart_rece_flag = 0;
+
+	if(UART2_IO_WaitRecive() != REV_OK)
+	{
+		return 0;
+	}
+
+	uasrt2_recv_data[uart2_enqueue_idx].status = 1;
+	return uasrt2_recv_data[uart2_enqueue_idx].dataLen;
+}
+#endif
+
 

@@ -38,6 +38,9 @@
 #include "ucos_ii.h"
 
 extern OS_EVENT *SemOfUart1RecvData;          
+extern UART_DATA uart1_recv_data[UART_MAX_IDX];
+extern int uart1_enqueue_idx;
+extern int uart1_dequeue_idx;
 
 
 
@@ -54,35 +57,65 @@ int uart1_receive_data(void)
 {
 	int retval = -1;
 	int i = 0;
-
-	//UsartPrintf(USART_DEBUG, "%s[%d]BDSIOInfo.dataLen = %d\r\n", __FUNCTION__, __LINE__, BDSIOInfo.dataLen);
 	
+	//UsartPrintf(USART_DEBUG, " enq idx[%d] len[%d]", uart1_enqueue_idx, uart1_recv_data[uart1_enqueue_idx].dataLen);
 	if(UART1_IO_Receive() == 0)
 	return retval;
 
-
-	UsartPrintf(USART_DEBUG, "uart1 receive[%d]",up_recv_data_info.dataLen);
-	for(i = 0; i < up_recv_data_info.dataLen; i++)
+	UsartPrintf(USART_DEBUG, "uart1 enqueue idx[%d] len[%d]", uart1_enqueue_idx, uart1_recv_data[uart1_enqueue_idx].dataLen);
+	for(i = 0; i < uart1_recv_data[uart1_enqueue_idx].dataLen; i++)
 	{
-		UsartPrintf(USART_DEBUG, "0x%02x,", up_recv_data_info.buf[i]);
+		UsartPrintf(USART_DEBUG, "0x%02x,", uart1_recv_data[uart1_enqueue_idx].buf[i]);
 	}
-	
 	UsartPrintf(USART_DEBUG, "\r\n");
-	
-	//UART2_IO_Send(up_recv_data_info.buf, up_recv_data_info.dataLen);
 
-#if 0
-	uart1_shared_buf_preparse(up_recv_data_info.buf, up_recv_data_info.dataLen);
+	uart1_enqueue_idx++;
+	if(uart1_enqueue_idx >= UART_MAX_IDX)
+	uart1_enqueue_idx = 0;
 
-	
 	UART1_IO_ClearRecive();
-	
-	up_data_parse();
-#else
-	packet_parser(up_recv_data_info.buf, up_recv_data_info.dataLen);
-	UART1_IO_ClearRecive();
-#endif		
+
+	OSSemPost(SemOfUart1RecvData);
 	return 0;
 }
 
+int parse_protocol(void)
+{
+	unsigned char *src;
+	int len;
+	int count = 0;
+	//unsigned char position = 0;
+
+	UsartPrintf(USART_DEBUG, "00:en idx = %d, de idx = %d\r\n", uart1_enqueue_idx, uart1_dequeue_idx);
+
+	if (uart1_enqueue_idx != uart1_dequeue_idx)
+	{
+		// 1. 读大于写，
+		// 2. 写大于读，
+		count = (uart1_dequeue_idx > uart1_enqueue_idx) ?
+			(UART_MAX_IDX - uart1_dequeue_idx + uart1_enqueue_idx) // 读大于写
+			: (uart1_enqueue_idx - uart1_dequeue_idx ); // 写大于读
+	}
+	else
+	{
+		//count = UART_MAX_IDX; 
+		return 0;
+	}
+	
+	UsartPrintf(USART_DEBUG, "count = %d\r\n", count);
+
+	while(count > 0)
+	{
+		UsartPrintf(USART_DEBUG, "11:en idx = %d, de idx = %d\r\n", uart1_enqueue_idx, uart1_dequeue_idx);
+		src = uart1_recv_data[uart1_dequeue_idx].buf;
+		len = uart1_recv_data[uart1_dequeue_idx].dataLen;
+		packet_parser(src, len);
+		
+		uart1_dequeue_idx++;
+		if(uart1_dequeue_idx >= UART_MAX_IDX - 1)
+		uart1_dequeue_idx = 0;
+		count--;
+	};	
+	return 0;
+}
 

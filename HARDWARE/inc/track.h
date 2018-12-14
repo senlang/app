@@ -23,6 +23,7 @@ typedef struct
 
 uint8_t set_track(uint16_t track_num, uint8_t status);
 void Track_Init(void);
+int Track_run(MOTOR_ENUM run_mode);
 
 
 #endif

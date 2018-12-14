@@ -37,6 +37,10 @@
 
 
 DATA_IO_INFO up_recv_data_info;
+UART_DATA uart1_recv_data[UART_MAX_IDX];
+
+int uart1_enqueue_idx = 0;
+int uart1_dequeue_idx = 0;
 
 extern OS_EVENT *SemOfUart1RecvData;          //
 
@@ -185,7 +189,9 @@ void Usart1_Init(unsigned int baud)
 	
 	USART_GetFlagStatus(USART1, USART_FLAG_TC);
 
-	UART1_IO_ClearRecive();
+	memset(&uart1_recv_data[uart1_enqueue_idx], 0, sizeof(UART_DATA));
+
+	//UART1_IO_ClearRecive();
 }
 
 
@@ -240,22 +246,21 @@ void UART1_IO_Send(unsigned char *str, unsigned short len)
 */
 _Bool UART1_IO_WaitRecive(void)
 {
-	//UsartPrintf(USART_DEBUG, "datalen=%d, %d\r\n",up_recv_data_info.dataLen, up_recv_data_info.dataLenPre);
 
-	if(up_recv_data_info.dataLen == 0) 						//如果接收计数为0 则说明没有处于接收数据中，所以直接跳出，结束函数
+	if(uart1_recv_data[uart1_enqueue_idx].dataLen == 0)						//如果接收计数为0 则说明没有处于接收数据中，所以直接跳出，结束函数
 		return REV_WAIT;
 		
-	if(up_recv_data_info.dataLen == up_recv_data_info.dataLenPre)	//如果上一次的值和这次相同，则说明接收完毕
+	if(uart1_recv_data[uart1_enqueue_idx].dataLen == uart1_recv_data[uart1_enqueue_idx].dataLenPre)	//如果上一次的值和这次相同，则说明接收完毕
 	{
-		//up_recv_data_info.dataLen = 0;						//清0接收计数
+		//down_recv_data_info.dataLen = 0;						//清0接收计数
 		return REV_OK;								//返回接收完成标志
 	}
-	
-	up_recv_data_info.dataLenPre = up_recv_data_info.dataLen;		//置为相同
-	
+		
+	uart1_recv_data[uart1_enqueue_idx].dataLenPre = uart1_recv_data[uart1_enqueue_idx].dataLen;		//置为相同
 	return REV_WAIT;								//返回接收未完成标志
 
 }
+
 
 /*
 ************************************************************
@@ -271,13 +276,10 @@ _Bool UART1_IO_WaitRecive(void)
 ************************************************************
 */
 void UART1_IO_ClearRecive(void)
-{
-
-	up_recv_data_info.dataLen = 0;
-	
-	memset(up_recv_data_info.buf, 0, sizeof(up_recv_data_info.buf));
-
+{	
+	memset(&uart1_recv_data[uart1_enqueue_idx], 0, sizeof(UART_DATA));
 }
+
 
 /*
 ************************************************************
@@ -294,47 +296,35 @@ void UART1_IO_ClearRecive(void)
 */
 void USART1_IRQHandler(void)
 {
-	
+	uint8_t len;
 	RTOS_EnterInt();
 
 	if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET) //接收中断
-	{
-		//UsartPrintf(USART_DEBUG, "irq,0x%02x\r\n",USART_ReceiveData(UP_USARTx));
+	{		
+		len = uart1_recv_data[uart1_enqueue_idx].dataLen;
+		uart1_recv_data[uart1_enqueue_idx].buf[len] = USART1->DR; //USART_ReceiveData(USART2);//(USART2->DR);	//读取接收到的数据
+		if(len < UART_BUF_MAX_LEN - 1)
+		{
+			len++;
+			uart1_recv_data[uart1_enqueue_idx].dataLen = len;
+		}
 		
-		if(up_recv_data_info.dataLen >= sizeof(up_recv_data_info.buf))	
-		up_recv_data_info.dataLen = 0; //防止串口被刷爆
-		
-		up_recv_data_info.buf[up_recv_data_info.dataLen] = USART1->DR;
-		//UsartPrintf(USART_DEBUG, "irq0,0x%02x\r\n",up_recv_data_info.buf[up_recv_data_info.dataLen]);
-		up_recv_data_info.dataLen++;
-		OSSemPost(SemOfUart1RecvData);
-
 		USART_ClearFlag(USART1, USART_FLAG_RXNE);
 	}
-	
 	RTOS_ExitInt();
-
 }
 
 int UART1_IO_Receive(void)
 {
-	unsigned short len = 0;
-	
-	len = up_recv_data_info.dataLen;
-
 	if(UART1_IO_WaitRecive() != REV_OK)
 	{
-		//UsartPrintf(USART_DEBUG, "UART1 No Data or Wait\r\n");
 		return 0;
 	}
 
-	//for(i = 0; i < len; i++)
-	//{
-	//	UsartPrintf(USART_DEBUG, "0x%02x\r\n", up_recv_data_info.buf[i]);
-	//}
-	
-	return len;
+	uart1_recv_data[uart1_enqueue_idx].status = 1;
+	return uart1_recv_data[uart1_enqueue_idx].dataLen;
 }
+
 
 
 

@@ -29,64 +29,80 @@ OS_STK IWDG_TASK_STK[IWDG_STK_SIZE];
 void IWDG_Task(void *pdata);
 
 
-//心跳任务
-#define HEART_TASK_PRIO		7
-#define HEART_STK_SIZE		256
-OS_STK HEART_TASK_STK[HEART_STK_SIZE]; //
-void HEART_Task(void *pdata);
-
-
-
-//UART1 下行数据接收
-#define UP_RECEIVE_TASK_PRIO		8 //
-#define UP_RECEIVE_STK_SIZE		768
+//UART1 串口数据接收
+#define UP_RECEIVE_TASK_PRIO		7 //
+#define UP_RECEIVE_STK_SIZE		512
 OS_STK UP_RECEIVE_TASK_STK[UP_RECEIVE_STK_SIZE]; //
 void UART1_RECEIVE_Task(void *pdata);
 
-//UART2 上行数据接收
-#define DOWN_RECEIVE_TASK_PRIO		9 //
+
+//UART2 串口数据接收
+#define DOWN_RECEIVE_TASK_PRIO		8 //
 #define DOWN_RECEIVE_STK_SIZE		512
 OS_STK DOWN_RECEIVE_TASK_STK[DOWN_RECEIVE_STK_SIZE]; //
 void UART2_RECEIVE_Task(void *pdata);
 
 
+//uart1 接收消息解析
+#define PARSE_TASK_PRIO		9
+#define PARSE_STK_SIZE		512
+OS_STK PARSE_TASK_STK[PARSE_STK_SIZE];
+void Info_Parse_Task(void *pdata);
+
+
+
+//出货、补货货道运行任务
+#define TRACK_TASK_PRIO		10
+#define TRACK_STK_SIZE		512
+OS_STK TRACK_TASK_STK[TRACK_STK_SIZE];
+void Track_Run_Task(void *pdata);
+
+
+
+//传送带、门控制任务
+#define Drug_Push_TASK_PRIO		11
+#define Drug_Push_STK_SIZE		512
+OS_STK Drug_Push_TASK_STK[Drug_Push_STK_SIZE];
+void Drug_Push_Task(void *pdata);
+
+
+//按键任务
+#define KEY_TASK_PRIO		12
+#define KEY_STK_SIZE		256
+OS_STK KEY_TASK_STK[KEY_STK_SIZE];
+void KEY_Task(void *pdata);
+
+
 //传感器任务
-#define SENSOR_TASK_PRIO	10
+#define SENSOR_TASK_PRIO	13
 #define SENSOR_STK_SIZE		128
 OS_STK SENSOR_TASK_STK[SENSOR_STK_SIZE]; 
 void SENSOR_Task(void *pdata);
 
 
-//电机控制
-#define MOTOR_TASK_PRIO		11
+//测试电机控制
+#define MOTOR_TASK_PRIO		14
 #define MOTOR_STK_SIZE		256
 OS_STK MOTOR_TASK_STK[MOTOR_STK_SIZE];
 void MOTOR_Task(void *pdata);
 
 
-//传送带控制任务
-#define TRACK_TASK_PRIO		12
-#define TRACK_STK_SIZE		512
-OS_STK TRACK_TASK_STK[TRACK_STK_SIZE];
-void Conveyor_Task(void *pdata);
-
-
-//按键任务
-#define KEY_TASK_PRIO		13
-#define KEY_STK_SIZE		256
-OS_STK KEY_TASK_STK[KEY_STK_SIZE];
-void KEY_Task(void *pdata);
-
+//心跳任务
+#define HEART_TASK_PRIO		15
+#define HEART_STK_SIZE		256
+OS_STK HEART_TASK_STK[HEART_STK_SIZE]; //
+void HEART_Task(void *pdata);
 
 
 OS_EVENT *SemOfMotor;        	//Motor控制信号量
 OS_EVENT *SemOfUart1RecvData;	//uart1 串口接收数据信号量
 OS_EVENT *SemOfKey;				// 按键控制信号量
 OS_EVENT *SemOfConveyor;        	//Motor控制信号量
+OS_EVENT *SemOfTrack;        	//track 控制信号量
 
 
 extern struct status_report_request_info_struct  heart_info;
-
+extern uint8_t track_work;
 
 
 /*
@@ -166,21 +182,6 @@ void Hardware_Init(void)
 */
 int main(void)
 {	
-	#if 0
-	int i = 0;
-	Led_Init();																	//LED初始化
-
-	while(1)
-	{
-		for(i=0; i< 72000; i++)
-		;
-		Led_Set(LED_1, LED_ON);
-		
-		for(i=0; i< 72000; i++)
-		;
-		Led_Set(LED_1, LED_OFF);
-	}
-	#else
 	Hardware_Init();								//硬件初始化
 
 	OSInit();										//RTOS初始化
@@ -197,18 +198,23 @@ int main(void)
 	
 	OSTaskCreate(MOTOR_Task, (void *)0, (OS_STK*)&MOTOR_TASK_STK[MOTOR_STK_SIZE- 1], MOTOR_TASK_PRIO);
 
-	OSTaskCreate(Conveyor_Task, (void *)0, (OS_STK*)&TRACK_TASK_STK[TRACK_STK_SIZE- 1], TRACK_TASK_PRIO);
+	OSTaskCreate(Drug_Push_Task, (void *)0, (OS_STK*)&Drug_Push_TASK_STK[Drug_Push_STK_SIZE- 1], Drug_Push_TASK_PRIO);
 
 	OSTaskCreate(SENSOR_Task, (void *)0, (OS_STK*)&SENSOR_TASK_STK[SENSOR_STK_SIZE- 1], SENSOR_TASK_PRIO);
 
 	OSTaskCreate(KEY_Task, (void *)0, (OS_STK*)&KEY_TASK_STK[KEY_STK_SIZE- 1], KEY_TASK_PRIO);
+
+	OSTaskCreate(Info_Parse_Task, (void *)0, (OS_STK*)&PARSE_TASK_STK[PARSE_STK_SIZE- 1], PARSE_TASK_PRIO);
+
+	OSTaskCreate(Track_Run_Task, (void *)0, (OS_STK*)&TRACK_TASK_STK[TRACK_STK_SIZE- 1], TRACK_TASK_PRIO);
+
+
 	
 	UsartPrintf(USART_DEBUG, "OSStart\r\n");		//提示任务开始执行
 	
 	OSStart();										//开始执行任务
-	#endif
-	return 0;
 
+	return 0;
 }
 
 /*
@@ -235,25 +241,37 @@ void IWDG_Task(void *pdata)
 		RTOS_TimeDly(50); 	//挂起任务250ms
 		//UsartPrintf(USART_DEBUG, "feed dog!!!!\r\n");		//提示任务开始执行
 	}
-
 }
 
 void UART1_RECEIVE_Task(void *pdata)
 {
-    INT8U            err;
-	SemOfUart1RecvData = OSSemCreate(0);
-
 	while(1)
 	{
-		OSSemPend(SemOfUart1RecvData, 0u, &err);
 		do{
 			if(uart1_receive_data() == 0)
 				break;
-			RTOS_TimeDly(10);
+			RTOS_TimeDly(2);
 		}while(1);
 	}
 
 }
+
+void Info_Parse_Task(void *pdata)
+{
+    INT8U            err;
+	
+	SemOfUart1RecvData = OSSemCreate(0);
+	while(1)
+	{
+		OSSemPend(SemOfUart1RecvData, 0u, &err);
+		do{
+			if(parse_protocol() == 0)
+				break;
+		}while(1);
+	}
+
+}
+
 
 void UART2_RECEIVE_Task(void *pdata)
 {
@@ -261,7 +279,7 @@ void UART2_RECEIVE_Task(void *pdata)
 	while(1)
 	{
 		uart2_receive_data();
-		RTOS_TimeDly(10);
+		RTOS_TimeDly(2);
 	}
 }
 
@@ -286,7 +304,7 @@ void HEART_Task(void *pdata)
 		}
 	}
 }
-#if 1
+
 void MOTOR_Task(void *pdata)
 {
     INT8U            err;
@@ -299,24 +317,41 @@ void MOTOR_Task(void *pdata)
 		UsartPrintf(USART_DEBUG, "Run Motor----------\r\n");		//提示任务开始执行
 		Motor_Start();
 	}
-
 	//OSSemDel(SemOfMotor, 0, &err);
 }
 
-void Conveyor_Task(void *pdata)
+void Track_Run_Task(void *pdata)
+{
+    INT8U            err;
+	
+	SemOfTrack = OSSemCreate(0);
+	while(1)
+	{
+		OSSemPend(SemOfTrack, 0u, &err);
+		
+		UsartPrintf(USART_DEBUG, "Run Track----------\r\n");		//提示任务开始执行
+		Track_run(track_work);
+	}
+	//OSSemDel(SemOfMotor, 0, &err);
+}
+
+
+
+
+void Drug_Push_Task(void *pdata)
 {
 	uint8_t conveyor = 0;
 	uint8_t run_time = 10;
-  INT8U            err;
+	INT8U            err;
 
 	SemOfConveyor= OSSemCreate(0);
 	
 	while(1)
 	{		
 		OSSemPend(SemOfConveyor, 0u, &err);
-		UsartPrintf(USART_DEBUG, "Will run conveyor!!!!!!!!!!\r\n");
+		//UsartPrintf(USART_DEBUG, "Will run conveyor!!!!!!!!!!\r\n");
 		conveyor = Conveyor_check();		
-		//if(conveyor == 1)
+		if(conveyor == 1)
 		{
 			if(Conveyor_run() != 0 )
 			{
@@ -385,22 +420,9 @@ void SENSOR_Task(void *pdata)
 {
 	while(1)
 	{	
-		#if 0
-		push_test();
-		RTOS_TimeDlyHMSM(0, 0, 0, 100);	//
-		replenish_test();
-		RTOS_TimeDlyHMSM(0, 0, 0, 100);	//
-		test_test();
-		RTOS_TimeDlyHMSM(0, 0, 0, 100);	//
-		calibrate_test();
-		RTOS_TimeDlyHMSM(0, 0, 15, 0);	//
-		replenish_complete_test();
-		#endif
-		
 		RTOS_TimeDlyHMSM(0, 0, 15, 0);	//
 		//UsartPrintf(USART_DEBUG, "will jump\r\n");
 		//iap_load_app(0x08010000);
 	}
 }
-#endif
 
