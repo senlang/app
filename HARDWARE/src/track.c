@@ -27,6 +27,7 @@
 #include "usart.h"
 #include "stm32_protocol.h"
 
+extern OS_EVENT *SemOfConveyor;        	//Motorøÿ÷∆–≈∫≈¡ø
 extern struct track_work_struct track_struct[10][10];
 
 
@@ -232,8 +233,8 @@ int Track_run(MOTOR_ENUM run_mode)
 				}
 				//UsartPrintf(USART_DEBUG, "all_finish = 0x%04x\r\n", all_finish);
 			}
-			time_elapsed += 1;
-			RTOS_TimeDlyHMSM(0, 0, 0, 100);
+			time_elapsed += 5;
+			RTOS_TimeDlyHMSM(0, 0, 0, 500);
 
 			if(all_finish == 0)
 			break;
@@ -245,6 +246,8 @@ int Track_run(MOTOR_ENUM run_mode)
 	
 	Motor_Set(MOTOR_STOP);	
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
+	
+	OSSemPost(SemOfConveyor);
 	return 0;
 }
 

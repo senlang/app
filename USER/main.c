@@ -350,8 +350,8 @@ void Drug_Push_Task(void *pdata)
 	{		
 		OSSemPend(SemOfConveyor, 0u, &err);
 		//UsartPrintf(USART_DEBUG, "Will run conveyor!!!!!!!!!!\r\n");
-		conveyor = Conveyor_check();		
-		if(conveyor == 1)
+		//conveyor = Conveyor_check();		
+		if(1)//(conveyor == 1)
 		{
 			if(Conveyor_run() != 0 )
 			{
