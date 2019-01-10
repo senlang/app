@@ -39,6 +39,7 @@ int uart2_enqueue_idx = 0;
 int uart2_dequeue_idx = 0;
 uint8_t uart_rece_flag = 1;
 
+extern OS_EVENT *SemOfUart2RecvData;	//uart2 串口接收数据信号量
 
 
 void UART2_IO_ClearRecive(void);
@@ -330,6 +331,7 @@ void USART2_IRQHandler(void)
 		}
 		
 		USART_ClearFlag(USART2, USART_FLAG_RXNE);
+		OSSemPost(SemOfUart2RecvData);
 	}
 	
 	RTOS_ExitInt();

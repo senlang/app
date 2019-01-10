@@ -31,7 +31,7 @@
 
 #include "stdlib.h"
 
-#define CONVEYOR_DELAY 10
+#define CONVEYOR_DELAY 20
 
 MOTOR_STATUS MotorStatus;
 extern struct motor_control_struct  motor_struct[TOTAL_PUSH_CNT];
@@ -486,7 +486,7 @@ unsigned char Sensor_Detect(void)
 		ret_val = SENSOR_NO_DETECT;
 	}
 	
-	UsartPrintf(USART_DEBUG, "Sensor_Detect = %d\r\n", ret_val);		//提示任务开始执行
+	//UsartPrintf(USART_DEBUG, "Sensor_Detect = %d\r\n", ret_val);		//提示任务开始执行
 	return ret_val;
 }
 

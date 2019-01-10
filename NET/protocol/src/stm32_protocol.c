@@ -1262,6 +1262,7 @@ void packet_parser(unsigned char *src, int len)
 	int board_id = 0;
 	unsigned char *uart1_shared_rx_buf; 
 	char cmd_type = 0;
+	int i = 0;
 
 	struct status_report_request_struct  status_report_request;
 	struct msg_ack_struct  cmd_ack;
@@ -1303,6 +1304,12 @@ void packet_parser(unsigned char *src, int len)
 						drag_push_time[push_medicine_request.info[0].board_id] = push_medicine_request.info[0].push_time;
 						drag_push_time_calc_pre = push_medicine_request.info[0].push_time;
 					}
+					//转发
+					for(i = 0; i < BOARD_ID_MAX; i++)
+					{
+						//*(uart1_shared_rx_buf + 3) = i;
+						//UART2_IO_Send(uart1_shared_rx_buf, pkt_len);	
+					}
 				}
 			}
 			else if(cmd_type == CMD_REPLENISH_MEDICINE_REQUEST)
@@ -1310,6 +1317,11 @@ void packet_parser(unsigned char *src, int len)
 				if(preparse_replenish_medicine_request(&replenish_medicine_request, uart1_shared_rx_buf) == TRUE)
 				{
 					//转发
+					for(i = 0; i < BOARD_ID_MAX; i++)
+					{
+						//*(uart1_shared_rx_buf + 3) = i;
+						//UART2_IO_Send(uart1_shared_rx_buf, pkt_len);	
+					}
 				}
 			}
 		}

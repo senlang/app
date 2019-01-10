@@ -310,6 +310,8 @@ void USART1_IRQHandler(void)
 		}
 		
 		USART_ClearFlag(USART1, USART_FLAG_RXNE);
+		
+		OSSemPost(SemOfUart1RecvData);
 	}
 	RTOS_ExitInt();
 }

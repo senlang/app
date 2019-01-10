@@ -21,6 +21,7 @@
 #include "stm32_protocol.h"
 
 
+#define SW_VERSION		"SV 1.0.0"
 
 //看门狗任务
 #define IWDG_TASK_PRIO		6
@@ -96,6 +97,9 @@ void HEART_Task(void *pdata);
 
 OS_EVENT *SemOfMotor;        	//Motor控制信号量
 OS_EVENT *SemOfUart1RecvData;	//uart1 串口接收数据信号量
+OS_EVENT *SemOfUart2RecvData;	//uart2 串口接收数据信号量
+OS_EVENT *SemOfDataParse;	//数据解析线程信号量
+
 OS_EVENT *SemOfKey;				// 按键控制信号量
 OS_EVENT *SemOfConveyor;        	//Motor控制信号量
 OS_EVENT *SemOfTrack;        	//track 控制信号量
@@ -164,7 +168,7 @@ void Hardware_Init(void)
 	
 	Iwdg_Init(4, 1250); 														//64分频，每秒625次，重载1250次，2s
 	
-	UsartPrintf(USART_DEBUG, "Hardware init OK\r\n");						//提示初始化完成	
+	//UsartPrintf(USART_DEBUG, "Hardware init OK\r\n");						//提示初始化完成	
 }
 
 /*
@@ -183,6 +187,10 @@ void Hardware_Init(void)
 int main(void)
 {	
 	Hardware_Init();								//硬件初始化
+
+	UsartPrintf(USART_DEBUG, "SW_VERSION: %s\r\n", SW_VERSION);		
+	UsartPrintf(USART_DEBUG, "Version Build: %s %s\r\n", __DATE__, __TIME__);
+
 
 	OSInit();										//RTOS初始化
 	
@@ -245,25 +253,28 @@ void IWDG_Task(void *pdata)
 
 void UART1_RECEIVE_Task(void *pdata)
 {
-	while(1)
-	{
-		do{
-			if(uart1_receive_data() == 0)
-				break;
-			RTOS_TimeDly(2);
-		}while(1);
-	}
-
-}
-
-void Info_Parse_Task(void *pdata)
-{
     INT8U            err;
 	
 	SemOfUart1RecvData = OSSemCreate(0);
 	while(1)
 	{
 		OSSemPend(SemOfUart1RecvData, 0u, &err);
+		do{
+			if(uart1_receive_data() == 0)
+				break;
+			RTOS_TimeDly(2);
+		}while(1);
+	}
+}
+
+void Info_Parse_Task(void *pdata)
+{
+    INT8U            err;
+	
+	SemOfDataParse = OSSemCreate(0);
+	while(1)
+	{
+		OSSemPend(SemOfDataParse, 0u, &err);
 		do{
 			if(parse_protocol() == 0)
 				break;
@@ -275,11 +286,17 @@ void Info_Parse_Task(void *pdata)
 
 void UART2_RECEIVE_Task(void *pdata)
 {
-
+    INT8U            err;
+	
+	SemOfUart2RecvData = OSSemCreate(0);
 	while(1)
 	{
-		uart2_receive_data();
-		RTOS_TimeDly(2);
+		OSSemPend(SemOfUart2RecvData, 0u, &err);
+		do{
+			if(uart2_receive_data() == 0)
+				break;
+			RTOS_TimeDly(2);
+		}while(1);
 	}
 }
 
@@ -335,9 +352,6 @@ void Track_Run_Task(void *pdata)
 	//OSSemDel(SemOfMotor, 0, &err);
 }
 
-
-
-
 void Drug_Push_Task(void *pdata)
 {
 	uint8_t conveyor = 0;
@@ -380,7 +394,7 @@ void Drug_Push_Task(void *pdata)
 					RTOS_TimeDlyHMSM(0, 0, 0, 100);
 				}while(Door_Key_Detect(DOOR_CLOSE) == SENSOR_NO_DETECT);
 				Door_Control_Set(MOTOR_STOP);
-				UsartPrintf(USART_DEBUG, "Close The DOor, End!!!!!!!!!!\r\n");
+				UsartPrintf(USART_DEBUG, "Close The Door, End!!!!!!!!!!\r\n");
 			}
 			conveyor = 0;
 		}

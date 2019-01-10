@@ -37,7 +37,7 @@
 
 #include "ucos_ii.h"
 
-extern OS_EVENT *SemOfUart1RecvData;          
+extern OS_EVENT *SemOfDataParse;          
 extern UART_DATA uart1_recv_data[UART_MAX_IDX];
 extern int uart1_enqueue_idx;
 extern int uart1_dequeue_idx;
@@ -75,7 +75,7 @@ int uart1_receive_data(void)
 
 	UART1_IO_ClearRecive();
 
-	OSSemPost(SemOfUart1RecvData);
+	OSSemPost(SemOfDataParse);
 	return 0;
 }
 

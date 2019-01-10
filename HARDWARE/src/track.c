@@ -204,40 +204,48 @@ int Track_run(MOTOR_ENUM run_mode)
 	int x = 0, y = 0;
 	uint16_t time_elapsed = 0;
 	uint16_t all_finish = 0;
-	
+
+	UsartPrintf(USART_DEBUG, "Enter Track_run!!!\r\n");
 	Motor_Set(run_mode);
 	for(x = 0; x < 10; x++)
 	{
+		//UsartPrintf(USART_DEBUG, "Enter Track_run x = %d!!!\r\n", x);
 		set_track_x(x, run_mode);
 		for(y = 0; y < 10; y++)
 		{
-			UsartPrintf(USART_DEBUG, "track_struct[%d][%d].push_time = %d\r\n", x, y, track_struct[x][y].push_time);
 			if(track_struct[x][y].push_time > 0)			
-			set_track_y(y, run_mode);
+			{
+				UsartPrintf(USART_DEBUG, "track_struct[%d] push_time: %d\r\n", x*10 + y, track_struct[x][y].push_time);
+				set_track_y(y, run_mode);
+			}
 		}
 
 		all_finish = 0;
 		do{
 			for(y = 0; y < 10; y++)
 			{
-			
 				//UsartPrintf(USART_DEBUG, "time_elapsed = %d, track_struct[%d][%d].push_time = %d\r\n", time_elapsed, x, y, track_struct[x][y].push_time);
-				if(time_elapsed >= track_struct[x][y].push_time)
+				if(track_struct[x][y].push_time)
 				{
-					set_track_y(y, MOTOR_STOP);
-					all_finish &= ~(1<<y);
-				}
-				else
-				{
-					all_finish |= 1<<y;
+					if(time_elapsed >= track_struct[x][y].push_time)
+					{
+						UsartPrintf(USART_DEBUG, "track %d stop!!!!\r\n", x*10 + y);
+						set_track_y(y, MOTOR_STOP);
+						all_finish &= ~(1<<y);
+					}
+					else
+					{
+						all_finish |= 1<<y;
+					}
 				}
 				//UsartPrintf(USART_DEBUG, "all_finish = 0x%04x\r\n", all_finish);
 			}
-			time_elapsed += 5;
-			RTOS_TimeDlyHMSM(0, 0, 0, 500);
-
+			
 			if(all_finish == 0)
 			break;
+			
+			time_elapsed += 2;
+			RTOS_TimeDlyHMSM(0, 0, 0, 200);
 		}while(1);
 
 		time_elapsed = 0;
@@ -246,8 +254,11 @@ int Track_run(MOTOR_ENUM run_mode)
 	
 	Motor_Set(MOTOR_STOP);	
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
-	
+
+	if(MOTOR_RUN_FORWARD == run_mode)
 	OSSemPost(SemOfConveyor);
+
+	UsartPrintf(USART_DEBUG, "Exit Track_run!!!\r\n");
 	return 0;
 }
 
