@@ -374,7 +374,7 @@ void Drug_Push_Task(void *pdata)
 					RTOS_TimeDlyHMSM(0, 0, 0, 100);
 				}while(Door_Key_Detect(DOOR_OPEN) == SENSOR_NO_DETECT);
 				
-				mcu_push_medicine_complete();//所有单板出货完成,门已打开
+				mcu_push_medicine_open_door_complete();//所有单板出货完成,门已打开
 				
 				UsartPrintf(USART_DEBUG, "Open The Door, End!!!!!!!!!!\r\n");
 				Door_Control_Set(MOTOR_STOP);
@@ -394,6 +394,7 @@ void Drug_Push_Task(void *pdata)
 					RTOS_TimeDlyHMSM(0, 0, 0, 100);
 				}while(Door_Key_Detect(DOOR_CLOSE) == SENSOR_NO_DETECT);
 				Door_Control_Set(MOTOR_STOP);
+				mcu_push_medicine_close_door_complete();
 				UsartPrintf(USART_DEBUG, "Close The Door, End!!!!!!!!!!\r\n");
 			}
 			conveyor = 0;

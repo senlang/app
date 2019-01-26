@@ -1401,7 +1401,7 @@ void packet_parser(unsigned char *src, int len)
 
 
 
-void mcu_push_medicine_complete(void)
+void mcu_push_medicine_open_door_complete(void)
 {
 	struct push_medicine_complete_request_info_struct  push_complete_info;
 	
@@ -1410,4 +1410,16 @@ void mcu_push_medicine_complete(void)
 	push_complete_info.track_status= 0;
 	board_send_message(PUSH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
 }
+
+
+void mcu_push_medicine_close_door_complete(void)
+{
+	struct push_medicine_complete_request_info_struct  push_complete_info;
+	
+	memset(&push_complete_info, 0x00, sizeof(push_complete_info));
+	push_complete_info.board_id = 0xfe;
+	push_complete_info.track_status= 0;
+	board_send_message(PUSH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
+}
+
 

@@ -429,7 +429,8 @@ void replenish_complete_test(void);
 void BoardId_Init(void);
 void packet_parser(unsigned char *src, int len);
 int board_send_message(int msg_type, void *input_data);
-void mcu_push_medicine_complete(void);
+void mcu_push_medicine_open_door_complete(void);
+void mcu_push_medicine_close_door_complete(void);
 
 
 #endif
