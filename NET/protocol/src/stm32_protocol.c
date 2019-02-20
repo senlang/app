@@ -41,8 +41,7 @@
 
 
 
-
-static uint8_t  g_src_board_id = 0;  
+uint8_t  g_src_board_id = 0;  
 //static uint8_t g_board_status = 0;  
 //static uint8_t g_error_code = 0;  
 //static uint8_t test[2] = {1,2}; 
@@ -637,9 +636,13 @@ void parse_push_medicine_request(struct push_medicine_request_struct *push_medic
 
 			if((push_medicine_request->info[valid_cnt].medicine_track_number != 0) && (push_medicine_request->info[valid_cnt].push_time != 0))
 			{
-				motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_FORWARD;
-				motor_struct[motor_enqueue_idx].motor_work_mode = CMD_PUSH_MEDICINE_REQUEST;
-				memcpy(&motor_struct[motor_enqueue_idx].info, &push_medicine_request->info[valid_cnt], sizeof(struct motor_control_info_struct));
+				//motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_FORWARD;
+				//motor_struct[motor_enqueue_idx].motor_work_mode = CMD_PUSH_MEDICINE_REQUEST;
+				//memcpy(&motor_struct[motor_enqueue_idx].info, &push_medicine_request->info[valid_cnt], sizeof(struct motor_control_info_struct));
+
+				//motor_enqueue_idx++;
+				//if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
+				//motor_enqueue_idx = 0;	
 
 				x = (push_medicine_request->info[valid_cnt].medicine_track_number - 1)/10;
 				y = (push_medicine_request->info[valid_cnt].medicine_track_number - 1)%10;
@@ -648,9 +651,7 @@ void parse_push_medicine_request(struct push_medicine_request_struct *push_medic
 				track_struct[x][y].medicine_track_number = push_medicine_request->info[valid_cnt].medicine_track_number;
 				track_struct[x][y].push_time = push_medicine_request->info[valid_cnt].push_time;
 
-				motor_enqueue_idx++;
-				if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
-				motor_enqueue_idx = 0;				
+			
 				valid_cnt++;
 
 			}
@@ -795,23 +796,22 @@ void parse_replenish_medicine_request(struct replenish_medicine_request_struct *
 
 			if((replenish_medicine_request->info[valid_cnt].medicine_track_number != 0) && (replenish_medicine_request->info[valid_cnt].push_time != 0))
 			{
-				motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_BACKWARD;
-				motor_struct[motor_enqueue_idx].motor_work_mode = CMD_REPLENISH_MEDICINE_REQUEST;
-				
-				memcpy(&motor_struct[motor_enqueue_idx].info, &replenish_medicine_request->info[valid_cnt], sizeof(struct motor_control_info_struct));
-				
+				//motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_BACKWARD;
+				//motor_struct[motor_enqueue_idx].motor_work_mode = CMD_REPLENISH_MEDICINE_REQUEST;
+				//memcpy(&motor_struct[motor_enqueue_idx].info, &replenish_medicine_request->info[valid_cnt], sizeof(struct motor_control_info_struct));
+								
+				//motor_enqueue_idx++;
+				//if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
+				//motor_enqueue_idx = 0;
 
-				
+
 				x = (replenish_medicine_request->info[valid_cnt].medicine_track_number - 1)/10;
 				y = (replenish_medicine_request->info[valid_cnt].medicine_track_number - 1)%10;
 				track_struct[x][y].motor_run = MOTOR_RUN_FORWARD;
 				track_struct[x][y].medicine_track_number = replenish_medicine_request->info[valid_cnt].medicine_track_number;
 				track_struct[x][y].push_time = replenish_medicine_request->info[valid_cnt].push_time;
 
-				motor_enqueue_idx++;
-				if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
-				motor_enqueue_idx = 0;
-				
+
 				valid_cnt++;
 
 			}
@@ -1263,6 +1263,7 @@ void packet_parser(unsigned char *src, int len)
 	unsigned char *uart1_shared_rx_buf; 
 	char cmd_type = 0;
 	int i = 0;
+	unsigned char forward_data[32] = {0};
 
 	struct status_report_request_struct  status_report_request;
 	struct msg_ack_struct  cmd_ack;
@@ -1307,8 +1308,9 @@ void packet_parser(unsigned char *src, int len)
 					//转发
 					for(i = 0; i < BOARD_ID_MAX; i++)
 					{
-						//*(uart1_shared_rx_buf + 3) = i;
-						//UART2_IO_Send(uart1_shared_rx_buf, pkt_len);	
+						memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
+						*(forward_data + 3) = i;
+						UART2_IO_Send(forward_data, pkt_len);	
 					}
 				}
 			}
@@ -1319,8 +1321,9 @@ void packet_parser(unsigned char *src, int len)
 					//转发
 					for(i = 0; i < BOARD_ID_MAX; i++)
 					{
-						//*(uart1_shared_rx_buf + 3) = i;
-						//UART2_IO_Send(uart1_shared_rx_buf, pkt_len);	
+						memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
+						*(forward_data + 3) = i;
+						UART2_IO_Send(forward_data, pkt_len);	
 					}
 				}
 			}

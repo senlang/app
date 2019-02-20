@@ -355,7 +355,8 @@ void Track_Run_Task(void *pdata)
 void Drug_Push_Task(void *pdata)
 {
 	uint8_t conveyor = 0;
-	uint8_t run_time = 10;
+	uint8_t delay_time = 10;
+	uint8_t run_time = 0;
 	INT8U            err;
 
 	SemOfConveyor= OSSemCreate(0);
@@ -367,11 +368,18 @@ void Drug_Push_Task(void *pdata)
 		//conveyor = Conveyor_check();		
 		if(1)//(conveyor == 1)
 		{
+			run_time = 0;
 			if(Conveyor_run() != 0 )
 			{
 				Door_Control_Set(MOTOR_RUN_BACKWARD);
 				do{
 					RTOS_TimeDlyHMSM(0, 0, 0, 100);
+					run_time += 1;
+
+					
+					//UsartPrintf(USART_DEBUG, "run_time = %d\r\n", run_time);
+					if(run_time >= 150)
+					break;
 				}while(Door_Key_Detect(DOOR_OPEN) == SENSOR_NO_DETECT);
 				
 				mcu_push_medicine_open_door_complete();//所有单板出货完成,门已打开
@@ -379,8 +387,9 @@ void Drug_Push_Task(void *pdata)
 				UsartPrintf(USART_DEBUG, "Open The Door, End!!!!!!!!!!\r\n");
 				Door_Control_Set(MOTOR_STOP);
 			
-				RTOS_TimeDlyHMSM(0, 0, run_time, 0);
+				RTOS_TimeDlyHMSM(0, 0, delay_time, 0);
 				Door_Control_Set(MOTOR_RUN_FORWARD);
+				run_time = 0;
 				do{
 					if(Sensor_Detect() == SENSOR_DETECT)
 					{
@@ -390,8 +399,13 @@ void Drug_Push_Task(void *pdata)
 					else
 					{
 						Door_Control_Set(MOTOR_RUN_FORWARD);
+						run_time += 1;
 					}
 					RTOS_TimeDlyHMSM(0, 0, 0, 100);
+					
+					//UsartPrintf(USART_DEBUG, "run_time = %d\r\n", run_time);
+					if(run_time >= 150)
+					break;
 				}while(Door_Key_Detect(DOOR_CLOSE) == SENSOR_NO_DETECT);
 				Door_Control_Set(MOTOR_STOP);
 				mcu_push_medicine_close_door_complete();

@@ -27,8 +27,10 @@
 #include "usart.h"
 #include "stm32_protocol.h"
 
+extern uint8_t  g_src_board_id;  
 extern OS_EVENT *SemOfConveyor;        	//Motorøÿ÷∆–≈∫≈¡ø
 extern struct track_work_struct track_struct[10][10];
+extern struct status_report_request_info_struct  heart_info;
 
 
 track_elem X_value[10] = {
@@ -269,7 +271,7 @@ int Track_run(MOTOR_ENUM run_mode)
 	uint16_t delay_s = 0;
 	uint16_t delay_ms = 0;
 
-	UsartPrintf(USART_DEBUG, "Enter Track_run,mode[%d]!!!\r\n", run_mode);
+	UsartPrintf(USART_DEBUG, "Enter Track_run, mode[%d]!!!\r\n");
 	Motor_Set(run_mode);
 	for(x = 0; x < 10; x++)
 	{
@@ -282,21 +284,24 @@ int Track_run(MOTOR_ENUM run_mode)
 				{
 					delay_s = track_struct[x][y].push_time/10;
 					delay_ms = (track_struct[x][y].push_time%10) * 100;
-					
-					UsartPrintf(USART_DEBUG, "start:track[%d]mode[%d]timer[%d]\r\n", x*10 + y + 1, track_struct[x][y].motor_run, track_struct[x][y].push_time);
+					UsartPrintf(USART_DEBUG, "start:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", x*10 + y + 1, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);
 					set_track_y(y, run_mode);
 					RTOS_TimeDlyHMSM(0, 0, delay_s, delay_ms);
 					set_track_y(y, MOTOR_STOP);
-					UsartPrintf(USART_DEBUG, "stop:track[%d]mode[%d]timer[%d]\r\n", x*10 + y + 1, track_struct[x][y].motor_run, track_struct[x][y].push_time);
+					UsartPrintf(USART_DEBUG, "stop:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", x*10 + y + 1, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);
 				}
 			}
-		}while(1);
+		}while(0);
 		
 		set_track_x(x, MOTOR_STOP);
 	}
 	
 	Motor_Set(MOTOR_STOP);	
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
+
+	heart_info.board_id = g_src_board_id;
+	heart_info.board_status = STANDBY_STATUS;
+	heart_info.medicine_track_number = 0; 
 
 	if(MOTOR_RUN_FORWARD == run_mode)
 	OSSemPost(SemOfConveyor);

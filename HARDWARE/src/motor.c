@@ -190,24 +190,17 @@ int Conveyor_run(void)
 	memset(&drag_push_time[0], 0x00, sizeof(drag_push_time));
 
 	
-	UsartPrintf(USART_DEBUG, "Conveyor_run %ds-------------\r\n", delay_s);
-	if(delay_s == 0)
-	return delay_s;
+	//UsartPrintf(USART_DEBUG, "Conveyor_run %ds-------------\r\n", delay_s);
+	//if(delay_s == 0)
+	//return delay_s;
 	
 	Conveyor_set(CONVEYOR_RUN);
-
-	RTOS_TimeDlyHMSM(0, 0, delay_s + CONVEYOR_DELAY, 0);
+	
+	RTOS_TimeDlyHMSM(0, 0, CONVEYOR_DELAY, 0);
+	//RTOS_TimeDlyHMSM(0, 0, delay_s + CONVEYOR_DELAY, 0);
 	
 	Conveyor_set(CONVEYOR_STOP);
 
-	//Door_Control_Set(MOTOR_RUN_FORWARD);
-	//RTOS_TimeDlyHMSM(0, 0, 8, 0);
-	//Door_Control_Set(MOTOR_STOP);
-	//RTOS_TimeDlyHMSM(0, 0, 30, 0);
-	//Door_Control_Set(MOTOR_RUN_BACKWARD);
-	//RTOS_TimeDlyHMSM(0, 0, 8, 0);
-	//Door_Control_Set(MOTOR_STOP);
-	
 	return delay_s;
 }
 
@@ -252,14 +245,14 @@ void Motor_Start(void)
 		{
 			Motor_Set(MOTOR_RUN_FORWARD);
 			heart_info.board_id = motor_struct[motor_dequeue_idx].info.board_id;
-			heart_info.board_status = PUSHING_STATUS;
+			heart_info.board_status = TESTING_STATUS;
 			heart_info.medicine_track_number = motor_struct[motor_dequeue_idx].info.medicine_track_number;
 		}
 		else if(motor_struct[motor_dequeue_idx].motor_run == MOTOR_RUN_BACKWARD)
 		{
 			Motor_Set(MOTOR_RUN_BACKWARD);
 			heart_info.board_id = motor_struct[motor_dequeue_idx].info.board_id;
-			heart_info.board_status = REPLENISHING_STATUS;
+			heart_info.board_status = TESTING_STATUS;
 			heart_info.medicine_track_number = motor_struct[motor_dequeue_idx].info.medicine_track_number;
 		}
 		
@@ -548,14 +541,17 @@ unsigned char Door_Key_Detect(unsigned char door_detect)
 	{
 		RTOS_TimeDly(20);					
 		if(Door_Key_Status(door_detect) == SENSOR_DETECT)
-		ret_val = SENSOR_DETECT;			
+		{
+			ret_val = SENSOR_DETECT;
+		}			
 	}
 	else
 	{
 		ret_val = SENSOR_NO_DETECT;
 	}
-	
-	//UsartPrintf(USART_DEBUG, "Door_Key_Detect = %d\r\n", ret_val);		//提示任务开始执行
+	//UsartPrintf(USART_DEBUG, "%s:%s\r\n", DOOR_OPEN?"DOOR_OPEN":"DOOR_CLOSE", ret_val?"SENSOR_DETECT":"SENSOR_NO_DETECT");		//
+	//UsartPrintf(USART_DEBUG, "%s:%d,%d\r\n", __FUNCTION__,  door_detect, ret_val);		//
+
 	return ret_val;
 }
 
