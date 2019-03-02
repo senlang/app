@@ -581,6 +581,11 @@
               <FileType>1</FileType>
               <FilePath>..\STM32F10x_FWLib\src\stm32f10x_flash.c</FilePath>
             </File>
+            <File>
+              <FileName>stm32f10x_tim.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\STM32F10x_FWLib\src\stm32f10x_tim.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -640,6 +645,11 @@
               <FileName>usart.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\SYSTEM\src\usart.c</FilePath>
+            </File>
+            <File>
+              <FileName>timer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\src\timer.c</FilePath>
             </File>
           </Files>
         </Group>

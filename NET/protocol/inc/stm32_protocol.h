@@ -63,6 +63,16 @@
 #define REPLENISH_MEDICINE_CONPLETE_REQUEST_INFO_SIZE 2 //即(1字节	字节)   
 #define REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE (IPUC + REPLENISH_MEDICINE_CONPLETE_REQUEST_INFO_SIZE + CHECKSUM_SIZE)  
 
+/*货道运行时长统计请求*/
+#define TRACK_RUNTIME_CALC_REQUEST_INFO_SIZE 3 //即(3字节	字节)   
+#define TRACK_RUNTIME_CALC_REQUEST_PACKET_SIZE (IPUC + TRACK_RUNTIME_CALC_REQUEST_INFO_SIZE + CHECKSUM_SIZE)  
+
+
+/*货道运行时长统计上报*/
+#define TRACK_RUNTIME_CALC_REPORT_INFO_SIZE 6 //即(3字节	字节)   
+#define TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE (IPUC + TRACK_RUNTIME_CALC_REPORT_INFO_SIZE + CHECKSUM_SIZE)  
+
+
 
 /*指令应答*/
 #define COMMAND_ACK_INFO_SIZE 3 //即(1字节	1字节	1字节)   
@@ -159,7 +169,11 @@ typedef enum{
 
 #define CMD_ADD_MEDICINE_COMPLETE 0x70	//补货完成
 
+#define CMD_TRACK_RUNTIME_CALC 0x80	//货道运行时长统计
+
 #define CMD_PUSH_MEDICINE_COMPLETE 0xA0	//出货完成
+
+#define CMD_TRACK_RUNTIME_REPORT 0xB0	//货道运行时长上报
 
 #define CMD_MSG_ACK 0xF0	//指令应答
 
@@ -376,8 +390,45 @@ struct request_query_ack_struct
 	uint8_t checksum; 		
 };
 
+/*货道运行时长统计指令*/
+
+struct track_cale_request_info_struct  
+{  
+    uint8_t board_id;  
+    uint8_t track_start_num;  
+    uint8_t track_count;  	
+}; 
 
 
+struct track_calc_request_struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	struct track_cale_request_info_struct info;
+	uint8_t checksum; 
+}; 
+
+
+
+/*货道运行时长上报指令*/
+struct track_cale_report_info_struct  
+{  
+    uint8_t board_id;  
+    uint8_t track_start_num;   
+    uint16_t track_forward_time;  
+    uint16_t track_backward_time;  
+}; 
+
+
+struct track_calc_report_struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	struct track_cale_report_info_struct info;
+	uint8_t checksum; 
+}; 
 
 /*指令应答*/
 struct msg_ack_info_struct  
@@ -413,6 +464,13 @@ struct track_work_struct
 };  
 
 
+struct track_trigger_calc_runtime{
+    uint8_t track_num;
+	uint8_t track_forward_runtime;//前进时长
+    uint8_t track_backward_runtime;//回退时长
+};
+
+
 
 int uart1_shared_buf_preparse(unsigned char *src, int len);
 void parse_up_rx_info(void); 
@@ -431,6 +489,7 @@ void packet_parser(unsigned char *src, int len);
 int board_send_message(int msg_type, void *input_data);
 void mcu_push_medicine_open_door_complete(void);
 void mcu_push_medicine_close_door_complete(void);
+void send_track_runtime_report( void *input_data);
 
 
 #endif

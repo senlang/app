@@ -13,6 +13,8 @@
 #include "iwdg.h"
 #include "motor.h"
 #include "track.h"
+#include "timer.h"
+
 
 //C库
 #include <string.h>
@@ -88,8 +90,14 @@ OS_STK MOTOR_TASK_STK[MOTOR_STK_SIZE];
 void MOTOR_Task(void *pdata);
 
 
+//货道时长统计
+#define trigger_calc_runtime_TASK_PRIO		15
+#define trigger_calc_runtime_STK_SIZE		256
+OS_STK trigger_calc_runtime_TASK_STK[trigger_calc_runtime_STK_SIZE]; //
+void trigger_calc_runtime_Task(void *pdata);
+
 //心跳任务
-#define HEART_TASK_PRIO		15
+#define HEART_TASK_PRIO		16
 #define HEART_STK_SIZE		256
 OS_STK HEART_TASK_STK[HEART_STK_SIZE]; //
 void HEART_Task(void *pdata);
@@ -103,7 +111,17 @@ OS_EVENT *SemOfDataParse;	//数据解析线程信号量
 OS_EVENT *SemOfKey;				// 按键控制信号量
 OS_EVENT *SemOfConveyor;        	//Motor控制信号量
 OS_EVENT *SemOfTrack;        	//track 控制信号量
+OS_EVENT *SemOfCalcTime;        	//触发货道时间统计信号量
 
+
+uint8_t trigger_calc_runtime = 0;
+uint8_t cur_calc_track = 0;
+uint8_t calc_track_start_idx = 0;
+uint8_t calc_track_count = 0;
+struct track_cale_report_info_struct track_time;
+
+uint16_t forward_running_time = 0;  
+uint16_t backward_running_time = 0; 
 
 extern struct status_report_request_info_struct  heart_info;
 extern uint8_t track_work;
@@ -155,6 +173,9 @@ void Hardware_Init(void)
 	Usart2_Init(115200);
 	
 	
+	//TIM3_Int_Init(9999,7199);//10Khz的计数频率，计数到5000为500ms  
+	TIM3_Int_Init(999,7199);//10Khz的计数频率，计数到5000为500ms  
+
 
 	BoardId_Init();
 
@@ -208,14 +229,14 @@ int main(void)
 
 	OSTaskCreate(Drug_Push_Task, (void *)0, (OS_STK*)&Drug_Push_TASK_STK[Drug_Push_STK_SIZE- 1], Drug_Push_TASK_PRIO);
 
-	OSTaskCreate(SENSOR_Task, (void *)0, (OS_STK*)&SENSOR_TASK_STK[SENSOR_STK_SIZE- 1], SENSOR_TASK_PRIO);
+	//OSTaskCreate(SENSOR_Task, (void *)0, (OS_STK*)&SENSOR_TASK_STK[SENSOR_STK_SIZE- 1], SENSOR_TASK_PRIO);
+	OSTaskCreate(trigger_calc_runtime_Task, (void *)0, (OS_STK*)&trigger_calc_runtime_TASK_STK[trigger_calc_runtime_STK_SIZE- 1], trigger_calc_runtime_TASK_PRIO);
 
 	OSTaskCreate(KEY_Task, (void *)0, (OS_STK*)&KEY_TASK_STK[KEY_STK_SIZE- 1], KEY_TASK_PRIO);
 
 	OSTaskCreate(Info_Parse_Task, (void *)0, (OS_STK*)&PARSE_TASK_STK[PARSE_STK_SIZE- 1], PARSE_TASK_PRIO);
 
 	OSTaskCreate(Track_Run_Task, (void *)0, (OS_STK*)&TRACK_TASK_STK[TRACK_STK_SIZE- 1], TRACK_TASK_PRIO);
-
 
 	
 	UsartPrintf(USART_DEBUG, "OSStart\r\n");		//提示任务开始执行
@@ -403,9 +424,11 @@ void Drug_Push_Task(void *pdata)
 					}
 					RTOS_TimeDlyHMSM(0, 0, 0, 100);
 					
-					//UsartPrintf(USART_DEBUG, "run_time = %d\r\n", run_time);
 					if(run_time >= 150)
-					break;
+					{
+						UsartPrintf(USART_DEBUG, "run_time %d > 150\r\n", run_time);
+						break;
+					}
 				}while(Door_Key_Detect(DOOR_CLOSE) == SENSOR_NO_DETECT);
 				Door_Control_Set(MOTOR_STOP);
 				mcu_push_medicine_close_door_complete();
@@ -453,5 +476,60 @@ void SENSOR_Task(void *pdata)
 		//UsartPrintf(USART_DEBUG, "will jump\r\n");
 		//iap_load_app(0x08010000);
 	}
+}
+void trigger_calc_runtime_Task(void *pdata)
+{
+	INT8U			 err;
+	uint8_t i = 0;
+
+	SemOfCalcTime = OSSemCreate(0);
+	while(1)
+	{
+		UsartPrintf(USART_DEBUG, "00trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
+		OSSemPend(SemOfCalcTime, 0u, &err);
+		UsartPrintf(USART_DEBUG, "11trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
+
+		for(cur_calc_track = calc_track_start_idx; cur_calc_track <= calc_track_count; cur_calc_track ++)
+		//for(cur_calc_track = 1; cur_calc_track <= 4; cur_calc_track ++)
+		{
+			UsartPrintf(USART_DEBUG, "cur_calc_track :%d\r\n", cur_calc_track);
+			for( i = 0; i < 3; i++)
+			{
+				trigger_calc_runtime = 0;
+				if(i == 0)
+				{
+					RTOS_TimeDlyHMSM(0, 0, 2, 0);
+					
+					UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task, do prepare\r\n");
+					trigger_calc_runtime = 1;
+					Track_trigger_calc_runtime(1, MOTOR_RUN_FORWARD);
+				}
+				else if(i == 1)
+				{	
+					RTOS_TimeDlyHMSM(0, 0, 2, 0);
+					
+					UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task, do backward\r\n");
+					trigger_calc_runtime = 1;
+					Track_trigger_calc_runtime(0, MOTOR_RUN_BACKWARD);
+				}
+				else if(i == 2)
+				{
+					RTOS_TimeDlyHMSM(0, 0, 2, 0);
+					
+					UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task, do forward\r\n");
+					trigger_calc_runtime = 1;
+					Track_trigger_calc_runtime(0, MOTOR_RUN_FORWARD);
+				}
+				do{
+					RTOS_TimeDlyHMSM(0, 0, 0, 200);	//
+				}while(trigger_calc_runtime);
+				
+				RTOS_TimeDlyHMSM(0, 0, 0, 500); //
+			}
+		}
+	}
+	//	OSSemDel(SemOfKey, 0, &err);
+
+
 }
 

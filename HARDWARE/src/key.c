@@ -29,6 +29,11 @@
 KEY_STATUS key_status;
 extern unsigned char calibrate_enable;
 extern OS_EVENT *SemOfKey;          //Motor控制信号量
+extern OS_EVENT *SemOfCalcTime;
+
+extern uint8_t trigger_calc_runtime;
+static uint8_t key_stat = 0;
+static uint8_t key_init = 0;
 
 /*
 ************************************************************
@@ -316,16 +321,47 @@ void EXTI4_IRQHandler(void)
 #endif  	
 	if(EXTI_GetITStatus(EXTI_Line4)==SET)//是8线的中断
 	{
-		UsartPrintf(USART_DEBUG, "KEY2 CHECK:");
+		//UsartPrintf(USART_DEBUG, "KEY2 CHECK:");
 		if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN) 					//有第二次按下，说明为双击
 		{		
-			UsartPrintf(USART_DEBUG, "DOWN-------------\r\n");
+			//UsartPrintf(USART_DEBUG, "DOWN-------------\r\n");
 			//Motor_Set(MOTOR_STOP);
 			//set_track(calibrate_track_selected, MOTOR_STOP);
+
+			if(0)//(key_init == 0)
+			{
+				key_init = 1;			
+				key_stat = 0;
+				
+				UsartPrintf(USART_DEBUG, "Post SemOfCalcTime!!!!!!\r\n");
+				OSSemPost(SemOfCalcTime);
+			}
+			else
+			{
+				if(key_stat%3 == 0) //初始位置
+				{
+					Track_trigger_calc_runtime(1, MOTOR_STOP);
+					trigger_calc_runtime = 0;
+					key_stat++;
+				}
+				else if(key_stat%3 == 1) //正向
+				{
+					Track_trigger_calc_runtime(0, MOTOR_STOP);
+					trigger_calc_runtime = 0; 			
+					key_stat++;
+				}
+				else if(key_stat%3 == 2)//反向		
+				{
+					Track_trigger_calc_runtime(0, MOTOR_STOP);
+					trigger_calc_runtime = 0; 			
+					key_stat = 0;
+				}
+			}
+			
 		}
 		else if(KeyScan(GPIOE, KEY2) == KEYUP)
 		{
-			UsartPrintf(USART_DEBUG, "UP-------------\r\n");
+			//UsartPrintf(USART_DEBUG, "UP-------------\r\n");
 		}
 	}
 	EXTI_ClearITPendingBit(EXTI_Line4);  //清除LINE2上的中断标志位	
@@ -368,6 +404,7 @@ void EXTI9_5_IRQHandler(void)
 		if(KeyScan(GPIOB, KEY1) == KEYDOWN) 					//有第二次按下，说明为双击
 		{		
 			UsartPrintf(USART_DEBUG, "DOWN-------------\r\n");
+			
 		}
 		else if(KeyScan(GPIOB, KEY1) == KEYUP)
 		{

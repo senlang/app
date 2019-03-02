@@ -60,6 +60,7 @@ static uint8_t push_medicine_request_buf[PUSH_MEDICINE_REQUEST_PACKET_SIZE];
 static uint8_t replenish_medicine_request_buf[REPLENISH_MEDICINE_REQUEST_PACKET_SIZE];  
 static uint8_t calibrate_track_request_buf[CILIBRATE_TRACK_REQUEST_PACKET_SIZE];
 static uint8_t replenish_medicine_complete_request_buf[REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE];
+static uint8_t track_runtime_calc_request_buf[TRACK_RUNTIME_CALC_REQUEST_PACKET_SIZE];  
 
 
 static uint8_t board_test_buf[BOARD_TEST_REQUEST_PACKET_SIZE]; 
@@ -80,7 +81,6 @@ struct status_report_request_info_struct  heart_info;
 struct motor_control_struct  motor_struct[TOTAL_PUSH_CNT];
 struct track_work_struct track_struct[10][10];
 
-
 int motor_enqueue_idx = 0;
 int motor_dequeue_idx = 0;
 
@@ -95,8 +95,11 @@ extern OS_EVENT *SemOfMotor;          //Motor控制信号量
 extern OS_EVENT *SemOfKey;          // 按键控制信号量
 extern OS_EVENT *SemOfConveyor;        	//Motor控制信号量
 extern OS_EVENT *SemOfTrack;        	//track 控制信号量
+extern OS_EVENT *SemOfCalcTime;        	//触发货道时间统计信号量
 
-
+extern uint8_t calc_track_start_idx;
+extern uint8_t calc_track_count;
+extern struct track_trigger_calc_runtime track_time;
 
 void BoardId_Init(void)
 {
@@ -474,6 +477,33 @@ void replenish_complete_test(void)
 }
 
 
+void send_track_runtime_report( void *input_data)  
+{  
+	uint8_t send_track_runtime[TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE];
+	struct track_cale_report_info_struct *track_runtime_info = (struct track_cale_report_info_struct* )input_data;
+
+	memset(send_track_runtime, 0x00, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE);
+	
+	send_track_runtime[0] = START_CODE;
+	send_track_runtime[1] = TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE - 1;
+	send_track_runtime[2] = CMD_TRACK_RUNTIME_REPORT;
+	
+	send_track_runtime[3] = track_runtime_info->board_id;
+
+	send_track_runtime[4] = track_runtime_info->track_start_num;
+	
+	send_track_runtime[5] = (track_runtime_info->track_forward_time & 0xff00)>>8;
+	send_track_runtime[6] = track_runtime_info->track_forward_time & 0xff;
+	
+	send_track_runtime[7] = (track_runtime_info->track_backward_time & 0xff00)>>8;;
+	send_track_runtime[8] = track_runtime_info->track_backward_time & 0xff;
+	
+	send_track_runtime[TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE - 1] = add_checksum(send_track_runtime, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE - 1);  
+
+	
+	UsartPrintf(USART_DEBUG, "Running Check:track[%d],Forward[%d],Backward[%d]\r\n", track_time.track_num, track_time.track_forward_runtime, track_time.track_backward_runtime);
+	UART1_IO_Send(send_track_runtime, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE);  
+} 
 
 
 int board_send_message(int msg_type, void *input_data)
@@ -497,8 +527,12 @@ int board_send_message(int msg_type, void *input_data)
 		case REPLENISH_MEDICINE_COMPLETE_REQUEST:
 			send_replinish_medicine_request(input_data);
 		break;
-		
+
 		case CMD_ACK:
+			send_command_ack(input_data);
+		break;
+		
+		case CMD_TRACK_RUNTIME_CALC:
 			send_command_ack(input_data);
 		break;
 		
@@ -1111,13 +1145,50 @@ void parse_replenish_complete_request(struct replenish_medicine_complete_struct 
 
 
 
+void parse_track_runtime_calc_request(struct track_calc_request_struct *track_runtime_calc_request)  
+{  
 
+	track_runtime_calc_request->start_code= track_runtime_calc_request_buf[0];  
 
+	track_runtime_calc_request->packet_len= track_runtime_calc_request_buf[1];  
+	track_runtime_calc_request->cmd_type= track_runtime_calc_request_buf[2];
 
+	track_runtime_calc_request->info.board_id = track_runtime_calc_request_buf[3];
+	
+	track_runtime_calc_request->info.track_start_num = track_runtime_calc_request_buf[4];
 
+	track_runtime_calc_request->info.track_count = track_runtime_calc_request_buf[5];
 
+	track_runtime_calc_request->checksum = track_runtime_calc_request_buf[6]; 
 
+	if(track_runtime_calc_request->info.track_start_num == 0xFF)
+	{
+		calc_track_start_idx = 0;
+		calc_track_count = TRACK_MAX;
+	}
+	else
+	{
+		calc_track_start_idx = track_runtime_calc_request->info.track_start_num;
+		calc_track_count = track_runtime_calc_request->info.track_count;
+	}
+	OSSemPost(SemOfCalcTime);
+}  
 
+void print_track_runtime_calc_request(struct track_calc_request_struct *track_runtime_calc_request)  
+{  
+  	uint8_t request_cnt = 0;
+	uint8_t i = 0;
+
+    UsartPrintf(USART_DEBUG, "\r\n    ========= 货道运行时长统计请求报文-打印开始=========\r\n");  
+	UsartPrintf(USART_DEBUG, "\r\n	  包消息类型:0x%02x", track_runtime_calc_request->cmd_type);  
+	UsartPrintf(USART_DEBUG, "\r\n	  包总长度:0x%02x", track_runtime_calc_request->packet_len); 
+    UsartPrintf(USART_DEBUG, "\r\n    单板号:0x%04x", track_runtime_calc_request->info.board_id); 
+    UsartPrintf(USART_DEBUG, "\r\n    单板起始运货道号:0x%04x", track_runtime_calc_request->info.track_start_num); 
+    UsartPrintf(USART_DEBUG, "\r\n    单板货道数:0x%04x", track_runtime_calc_request->info.track_count); 
+	UsartPrintf(USART_DEBUG, "\r\n    包校验和:0x%02x\r\n", track_runtime_calc_request->checksum);  
+  
+    UsartPrintf(USART_DEBUG, "\r\n    =========  货道运行时长统计请求报文-打印结束=========\r\n");  
+ }  
 
   
 int uart1_shared_buf_preparse(unsigned char *src, int len)
@@ -1272,6 +1343,7 @@ void packet_parser(unsigned char *src, int len)
     struct test_request_struct test_request;
     struct calibrate_track_request_struct calibrate_track_request; 
     struct replenish_medicine_complete_struct replenish_medicine_complete_request; 
+    struct track_calc_request_struct track_calc_request; 
 
 	do
 	{
@@ -1389,6 +1461,13 @@ void packet_parser(unsigned char *src, int len)
 				print_status_report_request(&status_report_request);  
 				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_STATUS_REPORT_REQUEST!!\r\n");
 			} 
+			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_TRACK_RUNTIME_CALC)) //收到状态上报请求
+			{  
+				memcpy(track_runtime_calc_request_buf, uart1_shared_rx_buf, pkt_len);  
+				parse_track_runtime_calc_request(&track_calc_request);  
+				print_track_runtime_calc_request(&track_calc_request);  
+				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_STATUS_REPORT_REQUEST!!\r\n");
+			} 			
 			else 
 			{
 				UsartPrintf(USART_DEBUG, "Received Data is Error, drop!!\r\n");

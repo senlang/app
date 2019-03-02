@@ -31,6 +31,11 @@ extern uint8_t  g_src_board_id;
 extern OS_EVENT *SemOfConveyor;        	//Motorøÿ÷∆–≈∫≈¡ø
 extern struct track_work_struct track_struct[10][10];
 extern struct status_report_request_info_struct  heart_info;
+extern struct track_trigger_calc_runtime track_time;
+extern uint8_t cur_calc_track;
+extern uint16_t running_time;
+extern uint16_t forward_running_time;  
+extern uint16_t backward_running_time; 
 
 
 track_elem X_value[10] = {
@@ -311,4 +316,40 @@ int Track_run(MOTOR_ENUM run_mode)
 }
 
 #endif
+
+static uint8_t old_status = MOTOR_STOP;
+
+int Track_trigger_calc_runtime(uint8_t is_init, MOTOR_ENUM run_mode)
+{
+	Motor_Set(run_mode);
+	set_track(cur_calc_track, run_mode);
+	if(is_init)
+	{
+		memset(&track_time, 0x00, sizeof(struct track_trigger_calc_runtime));
+		track_time.track_num = cur_calc_track;
+		running_time = 0;
+		UsartPrintf(USART_DEBUG, "Start Calc:%d,%d,%d!!!\r\n", track_time.track_num, track_time.track_backward_runtime, track_time.track_backward_runtime);
+	}
+	if((!is_init) && (run_mode == MOTOR_STOP))
+	{
+		if(old_status == MOTOR_RUN_FORWARD)
+		{
+			//forward_running_time = running_time;
+			track_time.track_forward_runtime = running_time;
+			//UsartPrintf(USART_DEBUG, "Forward Running Time :%d\r\n", forward_running_time);
+			running_time = 0;
+		}
+		else if(old_status == MOTOR_RUN_BACKWARD)
+		{
+			//backward_running_time = running_time;
+			track_time.track_backward_runtime = running_time;
+			//UsartPrintf(USART_DEBUG, "Backward Running Time:%d\r\n", backward_running_time);
+			running_time = 0;
+		}
+		UsartPrintf(USART_DEBUG, "End Calc:%d,%d,%d!!!\r\n", track_time.track_num, track_time.track_forward_runtime, track_time.track_backward_runtime);
+		if(track_time.track_forward_runtime && track_time.track_backward_runtime)
+		send_track_runtime_report(&track_time);
+	}
+	old_status = run_mode;
+}
 
