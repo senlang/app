@@ -92,7 +92,7 @@ void MOTOR_Task(void *pdata);
 
 //货道时长统计
 #define trigger_calc_runtime_TASK_PRIO		15
-#define trigger_calc_runtime_STK_SIZE		256
+#define trigger_calc_runtime_STK_SIZE		384
 OS_STK trigger_calc_runtime_TASK_STK[trigger_calc_runtime_STK_SIZE]; //
 void trigger_calc_runtime_Task(void *pdata);
 
@@ -113,15 +113,11 @@ OS_EVENT *SemOfConveyor;        	//Motor控制信号量
 OS_EVENT *SemOfTrack;        	//track 控制信号量
 OS_EVENT *SemOfCalcTime;        	//触发货道时间统计信号量
 
-
+uint8_t trigger_calc_flag = 0;
 uint8_t trigger_calc_runtime = 0;
 uint8_t cur_calc_track = 0;
 uint8_t calc_track_start_idx = 0;
 uint8_t calc_track_count = 0;
-struct track_cale_report_info_struct track_time;
-
-uint16_t forward_running_time = 0;  
-uint16_t backward_running_time = 0; 
 
 extern struct status_report_request_info_struct  heart_info;
 extern uint8_t track_work;
@@ -477,6 +473,9 @@ void SENSOR_Task(void *pdata)
 		//iap_load_app(0x08010000);
 	}
 }
+
+extern uint16_t running_time;
+
 void trigger_calc_runtime_Task(void *pdata)
 {
 	INT8U			 err;
@@ -488,11 +487,11 @@ void trigger_calc_runtime_Task(void *pdata)
 		UsartPrintf(USART_DEBUG, "00trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
 		OSSemPend(SemOfCalcTime, 0u, &err);
 		UsartPrintf(USART_DEBUG, "11trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
-
+		trigger_calc_flag = 1;
 		for(cur_calc_track = calc_track_start_idx; cur_calc_track <= calc_track_count; cur_calc_track ++)
-		//for(cur_calc_track = 1; cur_calc_track <= 4; cur_calc_track ++)
+		//for(cur_calc_track = 1; cur_calc_track <= 1; cur_calc_track ++)
 		{
-			UsartPrintf(USART_DEBUG, "cur_calc_track :%d\r\n", cur_calc_track);
+			UsartPrintf(USART_DEBUG, "cur_calc_track :%d, running_time =%d\r\n", cur_calc_track, running_time);
 			for( i = 0; i < 3; i++)
 			{
 				trigger_calc_runtime = 0;
@@ -522,11 +521,14 @@ void trigger_calc_runtime_Task(void *pdata)
 				}
 				do{
 					RTOS_TimeDlyHMSM(0, 0, 0, 200);	//
+					
+					//UsartPrintf(USART_DEBUG, "running_time =%d\r\n", running_time);
 				}while(trigger_calc_runtime);
 				
 				RTOS_TimeDlyHMSM(0, 0, 0, 500); //
 			}
 		}
+		trigger_calc_flag = 0;
 	}
 	//	OSSemDel(SemOfKey, 0, &err);
 

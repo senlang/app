@@ -99,7 +99,6 @@ extern OS_EVENT *SemOfCalcTime;        	//触发货道时间统计信号量
 
 extern uint8_t calc_track_start_idx;
 extern uint8_t calc_track_count;
-extern struct track_trigger_calc_runtime track_time;
 
 void BoardId_Init(void)
 {
@@ -501,7 +500,6 @@ void send_track_runtime_report( void *input_data)
 	send_track_runtime[TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE - 1] = add_checksum(send_track_runtime, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE - 1);  
 
 	
-	UsartPrintf(USART_DEBUG, "Running Check:track[%d],Forward[%d],Backward[%d]\r\n", track_time.track_num, track_time.track_forward_runtime, track_time.track_backward_runtime);
 	UART1_IO_Send(send_track_runtime, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE);  
 } 
 

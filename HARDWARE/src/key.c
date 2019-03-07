@@ -34,6 +34,8 @@ extern OS_EVENT *SemOfCalcTime;
 extern uint8_t trigger_calc_runtime;
 static uint8_t key_stat = 0;
 static uint8_t key_init = 0;
+extern uint8_t trigger_calc_flag; //0;1;2
+
 
 /*
 ************************************************************
@@ -328,7 +330,7 @@ void EXTI4_IRQHandler(void)
 			//Motor_Set(MOTOR_STOP);
 			//set_track(calibrate_track_selected, MOTOR_STOP);
 
-			if(0)//(key_init == 0)
+			if(key_init == 0 && trigger_calc_flag == 0)
 			{
 				key_init = 1;			
 				key_stat = 0;
@@ -336,25 +338,31 @@ void EXTI4_IRQHandler(void)
 				UsartPrintf(USART_DEBUG, "Post SemOfCalcTime!!!!!!\r\n");
 				OSSemPost(SemOfCalcTime);
 			}
-			else
+			else if(trigger_calc_flag == 1)
 			{
 				if(key_stat%3 == 0) //初始位置
 				{
 					Track_trigger_calc_runtime(1, MOTOR_STOP);
 					trigger_calc_runtime = 0;
 					key_stat++;
+					
+					UsartPrintf(USART_DEBUG, "Arrive First Position!!!!!!\r\n");
 				}
 				else if(key_stat%3 == 1) //正向
 				{
 					Track_trigger_calc_runtime(0, MOTOR_STOP);
 					trigger_calc_runtime = 0; 			
 					key_stat++;
+					
+					UsartPrintf(USART_DEBUG, "Arrive Last Position!!!!!!\r\n");
 				}
 				else if(key_stat%3 == 2)//反向		
 				{
 					Track_trigger_calc_runtime(0, MOTOR_STOP);
 					trigger_calc_runtime = 0; 			
 					key_stat = 0;
+					
+					UsartPrintf(USART_DEBUG, "Arrive 2First Position!!!!!!\r\n");
 				}
 			}
 			

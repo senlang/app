@@ -3,7 +3,6 @@
 #include "stm32_protocol.h"
 
 extern uint8_t trigger_calc_runtime;
-extern struct track_trigger_calc_runtime track_time;
 uint16_t running_time = 0;
 
 
@@ -63,7 +62,8 @@ void TIM3_IRQHandler(void)   //TIM3ÖÐ¶Ï
 			return;
 		}
         running_time++;
-		//UsartPrintf(USART_DEBUG, "time_test = %d\r\n", time_test);
+		//if(running_time%10 == 0)
+		//UsartPrintf(USART_DEBUG, "running_time = %d\r\n", running_time);
     }
 }
 
