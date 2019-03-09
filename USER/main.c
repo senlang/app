@@ -420,7 +420,7 @@ void Drug_Push_Task(void *pdata)
 					}
 					RTOS_TimeDlyHMSM(0, 0, 0, 100);
 					
-					if(run_time >= 150)
+					if(run_time >= 300)
 					{
 						UsartPrintf(USART_DEBUG, "run_time %d > 150\r\n", run_time);
 						break;
@@ -491,7 +491,7 @@ void trigger_calc_runtime_Task(void *pdata)
 		for(cur_calc_track = calc_track_start_idx; cur_calc_track <= calc_track_count; cur_calc_track ++)
 		//for(cur_calc_track = 1; cur_calc_track <= 1; cur_calc_track ++)
 		{
-			UsartPrintf(USART_DEBUG, "cur_calc_track :%d, running_time =%d\r\n", cur_calc_track, running_time);
+			UsartPrintf(USART_DEBUG, "cur_calc_track :%d, calc_track_count :%d\r\n", cur_calc_track, calc_track_count);
 			for( i = 0; i < 3; i++)
 			{
 				trigger_calc_runtime = 0;

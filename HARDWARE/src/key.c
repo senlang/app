@@ -335,8 +335,8 @@ void EXTI4_IRQHandler(void)
 				key_init = 1;			
 				key_stat = 0;
 				
-				UsartPrintf(USART_DEBUG, "Post SemOfCalcTime!!!!!!\r\n");
-				OSSemPost(SemOfCalcTime);
+				//UsartPrintf(USART_DEBUG, "Post SemOfCalcTime!!!!!!\r\n");
+				//OSSemPost(SemOfCalcTime);
 			}
 			else if(trigger_calc_flag == 1)
 			{

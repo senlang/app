@@ -1161,7 +1161,7 @@ void parse_track_runtime_calc_request(struct track_calc_request_struct *track_ru
 
 	if(track_runtime_calc_request->info.track_start_num == 0xFF)
 	{
-		calc_track_start_idx = 0;
+		calc_track_start_idx = 1;
 		calc_track_count = TRACK_MAX;
 	}
 	else
