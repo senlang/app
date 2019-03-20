@@ -121,7 +121,7 @@ void BoardId_Init(void)
 
 	memset(&heart_info, 0x00, sizeof(heart_info));
 	heart_info.board_id = g_src_board_id;
-	heart_info.board_status = STANDBY_STATUS;
+	heart_info.board_status = FIRSTBOOT_STATUS;
 
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
 	

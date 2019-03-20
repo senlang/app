@@ -184,6 +184,10 @@ void Hardware_Init(void)
 	}
 	
 	Iwdg_Init(4, 1250); 														//64分频，每秒625次，重载1250次，2s
+
+	heart_info.board_status = FIRSTBOOT_STATUS;
+	board_send_message(STATUS_REPORT_REQUEST, &heart_info);
+	heart_info.board_status = STANDBY_STATUS;
 	
 	//UsartPrintf(USART_DEBUG, "Hardware init OK\r\n");						//提示初始化完成	
 }
@@ -395,7 +399,7 @@ void Drug_Push_Task(void *pdata)
 
 					
 					//UsartPrintf(USART_DEBUG, "run_time = %d\r\n", run_time);
-					if(run_time >= 150)
+					if(run_time >= 300)
 					break;
 				}while(Door_Key_Detect(DOOR_OPEN) == SENSOR_NO_DETECT);
 				

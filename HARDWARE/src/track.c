@@ -329,6 +329,7 @@ int Track_trigger_calc_runtime(uint8_t is_init, MOTOR_ENUM run_mode)
 	{
 		memset(&track_time, 0x00, sizeof(struct track_cale_report_info_struct));
 		track_time.track_start_num = cur_calc_track;
+		track_time.board_id = g_src_board_id;
 		running_time = 0;
 		UsartPrintf(USART_DEBUG, "Start Calc:%d,%d,%d!!!\r\n", track_time.track_start_num, track_time.track_backward_time, track_time.track_backward_time);
 	}

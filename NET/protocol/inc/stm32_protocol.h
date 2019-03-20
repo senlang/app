@@ -121,6 +121,7 @@ enum {
 
 
 typedef enum{  
+	FIRSTBOOT_STATUS = 0,
 	STANDBY_STATUS = 1,
     PUSHING_STATUS = 2,
 	REPLENISHING_STATUS = 3,
