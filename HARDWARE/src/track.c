@@ -33,6 +33,11 @@ extern struct track_work_struct track_struct[10][10];
 extern struct status_report_request_info_struct  heart_info;
 extern uint8_t cur_calc_track;
 extern uint16_t running_time;
+
+extern uint8_t motor_run_detect_flag;
+extern uint8_t motor_run_detect_track_num;
+
+
 static  uint16_t forward_running_time;  
 static  uint16_t backward_running_time; 
 
@@ -280,6 +285,7 @@ int Track_run(MOTOR_ENUM run_mode)
 
 	UsartPrintf(USART_DEBUG, "Enter Track_run, mode[%d]!!!\r\n");
 	Motor_Set(run_mode);
+	motor_run_detect_flag = 1;
 	for(x = 0; x < 10; x++)
 	{
 		//UsartPrintf(USART_DEBUG, "Enter Track_run x = %d!!!\r\n", x);
@@ -293,6 +299,8 @@ int Track_run(MOTOR_ENUM run_mode)
 					delay_ms = (track_struct[x][y].push_time%10) * 100;
 					UsartPrintf(USART_DEBUG, "start:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", x*10 + y + 1, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);
 					set_track_y(y, run_mode);
+					motor_run_detect_track_num = y;
+					
 					RTOS_TimeDlyHMSM(0, 0, delay_s, delay_ms);
 					set_track_y(y, MOTOR_STOP);
 					UsartPrintf(USART_DEBUG, "stop:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", x*10 + y + 1, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);
@@ -302,6 +310,7 @@ int Track_run(MOTOR_ENUM run_mode)
 		
 		set_track_x(x, MOTOR_STOP);
 	}
+	motor_run_detect_flag = 0;
 	
 	Motor_Set(MOTOR_STOP);	
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);

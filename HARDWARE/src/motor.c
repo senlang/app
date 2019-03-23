@@ -47,6 +47,8 @@ extern struct status_report_request_info_struct  heart_info;
 extern uint16_t drag_push_time[BOARD_ID_MAX];  
 extern uint16_t drag_push_time_calc_pre;
 extern uint16_t drag_push_time_calc;
+extern uint8_t motor_run_detect_flag;
+extern uint8_t motor_run_detect_track_num;
 
 
 /*
@@ -239,6 +241,8 @@ void Motor_Start(void)
 		UsartPrintf(USART_DEBUG, "motor_struct[%d] board_id = 0x%04x\r\n", motor_dequeue_idx, motor_struct[motor_dequeue_idx].info.board_id);
 		UsartPrintf(USART_DEBUG, "motor_struct[%d] medicine_track_number = 0x%04x\r\n", motor_dequeue_idx, motor_struct[motor_dequeue_idx].info.medicine_track_number);
 		UsartPrintf(USART_DEBUG, "motor_struct[%d] push_time = 0x%04x\r\n", motor_dequeue_idx, motor_struct[motor_dequeue_idx].info.push_time);
+		motor_run_detect_flag = 1;
+
 
 		memset(&push_complete_info, 0x00, sizeof(push_complete_info));
 		if(motor_struct[motor_dequeue_idx].motor_run == MOTOR_RUN_FORWARD)
@@ -257,7 +261,8 @@ void Motor_Start(void)
 		}
 		
 		//Conveyor_set(CONVEYOR_RUN);
-		
+
+		motor_run_detect_track_num = motor_struct[motor_dequeue_idx].info.medicine_track_number;
 		set_track((uint16_t)motor_struct[motor_dequeue_idx].info.medicine_track_number, MOTOR_RUN_FORWARD);
 
 		delay_s = motor_struct[motor_dequeue_idx].info.push_time/10;
@@ -272,6 +277,8 @@ void Motor_Start(void)
 		
 		set_track(motor_struct[motor_dequeue_idx].info.medicine_track_number, MOTOR_STOP);
 		Motor_Set(MOTOR_STOP);
+		motor_run_detect_flag = 0;
+
 		
 		heart_info.board_id = motor_struct[motor_dequeue_idx].info.board_id;
 		heart_info.board_status = STANDBY_STATUS;

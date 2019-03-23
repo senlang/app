@@ -25,6 +25,7 @@
 #include "delay.h"
 #include "usart.h"
 #include "motor.h"
+#include "track.h"
 
 KEY_STATUS key_status;
 extern unsigned char calibrate_enable;
@@ -32,7 +33,12 @@ extern OS_EVENT *SemOfKey;          //Motorøÿ÷∆–≈∫≈¡ø
 extern OS_EVENT *SemOfCalcTime;
 
 extern uint8_t trigger_calc_runtime;
-static uint8_t key_stat = 0;
+
+extern uint8_t motor_run_detect_flag;
+extern uint8_t motor_run_detect_track_num;
+
+
+extern uint8_t key_stat;
 static uint8_t key_init = 0;
 extern uint8_t trigger_calc_flag; //0;1;2
 
@@ -364,6 +370,10 @@ void EXTI4_IRQHandler(void)
 					
 					UsartPrintf(USART_DEBUG, "Arrive 2First Position!!!!!!\r\n");
 				}
+			}
+			else if(motor_run_detect_flag == 1){
+				set_track_y(motor_run_detect_track_num, MOTOR_STOP);
+				UsartPrintf(USART_DEBUG, "Track %d Arrive End Position!!!!!!\r\n", motor_run_detect_track_num);
 			}
 			
 		}

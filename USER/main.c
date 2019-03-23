@@ -119,6 +119,11 @@ uint8_t cur_calc_track = 0;
 uint8_t calc_track_start_idx = 0;
 uint8_t calc_track_count = 0;
 
+uint8_t motor_run_detect_flag = 0;
+uint8_t motor_run_detect_track_num = 0;
+uint8_t key_stat = 0;
+
+
 extern struct status_report_request_info_struct  heart_info;
 extern uint8_t track_work;
 
@@ -525,10 +530,21 @@ void trigger_calc_runtime_Task(void *pdata)
 				}
 				do{
 					RTOS_TimeDlyHMSM(0, 0, 0, 200);	//
-					
-					//UsartPrintf(USART_DEBUG, "running_time =%d\r\n", running_time);
+
+					if(running_time >= 600)
+					{
+						//UsartPrintf(USART_DEBUG, "Track calc time %d longer than 60s, error!!!!\r\n", running_time);
+						break;
+					}
 				}while(trigger_calc_runtime);
-				
+
+				key_stat = 0;
+				if(running_time >= 600)
+				{
+					UsartPrintf(USART_DEBUG, "Track calc time %d longer than 60s, error!!!!\r\n", running_time);
+					running_time = 0;
+					break;
+				}
 				RTOS_TimeDlyHMSM(0, 0, 0, 500); //
 			}
 		}
