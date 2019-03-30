@@ -21,6 +21,8 @@ typedef struct
 	uint8_t y;
 } track_addr;
 
+#define KEY_DELAY_MS 5	//100ms
+
 uint8_t set_track(uint16_t track_num, uint8_t status);
 void Track_Init(void);
 int Track_run(MOTOR_ENUM run_mode);

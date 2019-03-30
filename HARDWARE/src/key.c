@@ -346,27 +346,23 @@ void EXTI4_IRQHandler(void)
 			}
 			else if(trigger_calc_flag == 1)
 			{
-				if(key_stat%3 == 0) //初始位置
+				if(key_stat == 0) //初始位置
 				{
 					Track_trigger_calc_runtime(1, MOTOR_STOP);
-					trigger_calc_runtime = 0;
-					key_stat++;
-					
+					trigger_calc_runtime = 0;					
 					UsartPrintf(USART_DEBUG, "Arrive First Position!!!!!!\r\n");
 				}
-				else if(key_stat%3 == 1) //正向
+				else if(key_stat == 1) //正向
 				{
 					Track_trigger_calc_runtime(0, MOTOR_STOP);
 					trigger_calc_runtime = 0; 			
-					key_stat++;
-					
 					UsartPrintf(USART_DEBUG, "Arrive Last Position!!!!!!\r\n");
 				}
-				else if(key_stat%3 == 2)//反向		
+				else if(key_stat == 2)//反向		
 				{
 					Track_trigger_calc_runtime(0, MOTOR_STOP);
 					trigger_calc_runtime = 0; 			
-					key_stat = 0;
+					key_stat = 0xff;
 					
 					UsartPrintf(USART_DEBUG, "Arrive 2First Position!!!!!!\r\n");
 				}

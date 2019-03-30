@@ -241,7 +241,6 @@ void Motor_Start(void)
 		UsartPrintf(USART_DEBUG, "motor_struct[%d] board_id = 0x%04x\r\n", motor_dequeue_idx, motor_struct[motor_dequeue_idx].info.board_id);
 		UsartPrintf(USART_DEBUG, "motor_struct[%d] medicine_track_number = 0x%04x\r\n", motor_dequeue_idx, motor_struct[motor_dequeue_idx].info.medicine_track_number);
 		UsartPrintf(USART_DEBUG, "motor_struct[%d] push_time = 0x%04x\r\n", motor_dequeue_idx, motor_struct[motor_dequeue_idx].info.push_time);
-		motor_run_detect_flag = 1;
 
 
 		memset(&push_complete_info, 0x00, sizeof(push_complete_info));
@@ -265,8 +264,12 @@ void Motor_Start(void)
 		motor_run_detect_track_num = motor_struct[motor_dequeue_idx].info.medicine_track_number;
 		set_track((uint16_t)motor_struct[motor_dequeue_idx].info.medicine_track_number, MOTOR_RUN_FORWARD);
 
-		delay_s = motor_struct[motor_dequeue_idx].info.push_time/10;
-		delay_ms = (motor_struct[motor_dequeue_idx].info.push_time%10) * 100;
+		RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
+
+		motor_run_detect_flag = 1;
+
+		delay_s = (motor_struct[motor_dequeue_idx].info.push_time - KEY_DELAY_MS)/10;
+		delay_ms = ((motor_struct[motor_dequeue_idx].info.push_time - KEY_DELAY_MS)%10) * 100;
 
 		UsartPrintf(USART_DEBUG, "delay_s[%d]delay_ms[%d]\r\n", delay_s, delay_ms);
 		//last_keep_time = delay_s;

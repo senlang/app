@@ -496,39 +496,78 @@ void trigger_calc_runtime_Task(void *pdata)
 		UsartPrintf(USART_DEBUG, "00trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
 		OSSemPend(SemOfCalcTime, 0u, &err);
 		UsartPrintf(USART_DEBUG, "11trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
-		trigger_calc_flag = 1;
+		trigger_calc_flag = 0;
+
 		for(cur_calc_track = calc_track_start_idx; cur_calc_track <= calc_track_count; cur_calc_track ++)
 		//for(cur_calc_track = 1; cur_calc_track <= 1; cur_calc_track ++)
 		{
 			UsartPrintf(USART_DEBUG, "cur_calc_track :%d, calc_track_count :%d\r\n", cur_calc_track, calc_track_count);
 			for( i = 0; i < 3; i++)
 			{
-				trigger_calc_runtime = 0;
 				if(i == 0)
 				{
 					RTOS_TimeDlyHMSM(0, 0, 2, 0);
 					
+					trigger_calc_flag = 0;
+					
 					UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task, do prepare\r\n");
 					trigger_calc_runtime = 1;
 					Track_trigger_calc_runtime(1, MOTOR_RUN_FORWARD);
+
+					RTOS_TimeDlyHMSM(0, 0, 0, 200);
+					if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN)
+					{
+						trigger_calc_runtime = 0;
+						Track_trigger_calc_runtime(1, MOTOR_STOP);
+						UsartPrintf(USART_DEBUG, "do prepare, Finish!!!!\r\n");
+					}
+					else
+					{
+						RTOS_TimeDlyHMSM(0, 0, 0, 200);
+						if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN)
+						RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
+						trigger_calc_flag = 1;
+					}
+					
+					key_stat = 0;
 				}
 				else if(i == 1)
 				{	
 					RTOS_TimeDlyHMSM(0, 0, 2, 0);
+					trigger_calc_flag = 0;
 					
 					UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task, do backward\r\n");
 					trigger_calc_runtime = 1;
 					Track_trigger_calc_runtime(0, MOTOR_RUN_BACKWARD);
+
+					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
+					trigger_calc_flag = 1;
+					
+					key_stat = 1;
 				}
 				else if(i == 2)
 				{
 					RTOS_TimeDlyHMSM(0, 0, 2, 0);
+					trigger_calc_flag = 0;
 					
 					UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task, do forward\r\n");
 					trigger_calc_runtime = 1;
 					Track_trigger_calc_runtime(0, MOTOR_RUN_FORWARD);
+
+					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
+					trigger_calc_flag = 1;
+					
+					key_stat = 2;
 				}
 				do{
+
+					if((i == 0) && (KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN))
+					{
+						trigger_calc_runtime = 0;
+						Track_trigger_calc_runtime(1, MOTOR_STOP);
+						UsartPrintf(USART_DEBUG, "do prepare, Finish!!!!\r\n");
+					}
+					
 					RTOS_TimeDlyHMSM(0, 0, 0, 200);	//
 
 					if(running_time >= 600)
@@ -536,6 +575,7 @@ void trigger_calc_runtime_Task(void *pdata)
 						//UsartPrintf(USART_DEBUG, "Track calc time %d longer than 60s, error!!!!\r\n", running_time);
 						break;
 					}
+					
 				}while(trigger_calc_runtime);
 
 				key_stat = 0;

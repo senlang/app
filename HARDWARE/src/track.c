@@ -285,7 +285,6 @@ int Track_run(MOTOR_ENUM run_mode)
 
 	UsartPrintf(USART_DEBUG, "Enter Track_run, mode[%d]!!!\r\n");
 	Motor_Set(run_mode);
-	motor_run_detect_flag = 1;
 	for(x = 0; x < 10; x++)
 	{
 		//UsartPrintf(USART_DEBUG, "Enter Track_run x = %d!!!\r\n", x);
@@ -293,15 +292,19 @@ int Track_run(MOTOR_ENUM run_mode)
 		do{
 			for(y = 0; y < 10; y++)
 			{
-				if(track_struct[x][y].push_time > 0)
+				if(track_struct[x][y].push_time > KEY_DELAY_MS)
 				{
-					delay_s = track_struct[x][y].push_time/10;
-					delay_ms = (track_struct[x][y].push_time%10) * 100;
+					delay_s = (track_struct[x][y].push_time - KEY_DELAY_MS)/10;
+					delay_ms = ((track_struct[x][y].push_time - KEY_DELAY_MS) %10) * 100;
 					UsartPrintf(USART_DEBUG, "start:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", x*10 + y + 1, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);
 					set_track_y(y, run_mode);
-					motor_run_detect_track_num = y;
+					motor_run_detect_track_num = y;					
+					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
 					
+					motor_run_detect_flag = 1;
 					RTOS_TimeDlyHMSM(0, 0, delay_s, delay_ms);
+					
+					motor_run_detect_flag = 0;
 					set_track_y(y, MOTOR_STOP);
 					UsartPrintf(USART_DEBUG, "stop:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", x*10 + y + 1, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);
 				}
@@ -310,7 +313,6 @@ int Track_run(MOTOR_ENUM run_mode)
 		
 		set_track_x(x, MOTOR_STOP);
 	}
-	motor_run_detect_flag = 0;
 	
 	Motor_Set(MOTOR_STOP);	
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
