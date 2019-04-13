@@ -1145,6 +1145,8 @@ void parse_replenish_complete_request(struct replenish_medicine_complete_struct 
 
 void parse_track_runtime_calc_request(struct track_calc_request_struct *track_runtime_calc_request)  
 {  
+	struct msg_ack_info_struct cmd_ack_info;
+	cmd_ack_info.status = 0;
 
 	track_runtime_calc_request->start_code= track_runtime_calc_request_buf[0];  
 
@@ -1169,6 +1171,13 @@ void parse_track_runtime_calc_request(struct track_calc_request_struct *track_ru
 		calc_track_start_idx = track_runtime_calc_request->info.track_start_num;
 		calc_track_count = track_runtime_calc_request->info.track_count;
 	}
+	
+	cmd_ack_info.board_id = g_src_board_id;
+	cmd_ack_info.rsp_cmd_type = track_runtime_calc_request->cmd_type;
+	
+	cmd_ack_info.status = 1;
+	send_command_ack((void *)&cmd_ack_info);
+
 	OSSemPost(SemOfCalcTime);
 }  
 

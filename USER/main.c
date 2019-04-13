@@ -498,8 +498,7 @@ void trigger_calc_runtime_Task(void *pdata)
 		UsartPrintf(USART_DEBUG, "11trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
 		trigger_calc_flag = 0;
 
-		for(cur_calc_track = calc_track_start_idx; cur_calc_track <= calc_track_count; cur_calc_track ++)
-		//for(cur_calc_track = 1; cur_calc_track <= 1; cur_calc_track ++)
+		for(cur_calc_track = calc_track_start_idx; cur_calc_track < calc_track_count + calc_track_start_idx; cur_calc_track ++)
 		{
 			UsartPrintf(USART_DEBUG, "cur_calc_track :%d, calc_track_count :%d\r\n", cur_calc_track, calc_track_count);
 			for( i = 0; i < 3; i++)
@@ -560,12 +559,12 @@ void trigger_calc_runtime_Task(void *pdata)
 					key_stat = 2;
 				}
 				do{
-
-					if((i == 0) && (KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN))
+					if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN)
 					{
 						trigger_calc_runtime = 0;
 						Track_trigger_calc_runtime(1, MOTOR_STOP);
 						UsartPrintf(USART_DEBUG, "do prepare, Finish!!!!\r\n");
+						break;
 					}
 					
 					RTOS_TimeDlyHMSM(0, 0, 0, 200);	//

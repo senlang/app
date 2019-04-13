@@ -368,7 +368,7 @@ void EXTI4_IRQHandler(void)
 				}
 			}
 			else if(motor_run_detect_flag == 1){
-				set_track_y(motor_run_detect_track_num, MOTOR_STOP);
+				set_track(motor_run_detect_track_num, MOTOR_STOP);
 				UsartPrintf(USART_DEBUG, "Track %d Arrive End Position!!!!!!\r\n", motor_run_detect_track_num);
 			}
 			

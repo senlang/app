@@ -31,7 +31,7 @@
 
 #include "stdlib.h"
 
-#define CONVEYOR_DELAY 20
+#define CONVEYOR_DELAY 10
 
 MOTOR_STATUS MotorStatus;
 extern struct motor_control_struct  motor_struct[TOTAL_PUSH_CNT];
