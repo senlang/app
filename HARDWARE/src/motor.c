@@ -31,7 +31,7 @@
 
 #include "stdlib.h"
 
-#define CONVEYOR_DELAY 10
+#define CONVEYOR_DELAY 5
 
 MOTOR_STATUS MotorStatus;
 extern struct motor_control_struct  motor_struct[TOTAL_PUSH_CNT];
@@ -192,7 +192,7 @@ int Conveyor_run(void)
 	memset(&drag_push_time[0], 0x00, sizeof(drag_push_time));
 
 	
-	//UsartPrintf(USART_DEBUG, "Conveyor_run %ds-------------\r\n", delay_s);
+	UsartPrintf(USART_DEBUG, "Conveyor_run %ds-------------\r\n", delay_s);
 	//if(delay_s == 0)
 	//return delay_s;
 	
