@@ -6,7 +6,7 @@
 
 
 
-#define MAX_PAYLOAD_LEN 256 //byte
+#define MAX_PAYLOAD_LEN 32 //byte
 
 #define STX_CODE_SIZE 1  
 #define PACKET_LEN_SIZE 1  
@@ -17,7 +17,7 @@
 #define TOTAL_PUSH_CNT	(100)
 
 #define TRACK_MAX	96
-#define BOARD_ID_MAX 10
+#define BOARD_ID_MAX 16
 #define PUSH_TIME_MAX 200
 
 
@@ -94,6 +94,7 @@ enum {
 	SETTING_REQUEST,
 	PUSH_MEDICINE_COMPLETE_REQUEST,
 	REPLENISH_MEDICINE_COMPLETE_REQUEST,
+	MCU_REPLENISH_MEDICINE_COMPLETE_REQUEST,
 	CMD_ACK,
 };  
 
@@ -175,6 +176,8 @@ typedef enum{
 #define CMD_PUSH_MEDICINE_COMPLETE 0xA0	//出货完成
 
 #define CMD_TRACK_RUNTIME_REPORT 0xB0	//货道运行时长上报
+
+#define CMD_MCU_ADD_MEDICINE_COMPLETE 0xC0	//单板补货完成
 
 #define CMD_MSG_ACK 0xF0	//指令应答
 
@@ -487,9 +490,13 @@ void replenish_complete_test(void);
 
 void BoardId_Init(void);
 void packet_parser(unsigned char *src, int len);
+void up_packet_parser(unsigned char *src, int len);
 int board_send_message(int msg_type, void *input_data);
 void mcu_push_medicine_open_door_complete(void);
 void mcu_push_medicine_close_door_complete(void);
+void mcu_push_medicine_track_only(uint8_t board, uint8_t track_number);
+void mcu_add_medicine_track_only(uint8_t board, uint8_t track_number);
+
 void send_track_runtime_report( void *input_data);
 
 

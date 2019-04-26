@@ -68,12 +68,6 @@ static uint8_t message_ack_buf[COMMAND_ACK_PACKET_SIZE];
 
 
 
-
-
-
-
-
-
 //static unsigned char txr_buf[MAX_PAYLOAD_LEN + 32];  
 
 
@@ -99,6 +93,8 @@ extern OS_EVENT *SemOfCalcTime;        	//触发货道时间统计信号量
 
 extern uint8_t calc_track_start_idx;
 extern uint8_t calc_track_count;
+extern uint16_t board_push_finish;
+extern uint16_t board_add_finish;
 
 void BoardId_Init(void)
 {
@@ -126,6 +122,51 @@ void BoardId_Init(void)
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
 	
 	UsartPrintf(USART_DEBUG, " Current Board ID:0x%x\r\n", g_src_board_id); 
+}
+
+/*所有单板出货完成并已开门，1号单板执行*/
+void mcu_push_medicine_open_door_complete(void)
+{
+	struct push_medicine_complete_request_info_struct  push_complete_info;
+	
+	memset(&push_complete_info, 0x00, sizeof(push_complete_info));
+	push_complete_info.board_id = 0xff;
+	push_complete_info.track_status= 0;
+	board_send_message(PUSH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
+}
+
+/*所有单板出货完成并已关门，1号单板执行*/
+void mcu_push_medicine_close_door_complete(void)
+{
+	struct push_medicine_complete_request_info_struct  push_complete_info;
+	
+	memset(&push_complete_info, 0x00, sizeof(push_complete_info));
+	push_complete_info.board_id = 0xfe;
+	push_complete_info.track_status= 0;
+	board_send_message(PUSH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
+}
+
+/*各货道出货完成，所有单板都需要执行*/
+void mcu_push_medicine_track_only(uint8_t board, uint8_t track_number)
+{
+	struct push_medicine_complete_request_info_struct  push_complete_info;
+	
+	memset(&push_complete_info, 0x00, sizeof(push_complete_info));
+	push_complete_info.board_id = board;
+	push_complete_info.track_status = 0;
+	push_complete_info.medicine_track_number = track_number;
+	board_send_message(PUSH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
+}
+
+void mcu_add_medicine_track_only(uint8_t board, uint8_t track_number)
+{
+	struct push_medicine_complete_request_info_struct  push_complete_info;
+	
+	memset(&push_complete_info, 0x00, sizeof(push_complete_info));
+	push_complete_info.board_id = board;
+	push_complete_info.track_status = 0;
+	push_complete_info.medicine_track_number = track_number;
+	board_send_message(MCU_REPLENISH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
 }
 
 
@@ -260,6 +301,41 @@ void send_push_medicine_complete_request( void *input_data)
 	UART1_IO_Send(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE);  
 } 
 
+
+
+
+void mcu_send_push_medicine_complete_request( void *input_data)  
+{
+	int i = 0;  
+	uint8_t send_push_medicine_complete_request_data[PUSH_MEDICINE_COMPLETE_PACKET_SIZE];
+	struct push_medicine_complete_request_info_struct *push_medicine_complete_info = (struct push_medicine_complete_request_info_struct *)input_data;
+
+
+	memset(send_push_medicine_complete_request_data, 0x00, PUSH_MEDICINE_REQUEST_PACKET_SIZE);
+	
+	send_push_medicine_complete_request_data[0] = START_CODE;
+	send_push_medicine_complete_request_data[1] = PUSH_MEDICINE_COMPLETE_PACKET_SIZE - 1;
+	send_push_medicine_complete_request_data[2] = CMD_PUSH_MEDICINE_COMPLETE;
+
+	send_push_medicine_complete_request_data[3] = push_medicine_complete_info->board_id;
+	
+	send_push_medicine_complete_request_data[4] = push_medicine_complete_info->medicine_track_number;
+	
+	send_push_medicine_complete_request_data[5] = push_medicine_complete_info->track_status;
+	
+	send_push_medicine_complete_request_data[PUSH_MEDICINE_COMPLETE_PACKET_SIZE - 1] = add_checksum(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE - 1);  
+
+
+	
+	UsartPrintf(USART_DEBUG, "Start:");
+	for(i = 0; i < PUSH_MEDICINE_COMPLETE_PACKET_SIZE; i++)
+	{
+		UsartPrintf(USART_DEBUG, "[0x%2x]", send_push_medicine_complete_request_data[i]);
+	}
+	UsartPrintf(USART_DEBUG, "\r\n: End");
+
+	UART1_IO_Send(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE);  
+} 
 
 
 
@@ -518,6 +594,7 @@ int board_send_message(int msg_type, void *input_data)
 		break;
 
 		case PUSH_MEDICINE_COMPLETE_REQUEST:
+		case MCU_REPLENISH_MEDICINE_COMPLETE_REQUEST:
 			send_push_medicine_complete_request(input_data);
 		break;
 
@@ -734,8 +811,13 @@ uint8_t preparse_push_medicine_request(struct push_medicine_request_struct *push
 	push_medicine_request->info[0].board_id = buffer[3];
 	push_medicine_request->info[0].medicine_track_number = buffer[4];
 	push_medicine_request->info[0].push_time = buffer[5]<<8|buffer[6];
-	
+
+	if((push_medicine_request->info[0].board_id == 1) && 
+		(push_medicine_request->info[0].medicine_track_number == 0) && 
+		(push_medicine_request->info[0].push_time == 0))
 	return TRUE;
+
+	return FALSE;
 }
 
 uint8_t preparse_replenish_medicine_request(struct replenish_medicine_request_struct *replenish_medicine_request, uint8_t *buffer)  
@@ -759,6 +841,11 @@ uint8_t preparse_replenish_medicine_request(struct replenish_medicine_request_st
 	replenish_medicine_request->info[0].board_id = buffer[3];
 	replenish_medicine_request->info[0].medicine_track_number = buffer[4];
 	replenish_medicine_request->info[0].push_time = buffer[5]<<8|buffer[6];
+
+	if((replenish_medicine_request->info[0].board_id == 1) && 
+		(replenish_medicine_request->info[0].medicine_track_number == 0) && 
+		(replenish_medicine_request->info[0].push_time == 0))
+	return TRUE;
 	
 	return TRUE;
 }
@@ -1333,6 +1420,69 @@ void parse_up_rx_info(void)
 
 
 
+
+
+
+void up_packet_parser(unsigned char *src, int len)  
+{  
+	int chk_offset = 0;
+	int pkt_len = 0;
+	int board_id = 0;
+	unsigned char *uart1_shared_rx_buf; 
+	char cmd_type = 0;
+	int i = 0;
+	unsigned char forward_data[32] = {0};
+	struct push_medicine_complete_struct push_medicine_complete_request;
+
+	do
+	{
+		uart1_shared_rx_buf = src + chk_offset;
+		
+		//UsartPrintf(USART_DEBUG, "chk_offset[%d]\r\n", chk_offset);
+		if(*uart1_shared_rx_buf != START_CODE)
+		{
+			UsartPrintf(USART_DEBUG, "start code error: 0x%02x\r\n", *(uart1_shared_rx_buf));
+			chk_offset++;
+			continue;
+		}		
+		UsartPrintf(USART_DEBUG, "00start code = 0x%02x, boardid = 0x%02x, cmd = 0x%02x!!\r\n", *(uart1_shared_rx_buf), *(uart1_shared_rx_buf + 3), *(uart1_shared_rx_buf + 2));
+
+		pkt_len = *(uart1_shared_rx_buf + 1) + 1;//data + checksum
+		board_id = *(uart1_shared_rx_buf + 3);
+		
+		memcpy(&push_medicine_complete_request, uart1_shared_rx_buf, pkt_len);
+
+
+		UsartPrintf(USART_DEBUG, "11start code = 0x%02x, boardid = 0x%02x, cmd = 0x%02x!!\r\n", push_medicine_complete_request.start_code, push_medicine_complete_request.info.board_id, push_medicine_complete_request.cmd_type);
+		if(1 == g_src_board_id)
+		{
+			if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_COMPLETE)) //收到出货完成状态上报响应
+			{	 
+				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_PUSH_MEDICINE_COMPLETE, Board[%d], Track[%d]!!\r\n", push_medicine_complete_request.info.board_id, push_medicine_complete_request.info.medicine_track_number);
+				//TODO:统一由1号单板处理，在收集齐所有单板状态后统一上报安卓板
+				if(push_medicine_complete_request.info.medicine_track_number == 0xFF)
+				board_push_finish &= ~(1<<(board_id - 1));
+			}  
+			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_MCU_ADD_MEDICINE_COMPLETE)) //收到补货完成状态上报响应
+			{  
+				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MCU_ADD_MEDICINE_COMPLETE, Board[%d], Track[%d]!!\r\n", push_medicine_complete_request.info.board_id, push_medicine_complete_request.info.medicine_track_number);
+				if(push_medicine_complete_request.info.medicine_track_number == 0xFF)
+				board_add_finish &= ~(1<<board_id);
+			}
+			else 
+			{
+				UsartPrintf(USART_DEBUG, "Received Data, Jump!!\r\n");
+				break;
+			}
+		}
+		chk_offset = chk_offset + pkt_len;
+		//UsartPrintf(USART_DEBUG, "chk_offset = %d, len = %d!!\r\n", chk_offset, len);
+	}while(chk_offset > 0 && chk_offset < len);
+		
+}
+
+
+
 void packet_parser(unsigned char *src, int len)  
 {  
 	int chk_offset = 0;
@@ -1352,6 +1502,14 @@ void packet_parser(unsigned char *src, int len)
     struct replenish_medicine_complete_struct replenish_medicine_complete_request; 
     struct track_calc_request_struct track_calc_request; 
 
+	
+	UsartPrintf(USART_DEBUG, "packet_parser:");
+	for(i = 0; i < len; i++)
+	{
+		UsartPrintf(USART_DEBUG, "0x%02x,", *(src + i));
+	}
+	UsartPrintf(USART_DEBUG, "\r\n:");
+
 	do
 	{
 		uart1_shared_rx_buf = src + chk_offset;
@@ -1367,43 +1525,69 @@ void packet_parser(unsigned char *src, int len)
 		UsartPrintf(USART_DEBUG, "start code = 0x%02x, boardid = 0x%02x, cmd = 0x%02x!!\r\n", *(uart1_shared_rx_buf), *(uart1_shared_rx_buf + 3), *(uart1_shared_rx_buf + 2));
 		
 		pkt_len = *(uart1_shared_rx_buf + 1) + 1;//data + checksum
-
+		cmd_type = *(uart1_shared_rx_buf + 2);
 		board_id = *(uart1_shared_rx_buf + 3);
-
+		
 		if(1 == g_src_board_id)
 		{
-			cmd_type = *(uart1_shared_rx_buf + 2);
 			if(cmd_type == CMD_PUSH_MEDICINE_REQUEST)
 			{
 				if(preparse_push_medicine_request(&push_medicine_request, uart1_shared_rx_buf) == TRUE)
 				{
-					//drag_push_time[push_medicine_request.info[0].board_id] += push_medicine_request.info[0].push_time;
-					//drag_push_time_calc_pre += push_medicine_request.info[0].push_time;
+					UsartPrintf(USART_DEBUG, "board_push_finish: 0x%02x\r\n", board_push_finish);
+					
 					if(push_medicine_request.info[0].push_time > drag_push_time[push_medicine_request.info[0].board_id])
 					{
 						drag_push_time[push_medicine_request.info[0].board_id] = push_medicine_request.info[0].push_time;
 						drag_push_time_calc_pre = push_medicine_request.info[0].push_time;
 					}
 					//转发
-					for(i = 0; i < BOARD_ID_MAX; i++)
+					memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
+					for(i = 1; i <= BOARD_ID_MAX; i++)
 					{
-						memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
-						*(forward_data + 3) = i;
-						UART2_IO_Send(forward_data, pkt_len);	
+						UsartPrintf(USART_DEBUG, "board_push_finish & (1 << (i-1)): %d\r\n", board_push_finish & (1 << (i-1)));
+						if(board_push_finish & (1 << (i-1)))
+						{
+							memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
+							*(forward_data + 3) = i;
+							*(forward_data + pkt_len - 1) = add_checksum(forward_data, pkt_len - 1);
+							
+							UsartPrintf(USART_DEBUG, "PUSH_MEDICINE_REQUEST Forward: 0x%02x\r\n", *(forward_data + 3));
+							UART2_IO_Send(forward_data, pkt_len);
+							RTOS_TimeDly(50);
+						}
 					}
+				}
+				else
+				{
+					board_push_finish |= 1<<(board_id - 1);
 				}
 			}
 			else if(cmd_type == CMD_REPLENISH_MEDICINE_REQUEST)
 			{
-				if(preparse_replenish_medicine_request(&replenish_medicine_request, uart1_shared_rx_buf) == TRUE)
+				//if(preparse_replenish_medicine_request(&replenish_medicine_request, uart1_shared_rx_buf) == TRUE)
+				if(preparse_push_medicine_request(&push_medicine_request, uart1_shared_rx_buf) == TRUE)
 				{
+					UsartPrintf(USART_DEBUG, "board_add_finish: 0x%02x\r\n", board_add_finish);
 					//转发
+					memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
 					for(i = 0; i < BOARD_ID_MAX; i++)
-					{
-						memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
-						*(forward_data + 3) = i;
-						UART2_IO_Send(forward_data, pkt_len);	
-					}
+					{	
+						UsartPrintf(USART_DEBUG, "board_add_finish & (1 << (i-1)): %d\r\n", board_add_finish & (1 << (i-1)));
+						if(board_add_finish & (1 << (i-1)))
+						{
+							memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
+							*(forward_data + 3) = i;
+							*(forward_data + pkt_len - 1) = add_checksum(forward_data, pkt_len - 1);
+							UsartPrintf(USART_DEBUG, "REPLENISH_MEDICINE_REQUEST Forward: 0x%02x\r\n", *(forward_data + 3));
+							UART2_IO_Send(forward_data, pkt_len);
+							RTOS_TimeDly(50);
+						}
+					}				
+				}
+				else
+				{
+					board_add_finish |= 1<<(board_id - 1);
 				}
 			}
 		}
@@ -1488,27 +1672,5 @@ void packet_parser(unsigned char *src, int len)
 		
 }
 
-
-
-void mcu_push_medicine_open_door_complete(void)
-{
-	struct push_medicine_complete_request_info_struct  push_complete_info;
-	
-	memset(&push_complete_info, 0x00, sizeof(push_complete_info));
-	push_complete_info.board_id = 0xff;
-	push_complete_info.track_status= 0;
-	board_send_message(PUSH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
-}
-
-
-void mcu_push_medicine_close_door_complete(void)
-{
-	struct push_medicine_complete_request_info_struct  push_complete_info;
-	
-	memset(&push_complete_info, 0x00, sizeof(push_complete_info));
-	push_complete_info.board_id = 0xfe;
-	push_complete_info.track_status= 0;
-	board_send_message(PUSH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
-}
 
 

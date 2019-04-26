@@ -203,7 +203,8 @@ int Conveyor_run(void)
 	
 	Conveyor_set(CONVEYOR_STOP);
 
-	return delay_s;
+	//return delay_s;
+	return 1;
 }
 
 uint8_t Conveyor_check(void)

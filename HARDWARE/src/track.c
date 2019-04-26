@@ -36,6 +36,8 @@ extern uint16_t running_time;
 
 extern uint8_t motor_run_detect_flag;
 extern uint8_t motor_run_detect_track_num;
+extern uint16_t board_push_finish;
+extern uint16_t board_add_finish;
 
 
 static  uint16_t forward_running_time;  
@@ -282,6 +284,7 @@ int Track_run(MOTOR_ENUM run_mode)
 	int x = 0, y = 0;
 	uint16_t delay_s = 0;
 	uint16_t delay_ms = 0;
+	struct push_medicine_complete_request_info_struct  push_complete_info;
 
 	UsartPrintf(USART_DEBUG, "Enter Track_run, mode[%d]!!!\r\n");
 	Motor_Set(run_mode);
@@ -307,6 +310,16 @@ int Track_run(MOTOR_ENUM run_mode)
 					motor_run_detect_flag = 0;
 					set_track_y(y, MOTOR_STOP);
 					UsartPrintf(USART_DEBUG, "stop:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", x*10 + y + 1, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);
+
+					if(MOTOR_RUN_FORWARD == run_mode)
+					{
+						mcu_push_medicine_track_only(g_src_board_id, motor_run_detect_track_num);
+					}
+					else if(MOTOR_RUN_BACKWARD == run_mode)
+					{
+						mcu_add_medicine_track_only(g_src_board_id, motor_run_detect_track_num);
+					}
+
 				}
 			}
 		}while(0);
@@ -316,13 +329,23 @@ int Track_run(MOTOR_ENUM run_mode)
 	
 	Motor_Set(MOTOR_STOP);	
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
-
 	heart_info.board_id = g_src_board_id;
 	heart_info.board_status = STANDBY_STATUS;
 	heart_info.medicine_track_number = 0; 
 
+
 	if(MOTOR_RUN_FORWARD == run_mode)
-	OSSemPost(SemOfConveyor);
+	{
+		mcu_push_medicine_track_only(g_src_board_id, 0xFF);
+		board_push_finish &= ~(1<<(g_src_board_id - 1));
+		if(1 == g_src_board_id)
+		OSSemPost(SemOfConveyor);
+	}
+	else if(MOTOR_RUN_BACKWARD == run_mode)
+	{
+		mcu_add_medicine_track_only(g_src_board_id, 0xFF);
+		board_add_finish &= ~(1<<(g_src_board_id - 1));
+	}
 
 	UsartPrintf(USART_DEBUG, "Exit Track_run!!!\r\n");
 	return 0;

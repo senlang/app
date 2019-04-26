@@ -49,70 +49,11 @@ int down_data_parse(void)
 
   
 int down_shared_buf_copy(unsigned char *src, int len)
-{  
-	#if 0
-	do
-	{
-		UsartPrintf(USART_DEBUG, "recevied msg header[%s]\r\n", src); 
-		
-		memcpy(bd_shared_rx_buf, src + chk_offset, len);
-		if ((bd_shared_rx_buf[1] == 'D') && (bd_shared_rx_buf[2] == 'W')) //收到定位信息$DWXX  
-		{  
-			bd_buf_bitmap |= DWXX_BUF;  
-			memcpy(dwxx_buf, bd_shared_rx_buf, sizeof(dwxx_buf));  
-		}  
-		else if ((bd_shared_rx_buf[1] == 'T') && (bd_shared_rx_buf[2] == 'X')) //收到通信信息$TXXX  
-		{  
-			bd_buf_bitmap |= TXXX_BUF;  
-			memcpy(txxx_buf, bd_shared_rx_buf, sizeof(txxx_buf));  
-		}  
-		else if ((bd_shared_rx_buf[1] == 'I') && (bd_shared_rx_buf[2] == 'C')) //收到IC信息$ICXX  
-		{  
-			bd_buf_bitmap |= ICXX_BUF;  
-			memcpy(icxx_buf, bd_shared_rx_buf, sizeof(icxx_buf));  
-		}  
-		else if ((bd_shared_rx_buf[1] == 'Z') && (bd_shared_rx_buf[2] == 'J')) //收到自检信息$ZJXX  
-		{  
-			bd_buf_bitmap |= ZJXX_BUF;  
-			memcpy(zjxx_buf, bd_shared_rx_buf, sizeof(zjxx_buf));  
-		}  
-		else if ((bd_shared_rx_buf[1] == 'S') && (bd_shared_rx_buf[2] == 'J')) //收到时间信息$SJXX  
-		{  
-			bd_buf_bitmap |= SJXX_BUF;  
-			memcpy(sjxx_buf, bd_shared_rx_buf, sizeof(sjxx_buf));  
-		}  
-		else if ((bd_shared_rx_buf[1] == 'B') && (bd_shared_rx_buf[2] == 'B')) //收到版本信息$BBXX  
-		{  
-			bd_buf_bitmap |= BBXX_BUF;  
-			memcpy(bbxx_buf, bd_shared_rx_buf, sizeof(bbxx_buf));  
-		}  
-		else if ((bd_shared_rx_buf[1] == 'F') && (bd_shared_rx_buf[2] == 'K')) //收到反馈信息$FKXX  
-		{  
-			bd_buf_bitmap |= FKXX_BUF;  
-			memcpy(fkxx_buf, bd_shared_rx_buf, sizeof(fkxx_buf));  
-		}  
-		else if ((bd_shared_rx_buf[1] == 'B') && (bd_shared_rx_buf[2] == 'D') && (bd_shared_rx_buf[3] == 'T')) //收到BDTXR
-		{  
-			bd_buf_bitmap |= BDTXR_BUF;  
-			memcpy(bdtxr_buf, bd_shared_rx_buf, sizeof(bd_shared_rx_buf));  
-		}  
-		
-		else
-		{
-			UsartPrintf(USART_DEBUG, "Received Data is Error, drop!!\r\n");
-			break;
-		}
-		
-		
-		chk_offset = bd_shared_rx_buf[5]<<8|bd_shared_rx_buf[6];
-		UsartPrintf(USART_DEBUG, "chk_offset = %d, len = %d!!\r\n", chk_offset, len);
-		
-	}while(chk_offset >0 && chk_offset < len);
-	#endif
-	
+{  	
 	return 0;
 }  
 
+extern uint8_t  g_src_board_id;
 int uart2_receive_data(void)
 {
 	int retval = -1;
@@ -128,7 +69,10 @@ int uart2_receive_data(void)
 	}
 	UsartPrintf(USART_DEBUG, "\r\n");
 	UART1_IO_Send(uasrt2_recv_data[uart2_enqueue_idx].buf, uasrt2_recv_data[uart2_enqueue_idx].dataLen);
-		
+	
+	if(g_src_board_id == 1)
+	up_packet_parser(uasrt2_recv_data[uart2_enqueue_idx].buf, uasrt2_recv_data[uart2_enqueue_idx].dataLen);
+	
 	UART2_IO_ClearRecive();
 	return 0;
 }

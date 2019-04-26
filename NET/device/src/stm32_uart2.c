@@ -205,12 +205,14 @@ void UART2_IO_Send(unsigned char *str, unsigned short len)
 
 	unsigned short count = 0;
 	
+	UsartPrintf(USART_DEBUG, "UART2_IO_Send : ");
 	for(; count < len; count++)											//发送一帧数据
 	{
+		UsartPrintf(USART_DEBUG, "0x%02x,", *(str));
 		USART_SendData(USART2, *str++);
 		while(USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET);
 	}
-
+	UsartPrintf(USART_DEBUG, "\r\n");
 }
 
 /*

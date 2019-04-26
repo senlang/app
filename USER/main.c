@@ -122,10 +122,16 @@ uint8_t calc_track_count = 0;
 uint8_t motor_run_detect_flag = 0;
 uint8_t motor_run_detect_track_num = 0;
 uint8_t key_stat = 0;
+uint16_t board_push_finish = 0;/*1111 1111每一个bit表示1个单板*/
+uint16_t board_add_finish = 0;/*1111 1111每一个bit表示1个单板*/
+
 
 
 extern struct status_report_request_info_struct  heart_info;
 extern uint8_t track_work;
+
+uint8_t board_drug_push_status[BOARD_ID_MAX] = {0};
+
 
 
 /*
@@ -384,13 +390,24 @@ void Drug_Push_Task(void *pdata)
 	uint8_t delay_time = 10;
 	uint8_t run_time = 0;
 	INT8U            err;
+	uint8_t i = 0;
 
 	SemOfConveyor= OSSemCreate(0);
 	
 	while(1)
 	{		
+		
 		OSSemPend(SemOfConveyor, 0u, &err);
-		//UsartPrintf(USART_DEBUG, "Will run conveyor!!!!!!!!!!\r\n");
+		do{
+			UsartPrintf(USART_DEBUG, "board_push_finish = 0x%x!!!!!!!!!!\r\n", board_push_finish);
+
+			if(board_push_finish == 0)
+			break;
+
+			RTOS_TimeDlyHMSM(0, 0, 0, 500);
+		}while(1);
+
+		UsartPrintf(USART_DEBUG, "Will run conveyor!!!!!!!!!!\r\n");
 		//conveyor = Conveyor_check();		
 		if(1)//(conveyor == 1)
 		{
@@ -400,9 +417,7 @@ void Drug_Push_Task(void *pdata)
 				Door_Control_Set(MOTOR_RUN_BACKWARD);
 				do{
 					RTOS_TimeDlyHMSM(0, 0, 0, 100);
-					run_time += 1;
-
-					
+					run_time += 1;					
 					//UsartPrintf(USART_DEBUG, "run_time = %d\r\n", run_time);
 					if(run_time >= 300)
 					break;
@@ -493,9 +508,8 @@ void trigger_calc_runtime_Task(void *pdata)
 	SemOfCalcTime = OSSemCreate(0);
 	while(1)
 	{
-		UsartPrintf(USART_DEBUG, "00trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
 		OSSemPend(SemOfCalcTime, 0u, &err);
-		UsartPrintf(USART_DEBUG, "11trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
+		UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
 		trigger_calc_flag = 0;
 
 		for(cur_calc_track = calc_track_start_idx; cur_calc_track < calc_track_count + calc_track_start_idx; cur_calc_track ++)
