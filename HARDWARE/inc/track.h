@@ -27,6 +27,7 @@ uint8_t set_track(uint16_t track_num, uint8_t status);
 void Track_Init(void);
 int Track_run(MOTOR_ENUM run_mode);
 int Track_trigger_calc_runtime(uint8_t is_init, MOTOR_ENUM run_mode);
+int Track_trigger_calc_runtime_error(int is_block, int step, MOTOR_ENUM run_mode);
 uint8_t set_track_y(uint16_t col, uint8_t status);
 
 

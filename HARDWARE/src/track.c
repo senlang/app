@@ -375,6 +375,7 @@ int Track_trigger_calc_runtime(uint8_t is_init, MOTOR_ENUM run_mode)
 			track_time.track_forward_time = running_time;
 			UsartPrintf(USART_DEBUG, "Forward Running Time :%d, %d\r\n", track_time.track_forward_time, running_time);
 			running_time = 0;
+			send_track_runtime_report(&track_time);
 		}
 		else if(old_status == MOTOR_RUN_BACKWARD)
 		{
@@ -384,9 +385,26 @@ int Track_trigger_calc_runtime(uint8_t is_init, MOTOR_ENUM run_mode)
 			running_time = 0;
 		}
 		UsartPrintf(USART_DEBUG, "End Calc:%d,%d,%d!!!\r\n", track_time.track_start_num, track_time.track_forward_time, track_time.track_backward_time);
-		if(track_time.track_forward_time && track_time.track_backward_time)
-		send_track_runtime_report(&track_time);
+		//if(track_time.track_forward_time && track_time.track_backward_time)
+		//send_track_runtime_report(&track_time);
 	}
 	old_status = run_mode;
 }
+
+int Track_trigger_calc_runtime_error(int is_block, int step, MOTOR_ENUM run_mode)
+{
+	Motor_Set(run_mode);
+	set_track(cur_calc_track, run_mode);
+	if(!is_block || (2 == step))
+	{
+		if(!is_block)
+		{
+			track_time.track_backward_time = 888;
+			track_time.track_forward_time = 888;
+		}
+		
+		send_track_runtime_report(&track_time);
+	}
+}
+
 

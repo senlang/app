@@ -19,6 +19,9 @@
 //C¿â
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+
 
 #include "stm32_protocol.h"
 
@@ -345,7 +348,7 @@ void HEART_Task(void *pdata)
 		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//¹ÒÆðÈÎÎñ1s
 		heart_count++;
 
-		if(heart_count == 5)
+		if(heart_count == 15)
 		{
 			UsartPrintf(USART_DEBUG, "Heart Report--------\r\n");
 			board_send_message(STATUS_REPORT_REQUEST, &heart_info);
@@ -573,29 +576,27 @@ void trigger_calc_runtime_Task(void *pdata)
 					key_stat = 2;
 				}
 				do{
+					RTOS_TimeDlyHMSM(0, 0, 0, 500);	//
 					if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN)
 					{
-						trigger_calc_runtime = 0;
-						Track_trigger_calc_runtime(1, MOTOR_STOP);
-						UsartPrintf(USART_DEBUG, "do prepare, Finish!!!!\r\n");
+						Track_trigger_calc_runtime_error(1, i, MOTOR_STOP);
+						UsartPrintf(USART_DEBUG, "Track calc block occur, error!!!!\r\n");
 						break;
 					}
-					
-					RTOS_TimeDlyHMSM(0, 0, 0, 200);	//
-
 					if(running_time >= 600)
 					{
-						//UsartPrintf(USART_DEBUG, "Track calc time %d longer than 60s, error!!!!\r\n", running_time);
 						break;
 					}
-					
 				}while(trigger_calc_runtime);
 
 				key_stat = 0;
 				if(running_time >= 600)
 				{
-					UsartPrintf(USART_DEBUG, "Track calc time %d longer than 60s, error!!!!\r\n", running_time);
 					running_time = 0;
+					trigger_calc_runtime = 0;
+					Track_trigger_calc_runtime_error(0, i, MOTOR_STOP);
+		
+					UsartPrintf(USART_DEBUG, "Track calc time %d longer than 60s, error!!!!\r\n", running_time);
 					break;
 				}
 				RTOS_TimeDlyHMSM(0, 0, 0, 500); //
