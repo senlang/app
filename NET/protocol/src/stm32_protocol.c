@@ -201,7 +201,7 @@ void send_command_ack( void *input_data)
 
 	send_cmd_ack_data[3] = cmd_ack_info->rsp_cmd_type;
 	
-	send_cmd_ack_data[4] = cmd_ack_info->board_id;
+	send_cmd_ack_data[4] = g_src_board_id;
 	
 	send_cmd_ack_data[5] = cmd_ack_info->status;
 
@@ -759,10 +759,8 @@ void parse_push_medicine_request(struct push_medicine_request_struct *push_medic
 				track_struct[x][y].motor_run = MOTOR_RUN_FORWARD;
 				track_struct[x][y].medicine_track_number = push_medicine_request->info[valid_cnt].medicine_track_number;
 				track_struct[x][y].push_time = push_medicine_request->info[valid_cnt].push_time;
-
-			
 				valid_cnt++;
-
+				cmd_ack_info.status = 1;
 			}
 			else if((push_medicine_request->info[valid_cnt].medicine_track_number == 0) && (push_medicine_request->info[valid_cnt].push_time == 0))
 			{
@@ -779,7 +777,6 @@ void parse_push_medicine_request(struct push_medicine_request_struct *push_medic
 		if(valid_cnt)
 		{
 			//OSSemPost(SemOfMotor);
-			cmd_ack_info.status = 1;
 		}
 	}
 	cmd_ack_info.board_id = g_src_board_id;
@@ -1423,6 +1420,32 @@ void parse_up_rx_info(void)
 
 
 
+
+
+
+
+uint8_t up_packet_preparser(unsigned char *src, int len)  
+{  
+	uint8_t cmd_type = 0;
+	uint8_t check_sum = 0;
+	uint8_t pkt_len = 0;
+	uint8_t retval = FALSE;
+
+	pkt_len = *(src + 1);//data
+	cmd_type = *(src + 2);
+	check_sum = *(src + len);
+
+	if(check_sum == add_checksum(src, len))
+	retval = TRUE;
+	
+	return retval;
+}
+
+
+
+
+
+
 void up_packet_parser(unsigned char *src, int len)  
 {  
 	int chk_offset = 0;
@@ -1439,25 +1462,43 @@ void up_packet_parser(unsigned char *src, int len)
 		uart1_shared_rx_buf = src + chk_offset;
 		
 		//UsartPrintf(USART_DEBUG, "chk_offset[%d]\r\n", chk_offset);
+		UsartPrintf(USART_DEBUG, "up_packet_parser:");
+		for(i = 0; i < len; i++)
+		{
+			UsartPrintf(USART_DEBUG, "0x%02x,", *(src + i));
+		}
+		UsartPrintf(USART_DEBUG, "\r\n:");
+		
 		if(*uart1_shared_rx_buf != START_CODE)
 		{
 			UsartPrintf(USART_DEBUG, "start code error: 0x%02x\r\n", *(uart1_shared_rx_buf));
 			chk_offset++;
 			continue;
 		}		
-		UsartPrintf(USART_DEBUG, "00start code = 0x%02x, boardid = 0x%02x, cmd = 0x%02x!!\r\n", *(uart1_shared_rx_buf), *(uart1_shared_rx_buf + 3), *(uart1_shared_rx_buf + 2));
+
+		if(len - chk_offset < IPUC)
+		{
+			UsartPrintf(USART_DEBUG, "Packet Len error: 0x%02x\r\n", len, chk_offset);
+			chk_offset++;
+			break;
+		}	
 
 		pkt_len = *(uart1_shared_rx_buf + 1) + 1;//data + checksum
-		board_id = *(uart1_shared_rx_buf + 3);
-		
+
+		if(up_packet_preparser(uart1_shared_rx_buf, pkt_len - 1) == FALSE)
+		{
+			chk_offset++;
+			goto	UPDATA_CONTINUE;
+		}
+		UART1_IO_Send(uart1_shared_rx_buf, pkt_len);
+
 		memcpy(&push_medicine_complete_request, uart1_shared_rx_buf, pkt_len);
 
-
-		UsartPrintf(USART_DEBUG, "11start code = 0x%02x, boardid = 0x%02x, cmd = 0x%02x!!\r\n", push_medicine_complete_request.start_code, push_medicine_complete_request.info.board_id, push_medicine_complete_request.cmd_type);
 		if(1 == g_src_board_id)
 		{
 			if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_COMPLETE)) //收到出货完成状态上报响应
 			{	 
+				board_id = *(uart1_shared_rx_buf + 3);
 				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_PUSH_MEDICINE_COMPLETE, Board[%d], Track[%d]!!\r\n", push_medicine_complete_request.info.board_id, push_medicine_complete_request.info.medicine_track_number);
 				//TODO:统一由1号单板处理，在收集齐所有单板状态后统一上报安卓板
 				if(push_medicine_complete_request.info.medicine_track_number == 0xFF)
@@ -1465,18 +1506,20 @@ void up_packet_parser(unsigned char *src, int len)
 			}  
 			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_MCU_ADD_MEDICINE_COMPLETE)) //收到补货完成状态上报响应
 			{  
+				board_id = *(uart1_shared_rx_buf + 3);
 				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MCU_ADD_MEDICINE_COMPLETE, Board[%d], Track[%d]!!\r\n", push_medicine_complete_request.info.board_id, push_medicine_complete_request.info.medicine_track_number);
 				if(push_medicine_complete_request.info.medicine_track_number == 0xFF)
 				board_add_finish &= ~(1<<board_id);
 			}
 			else 
 			{
-				UsartPrintf(USART_DEBUG, "Received Data, Jump!!\r\n");
+				UsartPrintf(USART_DEBUG, "Received Data, transfor!!\r\n");
 				break;
 			}
 		}
 		chk_offset = chk_offset + pkt_len;
 		//UsartPrintf(USART_DEBUG, "chk_offset = %d, len = %d!!\r\n", chk_offset, len);
+		UPDATA_CONTINUE:
 	}while(chk_offset > 0 && chk_offset < len);
 		
 }
@@ -1492,6 +1535,7 @@ void packet_parser(unsigned char *src, int len)
 	char cmd_type = 0;
 	int i = 0;
 	unsigned char forward_data[32] = {0};
+	uint8_t check_sum = 0;
 
 	struct status_report_request_struct  status_report_request;
 	struct msg_ack_struct  cmd_ack;
@@ -1519,6 +1563,8 @@ void packet_parser(unsigned char *src, int len)
 		{
 			UsartPrintf(USART_DEBUG, "start code error: 0x%02x\r\n", *(uart1_shared_rx_buf));
 			chk_offset++;
+			
+			goto	PARSER_CONTINUE;
 			continue;
 		}
 
@@ -1527,6 +1573,15 @@ void packet_parser(unsigned char *src, int len)
 		pkt_len = *(uart1_shared_rx_buf + 1) + 1;//data + checksum
 		cmd_type = *(uart1_shared_rx_buf + 2);
 		board_id = *(uart1_shared_rx_buf + 3);
+
+		check_sum = add_checksum(uart1_shared_rx_buf, pkt_len - 1);
+		
+		if(check_sum != uart1_shared_rx_buf[pkt_len - 1])
+		{
+			UsartPrintf(USART_DEBUG, "checksum error: 0x%02x, 0x%02x\r\n", check_sum, uart1_shared_rx_buf[pkt_len - 1]);
+			chk_offset ++;
+			goto	PARSER_CONTINUE;
+		}
 		
 		if(1 == g_src_board_id)
 		{
@@ -1592,7 +1647,7 @@ void packet_parser(unsigned char *src, int len)
 			}
 		}
 		
-		if(board_id != g_src_board_id)
+		if(board_id != g_src_board_id && (board_id > 0 ) && (board_id < BOARD_ID_MAX))
 		{
 			UsartPrintf(USART_DEBUG, "Board Id not match, forward!!!%d - %d!!\r\n", board_id, g_src_board_id);
 			UART2_IO_Send(uart1_shared_rx_buf, pkt_len);	
@@ -1642,7 +1697,7 @@ void packet_parser(unsigned char *src, int len)
 			{  
 				memcpy(message_ack_buf, uart1_shared_rx_buf, pkt_len);	
 				parse_message_ack(&cmd_ack);  
-				print_message_ack(&cmd_ack);  
+				//print_message_ack(&cmd_ack);  
 				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MSG_ACK!!\r\n");
 			} 
 			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_STATUS_REPORT_REQUEST)) //收到状态上报请求
@@ -1668,6 +1723,7 @@ void packet_parser(unsigned char *src, int len)
 		
 		chk_offset = chk_offset + pkt_len;
 		//UsartPrintf(USART_DEBUG, "chk_offset = %d, len = %d!!\r\n", chk_offset, len);
+		PARSER_CONTINUE:
 	}while(chk_offset > 0 && chk_offset < len);
 		
 }

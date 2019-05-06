@@ -14,7 +14,7 @@
 #include "motor.h"
 #include "track.h"
 #include "timer.h"
-
+#include "push_belt.h"
 
 //C库
 #include <string.h>
@@ -22,11 +22,11 @@
 #include <stdlib.h>
 
 
-
+//通讯协议
 #include "stm32_protocol.h"
 
 
-#define SW_VERSION		"SV 1.0.0"
+#define SW_VERSION		"SV 1.1.0"
 
 //看门狗任务
 #define IWDG_TASK_PRIO		6

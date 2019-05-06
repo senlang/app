@@ -626,6 +626,11 @@
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\src\stmflash.c</FilePath>
             </File>
+            <File>
+              <FileName>push_belt.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\src\push_belt.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

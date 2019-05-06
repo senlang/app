@@ -53,6 +53,54 @@ int down_shared_buf_copy(unsigned char *src, int len)
 	return 0;
 }  
 
+
+
+
+
+
+
+int uart2_parse_protocol(void)
+{
+	unsigned char *src;
+	int len;
+	int count = 0;
+	int i = 0;
+
+	//UsartPrintf(USART_DEBUG, "uart2:en idx = %d, de idx = %d\r\n", uart2_enqueue_idx, uart2_dequeue_idx);
+
+	if (uart2_enqueue_idx != uart2_dequeue_idx)
+	{
+		// 1. 读大于写，
+		// 2. 写大于读，
+		count = (uart2_dequeue_idx > uart2_enqueue_idx) ?
+			(UART_MAX_IDX - uart2_dequeue_idx + uart2_enqueue_idx) // 读大于写
+			: (uart2_enqueue_idx - uart2_dequeue_idx ); // 写大于读
+	}
+	else
+	{
+		//count = UART_MAX_IDX; 
+		return 0;
+	}
+	
+	//UsartPrintf(USART_DEBUG, "count = %d\r\n", count);
+
+	while(count > 0)
+	{
+		//UsartPrintf(USART_DEBUG, "uart2:en idx = %d, de idx = %d\r\n", uart2_enqueue_idx, uart2_dequeue_idx);
+		src = uasrt2_recv_data[uart2_dequeue_idx].buf;
+		len = uasrt2_recv_data[uart2_dequeue_idx].dataLen;
+
+		up_packet_parser(src, len);
+		
+		uart2_dequeue_idx++;
+		if(uart2_dequeue_idx >= UART_MAX_IDX - 1)
+		uart2_dequeue_idx = 0;
+		count--;
+	};	
+	return 0;
+}
+
+
 extern uint8_t  g_src_board_id;
 int uart2_receive_data(void)
 {
@@ -62,18 +110,20 @@ int uart2_receive_data(void)
 	if(UART2_IO_Receive() == 0)
 	return retval;
 
-	UsartPrintf(USART_DEBUG, "uart2 receive[%d]", uasrt2_recv_data[uart2_enqueue_idx].dataLen);
-	for(i = 0; i < uasrt2_recv_data[uart2_enqueue_idx].dataLen; i++)
-	{
-		UsartPrintf(USART_DEBUG, "0x%02x,", uasrt2_recv_data[uart2_enqueue_idx].buf[i]);
-	}
-	UsartPrintf(USART_DEBUG, "\r\n");
-	UART1_IO_Send(uasrt2_recv_data[uart2_enqueue_idx].buf, uasrt2_recv_data[uart2_enqueue_idx].dataLen);
-	
-	if(g_src_board_id == 1)
-	up_packet_parser(uasrt2_recv_data[uart2_enqueue_idx].buf, uasrt2_recv_data[uart2_enqueue_idx].dataLen);
+	uart2_parse_protocol();
 	
 	UART2_IO_ClearRecive();
 	return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
 

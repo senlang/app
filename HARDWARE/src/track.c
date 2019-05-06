@@ -333,7 +333,7 @@ int Track_run(MOTOR_ENUM run_mode)
 	heart_info.board_status = STANDBY_STATUS;
 	heart_info.medicine_track_number = 0; 
 
-
+	RTOS_TimeDlyHMSM(0, 0, 0, 200);
 	if(MOTOR_RUN_FORWARD == run_mode)
 	{
 		mcu_push_medicine_track_only(g_src_board_id, 0xFF);

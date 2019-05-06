@@ -86,7 +86,7 @@ int parse_protocol(void)
 	int count = 0;
 	//unsigned char position = 0;
 
-	UsartPrintf(USART_DEBUG, "00:en idx = %d, de idx = %d\r\n", uart1_enqueue_idx, uart1_dequeue_idx);
+	//UsartPrintf(USART_DEBUG, "00:en idx = %d, de idx = %d\r\n", uart1_enqueue_idx, uart1_dequeue_idx);
 
 	if (uart1_enqueue_idx != uart1_dequeue_idx)
 	{
@@ -102,11 +102,11 @@ int parse_protocol(void)
 		return 0;
 	}
 	
-	UsartPrintf(USART_DEBUG, "count = %d\r\n", count);
+	//UsartPrintf(USART_DEBUG, "count = %d\r\n", count);
 
 	while(count > 0)
 	{
-		UsartPrintf(USART_DEBUG, "11:en idx = %d, de idx = %d\r\n", uart1_enqueue_idx, uart1_dequeue_idx);
+		//UsartPrintf(USART_DEBUG, "11:en idx = %d, de idx = %d\r\n", uart1_enqueue_idx, uart1_dequeue_idx);
 		src = uart1_recv_data[uart1_dequeue_idx].buf;
 		len = uart1_recv_data[uart1_dequeue_idx].dataLen;
 		packet_parser(src, len);
