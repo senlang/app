@@ -71,6 +71,7 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 	
 	test_request->info.board_id = inputdata[3];
 	test_request->info.test_mode = inputdata[4];
+	test_request->info.test_status = inputdata[5];
 
 	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
 
@@ -80,10 +81,10 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 	{
 		motor_control.board_id = test_request->info.board_id;
 
-		UsartPrintf(USART_DEBUG, "push_time[0x%02x][0x%02x]\r\n",inputdata[6], inputdata[7]);
+		UsartPrintf(USART_DEBUG, "push_time[0x%02x][0x%02x]\r\n",inputdata[7], inputdata[8]);
 
-		motor_control.medicine_track_number = test_request->info.medicine_track_number = inputdata[5];
-		motor_control.push_time = test_request->info.test_time= inputdata[6]<<8|inputdata[7];
+		motor_control.medicine_track_number = test_request->info.medicine_track_number = inputdata[6];
+		motor_control.push_time = test_request->info.test_time= inputdata[7]<<8|inputdata[8];
 
 		UsartPrintf(USART_DEBUG, "test mode[%d]\r\n",test_request->info.test_mode);
 		if(test_request->info.test_mode == TRACK_TEST)
@@ -129,7 +130,7 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 			}
 			else if(test_request->info.test_status == BOX_TEXT_MODE_CLOSE)
 			{
-				Belt_Set(COLLECT_BELT, BELT_RUN);
+				Belt_Set(COLLECT_BELT, BELT_STOP);
 			}
 
 		}
@@ -162,13 +163,23 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 		{
 			if(test_request->info.test_status == BOX_TEXT_MODE_OPEN)
 			{
-				Door_Set(BOX_DOOR_OPEN);
+				FrontDoor_Set(BOX_DOOR_OPEN);
 			}
 			else if(test_request->info.test_status == BOX_TEXT_MODE_CLOSE)
 			{
-				Door_Set(BOX_DOOR_CLOSE);
+				FrontDoor_Set(BOX_DOOR_CLOSE);
 			}
-
+		}
+		else if(test_request->info.test_mode == BACK_DOOR_TEST)
+		{
+			if(test_request->info.test_status == BOX_TEXT_MODE_OPEN)
+			{
+				BackDoor_Set(BOX_DOOR_OPEN);
+			}
+			else if(test_request->info.test_status == BOX_TEXT_MODE_CLOSE)
+			{
+				BackDoor_Set(BOX_DOOR_CLOSE);
+			}
 		}
 		else if(test_request->info.test_mode == DRUG_DOOR_TEST)
 		{
@@ -180,7 +191,6 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 			{
 				Door_Control_Set(MOTOR_RUN_BACKWARD);
 			}
-
 		}
 		else if(test_request->info.test_mode == LIGHT_TEST)
 		{

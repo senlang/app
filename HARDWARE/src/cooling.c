@@ -50,7 +50,10 @@ void Cooling_Init(void)
 	gpioInitStruct.GPIO_Speed = GPIO_Speed_50MHz;				//可承载的最大频率
 	
 	GPIO_Init(GPIOA, &gpioInitStruct);							//初始化GPIO
+
 	
+	Coolingcompressor_Set(COOLING_OFF);
+	Coolingfan_Set(COOLING_OFF);
 }
 
 /*

@@ -7,7 +7,8 @@
 
 void Door_Init(void);
 
-void Door_Set(_Bool status);
+void FrontDoor_Set(_Bool status);
 
+void BackDoor_Set(_Bool status);
 
 #endif
