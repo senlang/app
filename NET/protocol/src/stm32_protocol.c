@@ -21,16 +21,15 @@
 #include "stm32f10x.h"	//单片机头文件
 
 #include "stm32_protocol.h"
+#include "protocol_func.h"
+
 #include "data_io.h"
 #include "stm32_uart1.h"
 #include "stm32_uart2.h"
 #include "usart.h"
-#include "motor.h"
-
 
 //硬件驱动
-#include "delay.h"
-#include "usart.h"
+#include "box.h"
 
 //C库
 #include <string.h>
@@ -168,24 +167,6 @@ void mcu_add_medicine_track_only(uint8_t board, uint8_t track_number)
 	push_complete_info.medicine_track_number = track_number;
 	board_send_message(MCU_REPLENISH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
 }
-
-
-
-/*  
-    累加校验和算法  
- */  
- static unsigned char add_checksum (unsigned char *buf, unsigned int len)  
-{  
-    unsigned int i;  
-    unsigned char checksum = 0;  
-  
-    for (i = 0; i < len; ++i)  
-    {  
-        checksum += *(buf++);  
-    }  
-  
-    return checksum;  
-}  
 
 
 void send_command_ack( void *input_data)  
@@ -955,139 +936,9 @@ void parse_replenish_medicine_request(struct replenish_medicine_request_struct *
 	return;
 }
 
-void print_board_test_request(struct test_request_struct *test_request)  
-{  
-    UsartPrintf(USART_DEBUG, "\r\n    ========= 单板测试报文-打印开始=========\r\n");  
-	UsartPrintf(USART_DEBUG, "\r\n	  包消息类型:0x%02x", test_request->cmd_type);  
-	UsartPrintf(USART_DEBUG, "\r\n	  包总长度:0x%02x", test_request->packet_len); 
-
-    UsartPrintf(USART_DEBUG, "\r\n    单板号:0x%02x", test_request->info.board_id); 
-    UsartPrintf(USART_DEBUG, "\r\n    测试模式:0x%02x", test_request->info.test_mode); 
-    UsartPrintf(USART_DEBUG, "\r\n    测试货道:0x%02x", test_request->info.medicine_track_number); 
-	
-    UsartPrintf(USART_DEBUG, "\r\n    测试时间:0x%04x", test_request->info.test_time); 
-	
-	UsartPrintf(USART_DEBUG, "\r\n    包校验和:0x%02x\r\n", test_request->checksum);  
-  
-    UsartPrintf(USART_DEBUG, "\r\n    =========  单板测试报文-打印结束=========\r\n");  
-}
-
-
-
-void parse_board_test_request(struct test_request_struct *test_request)  
-{  
-	uint8_t check_sum = 0;
-	struct msg_ack_info_struct cmd_ack_info;
-	struct motor_control_info_struct  motor_control;
-
-	cmd_ack_info.status = 0;
-	
-	test_request->start_code= board_test_buf[0];  
-	test_request->packet_len= board_test_buf[1];  
-	test_request->cmd_type= board_test_buf[2];
-	
-	check_sum = add_checksum(board_test_buf, test_request->packet_len);
-	test_request->checksum = board_test_buf[test_request->packet_len];  
-	
-	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
-	
-	if(0)//(check_sum != test_request->checksum)
-	{
-		UsartPrintf(USART_DEBUG, "check sum fail : 0x%02x, 0x%02x\r\n", check_sum, test_request->checksum);  
-		send_command_ack(&cmd_ack_info);
-		return;
-	}
-	
-	test_request->info.board_id = board_test_buf[3];
-	test_request->info.test_mode = board_test_buf[4];
-
-	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
-
-	UsartPrintf(USART_DEBUG, "board_id: 0x%02x\r\n", test_request->info.board_id);  
-	
-	if(test_request->info.board_id == g_src_board_id)
-	{
-		motor_control.board_id = test_request->info.board_id;
-
-		UsartPrintf(USART_DEBUG, "push_time[0x%02x][0x%02x]\r\n",board_test_buf[6], board_test_buf[7]);
-
-		motor_control.medicine_track_number = test_request->info.medicine_track_number = board_test_buf[5];
-		motor_control.push_time = test_request->info.test_time= board_test_buf[6]<<8|board_test_buf[7];
-
-		UsartPrintf(USART_DEBUG, "test mode[%d]\r\n",test_request->info.test_mode);
-		if(test_request->info.test_mode == MOTOR_FORWARD_TEST || test_request->info.test_mode == MOTOR_BACKWARD_TEST)
-		{
-				if(test_request->info.test_mode == MOTOR_FORWARD_TEST)
-				motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_FORWARD;
-				else
-				motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_BACKWARD;
-
-				motor_struct[motor_enqueue_idx].motor_work_mode = CMD_TEST_REQUEST;
-				
-				memcpy(&motor_struct[motor_enqueue_idx].info, &motor_control, sizeof(struct motor_control_info_struct));
-
-				UsartPrintf(USART_DEBUG, "board_id = %d\r\n",motor_struct[motor_enqueue_idx].info.board_id);
-				UsartPrintf(USART_DEBUG, "medicine_track_number = %d\r\n",motor_struct[motor_enqueue_idx].info.medicine_track_number);
-				UsartPrintf(USART_DEBUG, "push_time = %d\r\n",motor_struct[motor_enqueue_idx].info.push_time);
-
-				
-				motor_enqueue_idx++;
-				if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
-				motor_enqueue_idx = 0;
-
-				UsartPrintf(USART_DEBUG, "send sem,motor_enqueue_idx[%d]-------------\r\n", motor_enqueue_idx);
-				OSSemPost(SemOfMotor);
-		}
-		else if(test_request->info.test_mode == CONVEYOR_RUN_TEST)
-		{
-			
-			UsartPrintf(USART_DEBUG, "Enter CONVEYOR_RUN_TEST, ConveyoeSta = %d\r\n", MotorStatus.ConveyoeSta);
-			drag_push_time_calc_pre= 50;	//传送带运行50 *0.1 s
-			drag_push_time[0] = 50;
-			//if(MotorStatus.ConveyoeSta = 1)
-			//Conveyor_set(CONVEYOR_STOP);
-			//else
-			//Conveyor_set(CONVEYOR_RUN);
-		}
-
-		else if(test_request->info.test_mode == REFRIGERATION_TEST)
-		{
-
-		}
-		else if(test_request->info.test_mode == CALIBRATE_TRACK_TEST)
-		{
-			if(calibrate_track_selected == 255)
-			{
-				calibrate_track_selected = motor_control.medicine_track_number;
-				OSSemPost(SemOfKey);
-			}
-			else
-				calibrate_track_selected = 255;
-
-			UsartPrintf(USART_DEBUG, "calibrate_track_selected[%d]\r\n", calibrate_track_selected);
-		}
-
-	}
-	
-	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
-	
-	cmd_ack_info.board_id = g_src_board_id;
-	cmd_ack_info.rsp_cmd_type = test_request->cmd_type;
-
-	
-	cmd_ack_info.status = 1;
-	send_command_ack((void *)&cmd_ack_info);
-	
-	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
-	
-	return;
-}
-
-
-
-
 void print_calibrate_request(struct calibrate_track_request_struct *calibrate_track_request)  
 {  
+
     UsartPrintf(USART_DEBUG, "\r\n    ========= 货道校准报文-打印开始=========\r\n");  
 	UsartPrintf(USART_DEBUG, "\r\n	  包消息类型:0x%02x", calibrate_track_request->cmd_type);  
 	UsartPrintf(USART_DEBUG, "\r\n	  包总长度:0x%02x", calibrate_track_request->packet_len); 
@@ -1099,6 +950,7 @@ void print_calibrate_request(struct calibrate_track_request_struct *calibrate_tr
   
     UsartPrintf(USART_DEBUG, "\r\n    =========  货道校准报文-打印结束=========\r\n");  
 }
+
 
 
 void parse_calibrate_track_request(struct calibrate_track_request_struct *calibrate_track_request)  
@@ -1267,8 +1119,6 @@ void parse_track_runtime_calc_request(struct track_calc_request_struct *track_ru
 
 void print_track_runtime_calc_request(struct track_calc_request_struct *track_runtime_calc_request)  
 {  
-  	uint8_t request_cnt = 0;
-	uint8_t i = 0;
 
     UsartPrintf(USART_DEBUG, "\r\n    ========= 货道运行时长统计请求报文-打印开始=========\r\n");  
 	UsartPrintf(USART_DEBUG, "\r\n	  包消息类型:0x%02x", track_runtime_calc_request->cmd_type);  
@@ -1359,78 +1209,13 @@ int uart1_shared_buf_preparse(unsigned char *src, int len)
 	return 0;
 }  
 
-
-
-
-void parse_up_rx_info(void)  
-{  
-	struct status_report_request_struct  status_report_request;
-	struct msg_ack_struct  cmd_ack;
-    struct push_medicine_request_struct push_medicine_request;
-    struct replenish_medicine_request_struct replenish_medicine_request;
-    struct test_request_struct test_request;
-    struct calibrate_track_request_struct calibrate_track_request;
-	
-	
-    UsartPrintf(USART_DEBUG, "buf_bitmap : 0x%04x\r\n", buf_bitmap);  
-
-    if (buf_bitmap & STATUS_REPORT_REQUEST_BUF)   
-    { 
-        parse_status_report_request(&status_report_request);  
-        print_status_report_request(&status_report_request);  
-        buf_bitmap &= ~STATUS_REPORT_REQUEST_BUF;  
-    } 
-	if (buf_bitmap & PUSH_MEDICINE_REQUEST_BUF)   
-    { 
-        parse_push_medicine_request(&push_medicine_request);  
-        print_push_medicine_request(&push_medicine_request);  
-        buf_bitmap &= ~PUSH_MEDICINE_REQUEST_BUF;  
-    }  
-	if (buf_bitmap & REPLENISH_MEDICINE_REQUEST_BUF)   
-    { 
-        parse_replenish_medicine_request(&replenish_medicine_request);  
-        print_replenish_medicine_request(&replenish_medicine_request);  
-        buf_bitmap &= ~REPLENISH_MEDICINE_REQUEST_BUF;  
-    }	
-	if (buf_bitmap & CALIBRATE_TRACK_REQUEST_BUF)   
-    { 
-        parse_calibrate_track_request(&calibrate_track_request);  
-        print_calibrate_request(&calibrate_track_request);  
-        buf_bitmap &= ~CALIBRATE_TRACK_REQUEST_BUF;  
-    }		
-	if (buf_bitmap & TEST_REQUEST_BUF)   
-    { 
-        parse_board_test_request(&test_request);  
-        print_board_test_request(&test_request);  
-        buf_bitmap &= ~TEST_REQUEST_BUF;  
-    }  
-	
-    if (buf_bitmap & CMD_ACK_BUF)   
-    { 
-        parse_message_ack(&cmd_ack);  
-        print_message_ack(&cmd_ack);  
-        buf_bitmap &= ~CMD_ACK_BUF;  
-    }
-	
-}  
-
-
-
-
-
-
-
-
-
-
-
 uint8_t up_packet_preparser(unsigned char *src, int len)  
 {  
-	uint8_t cmd_type = 0;
 	uint8_t check_sum = 0;
-	uint8_t pkt_len = 0;
 	uint8_t retval = FALSE;
-
+	uint8_t pkt_len = 0;
+	uint8_t cmd_type = 0;
+	
 	pkt_len = *(src + 1);//data
 	cmd_type = *(src + 2);
 	check_sum = *(src + len);
@@ -1452,9 +1237,9 @@ void up_packet_parser(unsigned char *src, int len)
 	int pkt_len = 0;
 	int board_id = 0;
 	unsigned char *uart1_shared_rx_buf; 
-	char cmd_type = 0;
+	//char cmd_type = 0;
 	int i = 0;
-	unsigned char forward_data[32] = {0};
+	//unsigned char forward_data[32] = {0};
 	struct push_medicine_complete_struct push_medicine_complete_request;
 
 	do
@@ -1473,7 +1258,7 @@ void up_packet_parser(unsigned char *src, int len)
 		{
 			UsartPrintf(USART_DEBUG, "start code error: 0x%02x\r\n", *(uart1_shared_rx_buf));
 			chk_offset++;
-			continue;
+			goto	UPDATA_CONTINUE;
 		}		
 
 		if(len - chk_offset < IPUC)
@@ -1531,17 +1316,18 @@ void packet_parser(unsigned char *src, int len)
 	int chk_offset = 0;
 	int pkt_len = 0;
 	int board_id = 0;
-	unsigned char *uart1_shared_rx_buf; 
+	uint8_t *uart1_shared_rx_buf; 
 	char cmd_type = 0;
 	int i = 0;
-	unsigned char forward_data[32] = {0};
+	uint8_t forward_data[32] = {0};
+	uint8_t protocol_data[32] = {0};
 	uint8_t check_sum = 0;
 
 	struct status_report_request_struct  status_report_request;
 	struct msg_ack_struct  cmd_ack;
     struct push_medicine_request_struct push_medicine_request;
     struct replenish_medicine_request_struct replenish_medicine_request;
-    struct test_request_struct test_request;
+    //struct test_request_struct test_request;
     struct calibrate_track_request_struct calibrate_track_request; 
     struct replenish_medicine_complete_struct replenish_medicine_complete_request; 
     struct track_calc_request_struct track_calc_request; 
@@ -1557,6 +1343,7 @@ void packet_parser(unsigned char *src, int len)
 	do
 	{
 		uart1_shared_rx_buf = src + chk_offset;
+		memset(protocol_data, 0x00, 32);
 		
 		//UsartPrintf(USART_DEBUG, "chk_offset[%d]\r\n", chk_offset);
 		if(*uart1_shared_rx_buf != START_CODE)
@@ -1565,7 +1352,6 @@ void packet_parser(unsigned char *src, int len)
 			chk_offset++;
 			
 			goto	PARSER_CONTINUE;
-			continue;
 		}
 
 		UsartPrintf(USART_DEBUG, "start code = 0x%02x, boardid = 0x%02x, cmd = 0x%02x!!\r\n", *(uart1_shared_rx_buf), *(uart1_shared_rx_buf + 3), *(uart1_shared_rx_buf + 2));
@@ -1680,9 +1466,8 @@ void packet_parser(unsigned char *src, int len)
 			}  	
 			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_TEST_REQUEST)) //收到状态上报响应
 			{  
-				memcpy(board_test_buf, uart1_shared_rx_buf, pkt_len);  
-				parse_board_test_request(&test_request);  
-				print_board_test_request(&test_request);  
+				parse_board_test_request(protocol_data, uart1_shared_rx_buf);  
+				print_board_test_request(protocol_data);  
 				
 				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_TEST_REQUEST!!\r\n");
 			}  

@@ -627,9 +627,34 @@
               <FilePath>..\HARDWARE\src\stmflash.c</FilePath>
             </File>
             <File>
-              <FileName>push_belt.c</FileName>
+              <FileName>belt.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\HARDWARE\src\push_belt.c</FilePath>
+              <FilePath>..\HARDWARE\src\belt.c</FilePath>
+            </File>
+            <File>
+              <FileName>cooling.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\src\cooling.c</FilePath>
+            </File>
+            <File>
+              <FileName>door.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\src\door.c</FilePath>
+            </File>
+            <File>
+              <FileName>light.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\src\light.c</FilePath>
+            </File>
+            <File>
+              <FileName>Temp_hum.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\src\Temp_hum.c</FilePath>
+            </File>
+            <File>
+              <FileName>sensor.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\src\sensor.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -685,6 +710,11 @@
               <FileName>stm32_uart2_main.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\NET\protocol\src\stm32_uart2_main.c</FilePath>
+            </File>
+            <File>
+              <FileName>protocol_func.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\NET\protocol\src\protocol_func.c</FilePath>
             </File>
           </Files>
         </Group>

@@ -138,20 +138,34 @@ typedef enum{
 	OTHER_FAULT = 0x0F,
 }FAULT_CODE;  
 
-
-
-
-
+/*
 typedef enum{
-	MOTOR_FORWARD_TEST = 1,
-	MOTOR_BACKWARD_TEST = 2,
-	REFRIGERATION_TEST = 3,
-	CONVEYOR_RUN_TEST = 4,
-	CALIBRATE_TRACK_TEST = 5,
+	MOTOR_FORWARD_TEST = 1,	//货道前进
+	MOTOR_BACKWARD_TEST = 2,//货道后退
+	PUSH_BELT_TEST = 3,		//出货传送带
+	COLLECT_BELT_TEST = 4,	//回收传送带
+	COMPRESSOR_TEST,		//压缩机
+	FAN_TEST,				//风扇
+	FRONT_DOOR_TEST,		//前大门
+	BACK_DOOR_TEST,			//后大门
+	DRUG_DOOR_TEST,			//取货口
+	LIGHT_TEST,				//灯箱
+	CALIBRATE_TRACK_TEST,	//货道手动校准
 }BOARD_TEST_MODE;  
-
-
-
+*/
+typedef enum{
+	TRACK_TEST = 1, //货道前进
+	PUSH_BELT_TEST = 2, 	//出货传送带
+	COLLECT_BELT_TEST = 3,	//回收传送带
+	COMPRESSOR_TEST,		//压缩机
+	FAN_TEST,				//风扇
+	FRONT_DOOR_TEST,		//前大门
+	BACK_DOOR_TEST, 		//后大门
+	DRUG_DOOR_TEST, 		//取货口
+	LIGHT_TEST, 			//灯箱
+	CALIBRATE_TRACK_TEST,	//货道手动校准
+	TEST_MODE_MAX,
+}BOARD_TEST_MODE;  
 
 
 
@@ -307,6 +321,7 @@ struct test_request_info_struct
 {  
     uint8_t board_id;  
     uint8_t test_mode;  
+    uint8_t test_status;  
     uint8_t medicine_track_number;  
     uint16_t test_time;  	
 }; 
@@ -473,6 +488,29 @@ struct track_trigger_calc_runtime{
 	uint8_t track_forward_runtime;//前进时长
     uint8_t track_backward_runtime;//回退时长
 };
+
+extern uint8_t  g_src_board_id;
+extern struct motor_control_struct  motor_struct[TOTAL_PUSH_CNT];
+
+extern int motor_enqueue_idx;
+extern int motor_dequeue_idx;
+
+extern int enqueue_replenish_index;
+extern int dequeue_replenish_index;
+
+extern uint16_t calibrate_track_selected;
+extern unsigned char calibrate_enable;
+extern uint16_t calibrate_track_selected;
+
+
+
+
+
+
+
+
+
+
 
 
 

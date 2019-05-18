@@ -7,11 +7,9 @@
 
 
 
-#define KEY0			GPIO_Pin_8
-#define KEY1			GPIO_Pin_9
-#define KEY2			GPIO_Pin_4
-//#define KEY2			GPIO_Pin_1
-//#define KEY3			GPIO_Pin_0
+#define KEY0			GPIO_Pin_8	//前进到位
+#define KEY1			GPIO_Pin_9	//后退到位
+#define KEY2			GPIO_Pin_4	//过流检查
 
 
 

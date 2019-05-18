@@ -18,29 +18,14 @@
 	************************************************************
 **/
 
-//按键头文件
-#include "key.h"
-
 //硬件驱动
-#include "delay.h"
-#include "usart.h"
-#include "motor.h"
-#include "track.h"
+#include "box.h"
+
 
 KEY_STATUS key_status;
 extern unsigned char calibrate_enable;
-extern OS_EVENT *SemOfKey;          //Motor控制信号量
-extern OS_EVENT *SemOfCalcTime;
-
-extern uint8_t trigger_calc_runtime;
-
-extern uint8_t motor_run_detect_flag;
-extern uint8_t motor_run_detect_track_num;
 
 
-extern uint8_t key_stat;
-static uint8_t key_init = 0;
-extern uint8_t trigger_calc_flag; //0;1;2
 
 
 /*
@@ -287,7 +272,7 @@ void EXTIX_Init(void)
 
   	EXTI_InitStructure.EXTI_Line=EXTI_Line8;	//KEY1
   	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;	
-  	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+  	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
   	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
   	EXTI_Init(&EXTI_InitStructure);	 	//根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
 
@@ -324,52 +309,65 @@ void EXTIX_Init(void)
 //外部中断4服务程序 
 void EXTI4_IRQHandler(void)
 {
+	OS_SEM_DATA sema_info;
+
 #ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.
 	OSIntEnter();	  
 #endif  	
 	if(EXTI_GetITStatus(EXTI_Line4)==SET)//是8线的中断
 	{
-		//UsartPrintf(USART_DEBUG, "KEY2 CHECK:");
-		if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN) 					//有第二次按下，说明为双击
+		delay_ms(10);
+		if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN) 					//消抖后检查是否有过流
 		{		
-			//UsartPrintf(USART_DEBUG, "DOWN-------------\r\n");
-			//Motor_Set(MOTOR_STOP);
-			//set_track(calibrate_track_selected, MOTOR_STOP);
+			
+			if(motor_run_detect_flag == 1){
+				set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_STOP);
+				
+				OSSemQuery (SemOfOverCurrent, &sema_info);
+				//if(sema_info.OSCnt == 0)
+				//OSSemPost(SemOfOverCurrent);
+
+				UsartPrintf(USART_DEBUG, "Track[%d] Arrive End Position!!!!!!\r\n", motor_run_detect_track_num);
+			}
 
 			if(key_init == 0 && trigger_calc_flag == 0)
 			{
 				key_init = 1;			
 				key_stat = 0;
 				
-				//UsartPrintf(USART_DEBUG, "Post SemOfCalcTime!!!!!!\r\n");
-				//OSSemPost(SemOfCalcTime);
+				UsartPrintf(USART_DEBUG, "OverCurrent DO NOTHING!!!!!!\r\n");
 			}
 			else if(trigger_calc_flag == 1)
 			{
+				UsartPrintf(USART_DEBUG, "OverCurrent DOWN\r\n");
 				if(key_stat == 0) //初始位置
 				{
-					Track_trigger_calc_runtime(1, MOTOR_STOP);
-					trigger_calc_runtime = 0;					
 					UsartPrintf(USART_DEBUG, "Arrive First Position!!!!!!\r\n");
+					Track_trigger_calc_runtime(1, MOTOR_STOP);
+					trigger_calc_runtime = 0;
+					trigger_calc_flag = 0;
 				}
 				else if(key_stat == 1) //正向
 				{
-					Track_trigger_calc_runtime(0, MOTOR_STOP);
-					trigger_calc_runtime = 0; 			
 					UsartPrintf(USART_DEBUG, "Arrive Last Position!!!!!!\r\n");
+					Track_trigger_calc_runtime(0, MOTOR_STOP);
+					trigger_calc_runtime = 0; 	
+					trigger_calc_flag = 0;
 				}
 				else if(key_stat == 2)//反向		
 				{
+					UsartPrintf(USART_DEBUG, "Arrive 2First Position!!!!!!\r\n");
 					Track_trigger_calc_runtime(0, MOTOR_STOP);
-					trigger_calc_runtime = 0; 			
+					trigger_calc_runtime = 0; 	
+					trigger_calc_flag = 0;
+					
 					key_stat = 0xff;
 					
-					UsartPrintf(USART_DEBUG, "Arrive 2First Position!!!!!!\r\n");
 				}
 			}
 			else if(motor_run_detect_flag == 1){
+				UsartPrintf(USART_DEBUG, "OverCurrent DOWN:Track %d Arrive End Position!!!!!!\r\n", motor_run_detect_track_num);
 				set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_STOP);
-				UsartPrintf(USART_DEBUG, "Track %d Arrive End Position!!!!!!\r\n", motor_run_detect_track_num);
 			}
 			
 		}
@@ -384,7 +382,7 @@ void EXTI4_IRQHandler(void)
 #endif  
 
 }
-
+#if 0
  //外部中断5~9服务程序
 void EXTI9_5_IRQHandler(void)
 {		 		
@@ -397,7 +395,7 @@ void EXTI9_5_IRQHandler(void)
 	{
 		
 		UsartPrintf(USART_DEBUG, "KEY0 CHECK:");
-		if(KeyScan(GPIOB, KEY0) == KEYDOWN) 					//有第二次按下，说明为双击
+		if(KeyScan(GPIOB, KEY0) == KEYDOWN) 					//
 		{		
 			UsartPrintf(USART_DEBUG, "DOWN-------------\r\n");
 		}
@@ -415,7 +413,7 @@ void EXTI9_5_IRQHandler(void)
 	if(EXTI_GetITStatus(EXTI_Line9)==SET)//是8线的中断
 	{
 		UsartPrintf(USART_DEBUG, "KEY1 CHECK:");
-		if(KeyScan(GPIOB, KEY1) == KEYDOWN) 					//有第二次按下，说明为双击
+		if(KeyScan(GPIOB, KEY1) == KEYDOWN) 					//
 		{		
 			UsartPrintf(USART_DEBUG, "DOWN-------------\r\n");
 			
@@ -433,8 +431,142 @@ void EXTI9_5_IRQHandler(void)
 #endif    			  
 } 
 
+#else
+void EXTI9_5_IRQHandler(void)
+{		 	
+	OS_SEM_DATA sema_info;
+
+#ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.
+	OSIntEnter();    
+#endif  	
+
+	//前进到位检查
+	if(EXTI_GetITStatus(EXTI_Line8)==SET)//是8线的中断
+	{
+		delay_ms(10);
+		UsartPrintf(USART_DEBUG, "KEY0 CHECK DOWN: ", motor_run_direction);
+		if((KeyScan(GPIOB, KEY0) == KEYDOWN)&& (motor_run_direction == MOTOR_RUN_FORWARD)) 					//
+		{		
+			UsartPrintf(USART_DEBUG, "Dir = %d\r\n", motor_run_direction);
+			if(motor_run_detect_flag == 1)
+			{
+				UsartPrintf(USART_DEBUG, "KEY0:Track %d Arrive First Position!!!!!!\r\n", motor_run_detect_track_num);
+				set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_STOP);
+			}
+			else if(trigger_calc_flag == 1)
+			{
+				if(key_stat == 0) //初始位置
+				{
+					UsartPrintf(USART_DEBUG, "KEY0:Arrive First Position!!!!!!\r\n");
+					Track_trigger_calc_runtime(1, MOTOR_STOP);
+					trigger_calc_runtime = 0;				
+					trigger_calc_flag = 0;
+				}
+				else if(key_stat == 2)//反向		
+				{
+					UsartPrintf(USART_DEBUG, "KEY0:Arrive 2First Position!!!!!!\r\n");
+
+					Track_trigger_calc_runtime(0, MOTOR_STOP);
+					trigger_calc_runtime = 0; 	
+					trigger_calc_flag = 0;
+					
+					key_stat = 0xff;
+				}
+			}
+		}
+		else if(KeyScan(GPIOB, KEY0) == KEYUP)
+		{
+			UsartPrintf(USART_DEBUG, "UP \r\n");
+		}
+	}
+	EXTI_ClearITPendingBit(EXTI_Line8);  //清除LINE2上的中断标志位
+
+
+	//后退到位检查
+	if(EXTI_GetITStatus(EXTI_Line9) == SET)//是8线的中断
+	{
+		UsartPrintf(USART_DEBUG, "KEY1 CHECK DOWN:", motor_run_direction);
+		delay_ms(10);
+		if((KeyScan(GPIOB, KEY1) == KEYDOWN)&&(motor_run_direction == MOTOR_RUN_BACKWARD))					//
+		{		
+			UsartPrintf(USART_DEBUG, "Dir = %d\r\n", motor_run_direction);
+			if(motor_run_detect_flag == 1){
+				set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_STOP);
+				UsartPrintf(USART_DEBUG, "KEY1:Track %d Arrive End Position!!!!!!\r\n", motor_run_detect_track_num);
+			}
+			else if(trigger_calc_flag == 1)
+			{
+				if(key_stat == 1) //正向
+				{
+					UsartPrintf(USART_DEBUG, "KEY1:Arrive Last Position!!!!!!\r\n");
+					Track_trigger_calc_runtime(0, MOTOR_STOP);
+					trigger_calc_runtime = 0;	
+					trigger_calc_flag = 0;		
+				}
+			}
+		}
+		else if(KeyScan(GPIOB, KEY1) == KEYUP)
+		{
+			UsartPrintf(USART_DEBUG, "UP \r\n");
+		}		
+	}
+EXTI_ClearITPendingBit(EXTI_Line9);  //清除LINE2上的中断标志位	
 
 
 
 
+
+
+
+
+	
+#ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.
+	OSIntExit();    
+#endif    			  
+}
+
+
+
+
+#endif
+
+_Bool Key_Check(unsigned int NUM)
+{
+	_Bool ret_val = KEYUP;
+
+	if(NUM == KEY0 || NUM == KEY1)
+	{
+		if(KeyScan(GPIOB, NUM) == KEYDOWN) 					
+		{
+			delay_ms(10);								
+			if(KeyScan(GPIOB, NUM) == KEYDOWN) 			
+			{
+				UsartPrintf(USART_DEBUG, "%s KEYDOWN!!!\r\n", (NUM == KEY0) ? "KEY0":"KEY1");
+				ret_val= KEYDOWN;
+			}
+		}
+		else
+		{
+			ret_val = KEYUP;
+		}
+	}
+	else if(NUM == KEY2)
+	{
+		if(KeyScan(GPIOE, KEY2) == KEYDOWN) 					
+		{
+			delay_ms(10);								
+			if(KeyScan(GPIOE, KEY2) == KEYDOWN) 			
+			{
+				UsartPrintf(USART_DEBUG, "KEY2 KEYDOWN!!!\r\n");
+				ret_val= KEYDOWN;
+			}
+		}
+		else
+		{
+			ret_val = KEYUP;
+		}
+	}
+	
+	return ret_val;	
+}
 

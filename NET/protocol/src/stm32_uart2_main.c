@@ -64,7 +64,6 @@ int uart2_parse_protocol(void)
 	unsigned char *src;
 	int len;
 	int count = 0;
-	int i = 0;
 
 	//UsartPrintf(USART_DEBUG, "uart2:en idx = %d, de idx = %d\r\n", uart2_enqueue_idx, uart2_dequeue_idx);
 
@@ -105,7 +104,6 @@ extern uint8_t  g_src_board_id;
 int uart2_receive_data(void)
 {
 	int retval = -1;
-	int i = 0;
 
 	if(UART2_IO_Receive() == 0)
 	return retval;

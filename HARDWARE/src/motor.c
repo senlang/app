@@ -19,26 +19,18 @@
 **/
 
 //单片机头文件
+#include "box.h"
 
-
-//LED头文件
-#include "motor.h"
-#include "usart.h"
 #include "stm32_protocol.h"
-#include "delay.h"
-#include "key.h"
-#include "track.h"
+
 
 #include "stdlib.h"
-
-#define CONVEYOR_DELAY 5
 
 MOTOR_STATUS MotorStatus;
 extern struct motor_control_struct  motor_struct[TOTAL_PUSH_CNT];
 extern int motor_enqueue_idx;
 extern int motor_dequeue_idx;
 
-extern unsigned char calibrate_track_selected;
 extern KEY_STATUS key_status;
 extern unsigned char calibrate_enable;
 extern struct status_report_request_info_struct  heart_info;
@@ -85,41 +77,6 @@ void Motor_Init(void)
 	motor_dequeue_idx = 0;
 }
 
-/*
-************************************************************
-*	函数名称：	Conveyor_Init
-*
-*	函数功能：	传送带电机初始化
-*
-*	入口参数：	无
-*
-*	返回参数：	无
-*
-*	说明：		
-************************************************************
-*/
-
-void Conveyor_Init(void)
-{
-	
-	GPIO_InitTypeDef gpioInitStrcut;
-
-	//使能时钟
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
-	
-	//IO配置
-	gpioInitStrcut.GPIO_Mode = GPIO_Mode_Out_PP;
-	gpioInitStrcut.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1;
-	gpioInitStrcut.GPIO_Speed = GPIO_Speed_50MHz;
-	//IO初始化
-	GPIO_Init(GPIOA, &gpioInitStrcut);
-	
-	Conveyor_set(CONVEYOR_STOP);
-
-	
-	memset(&drag_push_time[0], 0x00, sizeof(drag_push_time));
-}
-
 
 
 
@@ -138,6 +95,7 @@ void Conveyor_Init(void)
 */
 void Motor_Set(MOTOR_ENUM status)
 {
+	motor_run_direction = status;
 
 	if(MOTOR_STOP == status)
 	{	
@@ -155,68 +113,6 @@ void Motor_Set(MOTOR_ENUM status)
 		GPIO_WriteBit(GPIOC, GPIO_Pin_5, Bit_SET);
 	}
 	MotorStatus.MotorSta = status;
-}
-
-
-void Conveyor_set(CONVEYOR_ENUM status)
-{
-
-	if(CONVEYOR_STOP == status)
-	{	
-		GPIO_WriteBit(GPIOA, GPIO_Pin_0, Bit_RESET);
-		GPIO_WriteBit(GPIOA, GPIO_Pin_1, Bit_RESET);
-	}
-	else if(CONVEYOR_RUN == status)
-	{	
-		GPIO_WriteBit(GPIOA, GPIO_Pin_0, Bit_SET);
-		GPIO_WriteBit(GPIOA, GPIO_Pin_1, Bit_SET);
-	}
-	MotorStatus.ConveyoeSta = status;
-}
-
-int cmp(const void *a,const void *b)
-{
-    return *(uint16_t *)b - *(uint16_t *)a;
-}
-
-
-int Conveyor_run(void)
-{
-	uint8_t delay_s = 0;
-
-	qsort(drag_push_time, BOARD_ID_MAX, sizeof(drag_push_time[0]),cmp);
-
-	delay_s = drag_push_time[0]/10;
-
-	drag_push_time_calc_pre = drag_push_time_calc_pre = 0;
-	memset(&drag_push_time[0], 0x00, sizeof(drag_push_time));
-
-	
-	UsartPrintf(USART_DEBUG, "Conveyor_run %ds-------------\r\n", delay_s);
-	//if(delay_s == 0)
-	//return delay_s;
-	
-	Conveyor_set(CONVEYOR_RUN);
-	
-	RTOS_TimeDlyHMSM(0, 0, CONVEYOR_DELAY, 0);
-	//RTOS_TimeDlyHMSM(0, 0, delay_s + CONVEYOR_DELAY, 0);
-	
-	Conveyor_set(CONVEYOR_STOP);
-
-	//return delay_s;
-	return 1;
-}
-
-uint8_t Conveyor_check(void)
-{
-	if((0 == drag_push_time_calc_pre && 0 == drag_push_time_calc)||(drag_push_time_calc_pre == 0))
-	return 0;//不必启动传送带
-
-	if(drag_push_time_calc == drag_push_time_calc_pre)
-	return 1;
-	
-	drag_push_time_calc = drag_push_time_calc_pre;
-	return 0;
 }
 
 
@@ -260,7 +156,7 @@ void Motor_Start(void)
 			heart_info.medicine_track_number = motor_struct[motor_dequeue_idx].info.medicine_track_number;
 		}
 		
-		//Conveyor_set(CONVEYOR_RUN);
+		//Push_Belt_Set(BELT_RUN);
 
 		motor_run_detect_track_num = motor_struct[motor_dequeue_idx].info.medicine_track_number;
 		set_track((uint16_t)motor_struct[motor_dequeue_idx].info.medicine_track_number, MOTOR_RUN_FORWARD);
@@ -307,10 +203,10 @@ void Motor_Start(void)
 	}
 	
 	
-	//if(MotorStatus.ConveyoeSta == CONVEYOR_RUN)
+	//if(MotorStatus.ConveyoeSta == BELT_RUN)
 	//{
 	//	RTOS_TimeDlyHMSM(0, 0, 30, 0);
-	//	Conveyor_set(CONVEYOR_STOP);
+	//	Push_Belt_Set(BELT_STOP);
 	//}
 
 }
@@ -393,6 +289,8 @@ void track_calibrate(void)
 
 #endif
 
+
+
 /*取货门电机控制初始化*/
 void Door_Control_Init(void)
 {
@@ -448,122 +346,5 @@ void Door_Control_Set(MOTOR_ENUM status)
 	MotorStatus.DoorSta = status;
 }
 
-/*人体检查PB4*/
-void Sensor_Init(void)
-{
-	GPIO_InitTypeDef gpioInitStructure;
-	
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-	
-	gpioInitStructure.GPIO_Mode = GPIO_Mode_IPU;
-	gpioInitStructure.GPIO_Pin = GPIO_Pin_1;
-	gpioInitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOB, &gpioInitStructure);
-}
-
-_Bool Sensor_Status(void)
-{
-	if(!GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_4))//未发现接入为低
-	{
-		return SENSOR_DETECT;
-	}
-	else									//发现接入为高
-	{
-		return SENSOR_NO_DETECT;
-	}
-}
-
-
-unsigned char Sensor_Detect(void)
-{
-	unsigned char ret_val = 0;
-	
-	if(Sensor_Status() == SENSOR_DETECT)
-	{
-		RTOS_TimeDly(20);					
-		if(Sensor_Status() == SENSOR_DETECT)
-		ret_val = SENSOR_DETECT;			
-	}
-	else
-	{
-		ret_val = SENSOR_NO_DETECT;
-	}
-	
-	//UsartPrintf(USART_DEBUG, "Sensor_Detect = %d\r\n", ret_val);		//提示任务开始执行
-	return ret_val;
-}
-
-/*开关门按钮检查*/
-void Door_Key_Init(void)
-{
-	GPIO_InitTypeDef gpioInitStructure;
-	
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOD, ENABLE);
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-
-	/*关门检测*/
-	gpioInitStructure.GPIO_Mode = GPIO_Mode_IPU;
-	gpioInitStructure.GPIO_Pin = GPIO_Pin_3;
-	gpioInitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOB, &gpioInitStructure);
-
-	/*开门检测*/
-	gpioInitStructure.GPIO_Mode = GPIO_Mode_IPU;
-	gpioInitStructure.GPIO_Pin = GPIO_Pin_7;
-	gpioInitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOD, &gpioInitStructure);
-
-	
-}
-
-_Bool Door_Key_Status(unsigned char door_detect)
-{
-	GPIO_TypeDef* GPIOx;
-	uint16_t GPIO_Pin;
-	
-	if(door_detect == DOOR_OPEN)
-	{
-		GPIOx = GPIOD;
-		GPIO_Pin = GPIO_Pin_7;
-	}
-	else
-	{
-		GPIOx = GPIOB;
-		GPIO_Pin = GPIO_Pin_3;
-	}
-
-	if(!GPIO_ReadInputDataBit(GPIOx, GPIO_Pin))//未发现接入为低
-	{
-		return SENSOR_DETECT;
-	}
-	else									//发现接入为高
-	{
-		return SENSOR_NO_DETECT;
-	}
-}
-
-
-unsigned char Door_Key_Detect(unsigned char door_detect)
-{
-	unsigned char ret_val = 0;
-	
-	if(Door_Key_Status(door_detect) == SENSOR_DETECT)
-	{
-		RTOS_TimeDly(20);					
-		if(Door_Key_Status(door_detect) == SENSOR_DETECT)
-		{
-			ret_val = SENSOR_DETECT;
-		}			
-	}
-	else
-	{
-		ret_val = SENSOR_NO_DETECT;
-	}
-	//UsartPrintf(USART_DEBUG, "%s:%s\r\n", DOOR_OPEN?"DOOR_OPEN":"DOOR_CLOSE", ret_val?"SENSOR_DETECT":"SENSOR_NO_DETECT");		//
-	//UsartPrintf(USART_DEBUG, "%s:%d,%d\r\n", __FUNCTION__,  door_detect, ret_val);		//
-
-	return ret_val;
-}
 
 

@@ -40,8 +40,8 @@ extern uint16_t board_push_finish;
 extern uint16_t board_add_finish;
 
 
-static  uint16_t forward_running_time;  
-static  uint16_t backward_running_time; 
+//static  uint16_t forward_running_time;  
+//static  uint16_t backward_running_time; 
 
 static struct track_cale_report_info_struct track_time;
 
@@ -284,7 +284,7 @@ int Track_run(MOTOR_ENUM run_mode)
 	int x = 0, y = 0;
 	uint16_t delay_s = 0;
 	uint16_t delay_ms = 0;
-	struct push_medicine_complete_request_info_struct  push_complete_info;
+	//struct push_medicine_complete_request_info_struct  push_complete_info;
 
 	UsartPrintf(USART_DEBUG, "Enter Track_run, mode[%d]!!!\r\n");
 	Motor_Set(run_mode);
@@ -365,7 +365,7 @@ int Track_trigger_calc_runtime(uint8_t is_init, MOTOR_ENUM run_mode)
 		track_time.track_start_num = cur_calc_track;
 		track_time.board_id = g_src_board_id;
 		running_time = 0;
-		UsartPrintf(USART_DEBUG, "Start Calc:%d,%d,%d!!!\r\n", track_time.track_start_num, track_time.track_backward_time, track_time.track_backward_time);
+		UsartPrintf(USART_DEBUG, "Calc Time[START]%d,%d,%d!!!\r\n", track_time.track_start_num, track_time.track_backward_time, track_time.track_backward_time);
 	}
 	if((!is_init) && (run_mode == MOTOR_STOP))
 	{
@@ -384,11 +384,12 @@ int Track_trigger_calc_runtime(uint8_t is_init, MOTOR_ENUM run_mode)
 			UsartPrintf(USART_DEBUG, "Backward Running Time:%d, %\r\n", track_time.track_backward_time, running_time);
 			running_time = 0;
 		}
-		UsartPrintf(USART_DEBUG, "End Calc:%d,%d,%d!!!\r\n", track_time.track_start_num, track_time.track_forward_time, track_time.track_backward_time);
+		UsartPrintf(USART_DEBUG, "Calc Time[END]%d,%d,%d!!!\r\n", track_time.track_start_num, track_time.track_forward_time, track_time.track_backward_time);
 		//if(track_time.track_forward_time && track_time.track_backward_time)
 		//send_track_runtime_report(&track_time);
 	}
 	old_status = run_mode;
+	return 0;
 }
 
 int Track_trigger_calc_runtime_error(int is_block, int step, MOTOR_ENUM run_mode)
@@ -405,6 +406,14 @@ int Track_trigger_calc_runtime_error(int is_block, int step, MOTOR_ENUM run_mode
 		
 		send_track_runtime_report(&track_time);
 	}
+	return 0;
 }
 
+
+int Track_trigger(uint8_t track_num, MOTOR_ENUM run_mode)
+{
+	Motor_Set(run_mode);
+	set_track(track_num, run_mode);
+	return 0;
+}
 

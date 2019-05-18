@@ -1,20 +1,10 @@
 //单片机头文件
 #include "stm32f10x.h"
-
 #include "sys.h"
 
-#include "led.h"
+//Box头文件
 
-#include "delay.h"
-#include "key.h"
-#include "sys.h"
-#include "usart.h"
-#include "motor.h"
-#include "iwdg.h"
-#include "motor.h"
-#include "track.h"
-#include "timer.h"
-#include "push_belt.h"
+#include "box.h"
 
 //C库
 #include <string.h>
@@ -79,31 +69,41 @@ OS_STK KEY_TASK_STK[KEY_STK_SIZE];
 void KEY_Task(void *pdata);
 
 
+//过流保护线程
+#define OVERCURRENT_TASK_PRIO		13
+#define OVERCURRENT_STK_SIZE		256
+OS_STK OVERCURRENT_TASK_STK[OVERCURRENT_STK_SIZE];
+void Track_OverCurrent_Task(void *pdata);
+
+
+
 //传感器任务
-#define SENSOR_TASK_PRIO	13
+#define SENSOR_TASK_PRIO	14
 #define SENSOR_STK_SIZE		128
 OS_STK SENSOR_TASK_STK[SENSOR_STK_SIZE]; 
 void SENSOR_Task(void *pdata);
 
 
 //测试电机控制
-#define MOTOR_TASK_PRIO		14
+#define MOTOR_TASK_PRIO		15
 #define MOTOR_STK_SIZE		256
 OS_STK MOTOR_TASK_STK[MOTOR_STK_SIZE];
 void MOTOR_Task(void *pdata);
 
 
 //货道时长统计
-#define trigger_calc_runtime_TASK_PRIO		15
+#define trigger_calc_runtime_TASK_PRIO		16
 #define trigger_calc_runtime_STK_SIZE		384
 OS_STK trigger_calc_runtime_TASK_STK[trigger_calc_runtime_STK_SIZE]; //
 void trigger_calc_runtime_Task(void *pdata);
 
+
 //心跳任务
-#define HEART_TASK_PRIO		16
+#define HEART_TASK_PRIO		17
 #define HEART_STK_SIZE		256
 OS_STK HEART_TASK_STK[HEART_STK_SIZE]; //
 void HEART_Task(void *pdata);
+
 
 
 OS_EVENT *SemOfMotor;        	//Motor控制信号量
@@ -115,6 +115,7 @@ OS_EVENT *SemOfKey;				// 按键控制信号量
 OS_EVENT *SemOfConveyor;        	//Motor控制信号量
 OS_EVENT *SemOfTrack;        	//track 控制信号量
 OS_EVENT *SemOfCalcTime;        	//触发货道时间统计信号量
+OS_EVENT *SemOfOverCurrent;				//过流保护信号量
 
 uint8_t trigger_calc_flag = 0;
 uint8_t trigger_calc_runtime = 0;
@@ -124,10 +125,13 @@ uint8_t calc_track_count = 0;
 
 uint8_t motor_run_detect_flag = 0;
 uint8_t motor_run_detect_track_num = 0;
+uint8_t motor_run_direction = MOTOR_STOP;	//货道电机方向
+
 uint8_t key_stat = 0;
 uint16_t board_push_finish = 0;/*1111 1111每一个bit表示1个单板*/
 uint16_t board_add_finish = 0;/*1111 1111每一个bit表示1个单板*/
 
+uint8_t key_init = 0;
 
 
 extern struct status_report_request_info_struct  heart_info;
@@ -154,29 +158,35 @@ void Hardware_Init(void)
 {
 	int i = 0;
 	
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);								//中断控制器分组设置
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);	//中断控制器分组设置
 
-	delay_init();																//systick初始化
+	delay_init();	//systick初始化
 	
-	Led_Init();																	//LED初始化
+	Led_Init();		//LED初始化
 
-	Key_Init();																	//按键初始化
+	Key_Init();		//按键初始化
 
-	EXTIX_Init();
+	EXTIX_Init();	//终端初始化
 
-	Motor_Init();
+	Motor_Init();	//电机初始化
 	
-	Door_Control_Init();
+	Door_Control_Init();//
 	
-	Door_Key_Init();
+	Door_Key_Init();	//取药口滑动门初始化
 
-	Sensor_Init();
+	Sensor_Init();		//人体检测传感器初始化
 
-	Conveyor_Init();
-
-	Track_Init();
+	Belt_Init();	//传送带初始化
 	
-	Debug_USART_Config();														//初始化串口   115200bps	
+	Cooling_Init();	//制冷设备初始化
+	
+	Door_Init();	//前后大门控制初始化
+	
+	Light_Init();	//灯箱初始化
+	
+	Track_Init();	//货道初始化
+	
+	Debug_USART_Config();	//初始化串口   115200bps	
 
 	Usart1_Init(115200);
 	
@@ -221,6 +231,8 @@ void Hardware_Init(void)
 */
 int main(void)
 {	
+	INT8U os_task_err = 0;
+	
 	Hardware_Init();								//硬件初始化
 
 	UsartPrintf(USART_DEBUG, "SW_VERSION: %s\r\n", SW_VERSION);		
@@ -243,19 +255,25 @@ int main(void)
 
 	OSTaskCreate(Drug_Push_Task, (void *)0, (OS_STK*)&Drug_Push_TASK_STK[Drug_Push_STK_SIZE- 1], Drug_Push_TASK_PRIO);
 
-	//OSTaskCreate(SENSOR_Task, (void *)0, (OS_STK*)&SENSOR_TASK_STK[SENSOR_STK_SIZE- 1], SENSOR_TASK_PRIO);
 	OSTaskCreate(trigger_calc_runtime_Task, (void *)0, (OS_STK*)&trigger_calc_runtime_TASK_STK[trigger_calc_runtime_STK_SIZE- 1], trigger_calc_runtime_TASK_PRIO);
 
 	OSTaskCreate(KEY_Task, (void *)0, (OS_STK*)&KEY_TASK_STK[KEY_STK_SIZE- 1], KEY_TASK_PRIO);
 
 	OSTaskCreate(Info_Parse_Task, (void *)0, (OS_STK*)&PARSE_TASK_STK[PARSE_STK_SIZE- 1], PARSE_TASK_PRIO);
 
-	OSTaskCreate(Track_Run_Task, (void *)0, (OS_STK*)&TRACK_TASK_STK[TRACK_STK_SIZE- 1], TRACK_TASK_PRIO);
+	os_task_err = OSTaskCreate(Track_Run_Task, (void *)0, (OS_STK*)&TRACK_TASK_STK[TRACK_STK_SIZE- 1], TRACK_TASK_PRIO);
+	UsartPrintf(USART_DEBUG, "%s[%d]os_task_err = %d\r\n", __FUNCTION__, __LINE__, os_task_err);
 
-	
+	os_task_err = OSTaskCreate(Track_OverCurrent_Task, (void *)0, (OS_STK*)&OVERCURRENT_TASK_STK[OVERCURRENT_STK_SIZE- 1], OVERCURRENT_TASK_PRIO);
+	UsartPrintf(USART_DEBUG, "%s[%d]os_task_err = %d\r\n", __FUNCTION__, __LINE__, os_task_err);
+
+	//os_task_err = OSTaskCreate(SENSOR_Task, (void *)0, (OS_STK*)&SENSOR_TASK_STK[SENSOR_STK_SIZE- 1], SENSOR_TASK_PRIO);
+	//UsartPrintf(USART_DEBUG, "%s[%d]os_task_err = %d\r\n", __FUNCTION__, __LINE__, os_task_err);
+
 	UsartPrintf(USART_DEBUG, "OSStart\r\n");		//提示任务开始执行
 	
 	OSStart();										//开始执行任务
+
 
 	return 0;
 }
@@ -389,11 +407,10 @@ void Track_Run_Task(void *pdata)
 
 void Drug_Push_Task(void *pdata)
 {
-	uint8_t conveyor = 0;
 	uint8_t delay_time = 10;
 	uint8_t run_time = 0;
 	INT8U            err;
-	uint8_t i = 0;
+	int conveyor = 0;
 
 	SemOfConveyor= OSSemCreate(0);
 	
@@ -411,11 +428,11 @@ void Drug_Push_Task(void *pdata)
 		}while(1);
 
 		UsartPrintf(USART_DEBUG, "Will run conveyor!!!!!!!!!!\r\n");
-		//conveyor = Conveyor_check();		
+		//conveyor = Push_Belt_Check();		
 		if(1)//(conveyor == 1)
 		{
 			run_time = 0;
-			if(Conveyor_run() != 0 )
+			if(Push_Belt_Run() != 0 )
 			{
 				Door_Control_Set(MOTOR_RUN_BACKWARD);
 				do{
@@ -456,6 +473,8 @@ void Drug_Push_Task(void *pdata)
 				Door_Control_Set(MOTOR_STOP);
 				mcu_push_medicine_close_door_complete();
 				UsartPrintf(USART_DEBUG, "Close The Door, End!!!!!!!!!!\r\n");
+
+				Collect_Belt_Run();
 			}
 			conveyor = 0;
 		}
@@ -495,6 +514,7 @@ void SENSOR_Task(void *pdata)
 {
 	while(1)
 	{	
+		UsartPrintf(USART_DEBUG, "SENSOR_Task run!!!!!!!!!!!!\r\n");
 		RTOS_TimeDlyHMSM(0, 0, 15, 0);	//
 		//UsartPrintf(USART_DEBUG, "will jump\r\n");
 		//iap_load_app(0x08010000);
@@ -503,6 +523,8 @@ void SENSOR_Task(void *pdata)
 
 extern uint16_t running_time;
 
+
+#if 1
 void trigger_calc_runtime_Task(void *pdata)
 {
 	INT8U			 err;
@@ -511,14 +533,164 @@ void trigger_calc_runtime_Task(void *pdata)
 	SemOfCalcTime = OSSemCreate(0);
 	while(1)
 	{
+		UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
 		OSSemPend(SemOfCalcTime, 0u, &err);
 		UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
 		trigger_calc_flag = 0;
-
+		motor_run_detect_flag = 0;
+		key_init = 1;
+		
 		for(cur_calc_track = calc_track_start_idx; cur_calc_track < calc_track_count + calc_track_start_idx; cur_calc_track ++)
 		{
 			UsartPrintf(USART_DEBUG, "cur_calc_track :%d, calc_track_count :%d\r\n", cur_calc_track, calc_track_count);
-			for( i = 0; i < 3; i++)
+			for( i = 0; i < 4; i++)
+			{
+				if(i == 0)
+				{
+					
+					trigger_calc_runtime = 0;	//清计时
+					RTOS_TimeDlyHMSM(0, 0, 2, 0);	//延时2S
+					
+					trigger_calc_flag = 0;	//关中断
+					UsartPrintf(USART_DEBUG, "Track[%d], do prepare\r\n", cur_calc_track);
+					
+					trigger_calc_runtime = 1;//开始计时
+					Track_trigger_calc_runtime(1, MOTOR_RUN_FORWARD);
+					
+					key_init = 0;
+
+					#if 0
+					if(Key_Check(KEY0) == KEYDOWN)//行程开关检测到到达货道头
+					{
+						Track_trigger_calc_runtime(1, MOTOR_STOP);
+						UsartPrintf(USART_DEBUG, "KEY1 DOWN:do prepare, Finish!!!!\r\n");
+						
+						trigger_calc_flag = 0;//关中断，不做循环
+					}
+					
+					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
+					if(Key_Check(KEY2) == KEYDOWN)//过流IO 口
+					{
+						Track_trigger_calc_runtime(1, MOTOR_STOP);
+						UsartPrintf(USART_DEBUG, "KEY2 DOWN:do prepare, Finish!!!!\r\n");
+						
+						trigger_calc_flag = 0;//关中断，不做循环
+					}
+					#endif
+					
+					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
+					trigger_calc_flag = 1;//开中断，进循环
+					key_stat = 0;
+					
+				}
+				else if(i == 1)
+				{	
+					trigger_calc_runtime = 0;//清计时
+					RTOS_TimeDlyHMSM(0, 0, 2, 0);
+					trigger_calc_flag = 0;
+					UsartPrintf(USART_DEBUG, "Track[%d], do backward\r\n", cur_calc_track);
+					trigger_calc_runtime = 1;
+					Track_trigger_calc_runtime(0, MOTOR_RUN_BACKWARD);
+					
+					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
+					
+					trigger_calc_flag = 1;
+					key_stat = 1;
+				}
+				else if(i == 2)
+				{
+					trigger_calc_runtime = 0;//清计时
+					RTOS_TimeDlyHMSM(0, 0, 2, 0);
+					trigger_calc_flag = 0;
+					UsartPrintf(USART_DEBUG, "Track[%d], do forward\r\n", cur_calc_track);
+					trigger_calc_runtime = 1;
+					Track_trigger_calc_runtime(0, MOTOR_RUN_FORWARD);
+					
+					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
+					
+					trigger_calc_flag = 1;
+					key_stat = 2;
+				}
+				else if(i == 3)
+				{
+					RTOS_TimeDlyHMSM(0, 0, 2, 0);
+					
+					UsartPrintf(USART_DEBUG, "Track[%d], do little backword00\r\n", cur_calc_track);
+
+					trigger_calc_flag = 0;
+					trigger_calc_runtime = 0;
+					
+					Track_trigger(cur_calc_track, MOTOR_RUN_BACKWARD);
+					RTOS_TimeDlyHMSM(0, 0, 1, 0);
+					Track_trigger(cur_calc_track, MOTOR_STOP);
+					UsartPrintf(USART_DEBUG, "Track[%d], do little backword11\r\n", cur_calc_track);
+				}
+				do{
+					if(Key_Check(KEY2))//Key_Check(KEY0)||Key_Check(KEY1)
+					{
+						if(i == 0)
+						{
+							Track_trigger_calc_runtime(1, MOTOR_STOP);
+							trigger_calc_flag = 0;
+						}	
+						else if( i == 1 || i == 2)
+						{
+							Track_trigger_calc_runtime(0, MOTOR_STOP);
+							trigger_calc_flag = 0;
+						}
+						else if(i == 3)
+						{
+
+						}
+
+						UsartPrintf(USART_DEBUG, "Track block occur, error!!!!\r\n");
+						break;
+					}
+					if(running_time >= 600)
+					{
+						break;
+					}
+					
+					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
+				}while(trigger_calc_flag);
+
+				key_stat = 0;
+				if(running_time >= 600)
+				{
+					running_time = 0;
+					trigger_calc_runtime = 0;
+					Track_trigger_calc_runtime_error(0, i, MOTOR_STOP);
+		
+					UsartPrintf(USART_DEBUG, "Track calc time %d longer than 60s, error!!!!\r\n", running_time);
+					break;
+				}
+				RTOS_TimeDlyHMSM(0, 0, 0, 500); //
+			}
+		}
+		trigger_calc_flag = 0;
+	}
+	OSSemDel(SemOfCalcTime, 0, &err);
+}
+#else
+void trigger_calc_runtime_Task(void *pdata)
+{
+	INT8U			 err;
+	uint8_t i = 0;
+
+	SemOfCalcTime = OSSemCreate(0);
+	while(1)
+	{
+		UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
+		OSSemPend(SemOfCalcTime, 0u, &err);
+		UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
+		trigger_calc_flag = 0;
+		motor_run_detect_flag = 0;
+		key_init = 1;
+		
+		for(cur_calc_track = calc_track_start_idx; cur_calc_track < calc_track_count + calc_track_start_idx; cur_calc_track ++)
+		{
+			UsartPrintf(USART_DEBUG, "cur_calc_track :%d, calc_track_count :%d\r\n", cur_calc_track, calc_track_count);
+			for( i = 0; i < 4; i++)
 			{
 				if(i == 0)
 				{
@@ -526,23 +698,24 @@ void trigger_calc_runtime_Task(void *pdata)
 					
 					trigger_calc_flag = 0;
 					
-					UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task, do prepare\r\n");
-					trigger_calc_runtime = 1;
+					UsartPrintf(USART_DEBUG, "Track[%d], do prepare\r\n", cur_calc_track);
+					trigger_calc_runtime = 0;
 					Track_trigger_calc_runtime(1, MOTOR_RUN_FORWARD);
+					
+					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
+					key_init = 0;
 
-					RTOS_TimeDlyHMSM(0, 0, 0, 200);
-					if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN)
+					if(Key_Check(KEY1) == KEYDOWN)//行程开关检测到到达货道头
 					{
-						trigger_calc_runtime = 0;
 						Track_trigger_calc_runtime(1, MOTOR_STOP);
 						UsartPrintf(USART_DEBUG, "do prepare, Finish!!!!\r\n");
 					}
-					else
+					
+					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
+					if(Key_Check(KEY2) == KEYDOWN)//过流IO 口
 					{
-						RTOS_TimeDlyHMSM(0, 0, 0, 200);
-						if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN)
-						RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
-						trigger_calc_flag = 1;
+						Track_trigger_calc_runtime(1, MOTOR_STOP);
+						UsartPrintf(USART_DEBUG, "do prepare, Finish!!!!\r\n");
 					}
 					
 					key_stat = 0;
@@ -551,36 +724,46 @@ void trigger_calc_runtime_Task(void *pdata)
 				{	
 					RTOS_TimeDlyHMSM(0, 0, 2, 0);
 					trigger_calc_flag = 0;
-					
-					UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task, do backward\r\n");
+					UsartPrintf(USART_DEBUG, "Track[%d], do backward\r\n", cur_calc_track);
 					trigger_calc_runtime = 1;
 					Track_trigger_calc_runtime(0, MOTOR_RUN_BACKWARD);
-
-					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
-					trigger_calc_flag = 1;
 					
+					trigger_calc_flag = 1;
+					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
 					key_stat = 1;
 				}
 				else if(i == 2)
 				{
 					RTOS_TimeDlyHMSM(0, 0, 2, 0);
 					trigger_calc_flag = 0;
-					
-					UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task, do forward\r\n");
+					UsartPrintf(USART_DEBUG, "Track[%d], do forward\r\n", cur_calc_track);
 					trigger_calc_runtime = 1;
 					Track_trigger_calc_runtime(0, MOTOR_RUN_FORWARD);
-
-					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
-					trigger_calc_flag = 1;
 					
+					trigger_calc_flag = 1;
+					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
 					key_stat = 2;
 				}
+				else if(i == 3)
+				{
+					RTOS_TimeDlyHMSM(0, 0, 2, 0);
+					
+					UsartPrintf(USART_DEBUG, "Track[%d], do little backword00\r\n", cur_calc_track);
+
+					trigger_calc_flag = 0;
+					trigger_calc_runtime = 0;
+					
+					Track_trigger(cur_calc_track, MOTOR_RUN_BACKWARD);
+					RTOS_TimeDlyHMSM(0, 0, 1, 0);
+					Track_trigger(cur_calc_track, MOTOR_STOP);
+					UsartPrintf(USART_DEBUG, "Track[%d], do little backword11\r\n", cur_calc_track);
+				}
 				do{
-					RTOS_TimeDlyHMSM(0, 0, 0, 500);	//
-					if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN)
+					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
+					if(Key_Check(KEY0)||Key_Check(KEY1)||Key_Check(KEY2))
 					{
 						Track_trigger_calc_runtime_error(1, i, MOTOR_STOP);
-						UsartPrintf(USART_DEBUG, "Track calc block occur, error!!!!\r\n");
+						UsartPrintf(USART_DEBUG, "Track block occur, error!!!!\r\n");
 						break;
 					}
 					if(running_time >= 600)
@@ -604,8 +787,29 @@ void trigger_calc_runtime_Task(void *pdata)
 		}
 		trigger_calc_flag = 0;
 	}
-	//	OSSemDel(SemOfKey, 0, &err);
+	OSSemDel(SemOfCalcTime, 0, &err);
+}
 
 
+#endif
+
+void Track_OverCurrent_Task(void *pdata)
+{
+    INT8U            err;
+	SemOfOverCurrent = OSSemCreate(0);
+	
+	while(1)
+	{
+		UsartPrintf(USART_DEBUG, "Track_OverCurrent_Task!!!\r\n");
+		OSSemPend(SemOfOverCurrent, 0u, &err);
+		RTOS_TimeDlyHMSM(0, 0, 2, 0);
+		
+		motor_run_detect_flag = 0;
+		UsartPrintf(USART_DEBUG, "Track[%d] do OverCurrent protect!!!\r\n", motor_run_detect_track_num);
+		set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_RUN_BACKWARD);
+		RTOS_TimeDlyHMSM(0, 0, 1, 0);
+		set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_STOP);
+	}
+	OSSemDel(SemOfOverCurrent, 0, &err);
 }
 

@@ -42,17 +42,6 @@ extern UART_DATA uart1_recv_data[UART_MAX_IDX];
 extern int uart1_enqueue_idx;
 extern int uart1_dequeue_idx;
 
-
-
-int up_data_parse(void)
-{
-	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
-	parse_up_rx_info();
-	return 0;
-	
-}
-
-
 int uart1_receive_data(void)
 {
 	int retval = -1;
