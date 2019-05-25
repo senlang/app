@@ -51,7 +51,7 @@ int uart1_receive_data(void)
 	if(UART1_IO_Receive() == 0)
 	return retval;
 
-	UsartPrintf(USART_DEBUG, "uart1 enqueue idx[%d] len[%d]", uart1_enqueue_idx, uart1_recv_data[uart1_enqueue_idx].dataLen);
+	UsartPrintf(USART_DEBUG, "UART1 RECV[%d] len[%d]", uart1_enqueue_idx, uart1_recv_data[uart1_enqueue_idx].dataLen);
 	for(i = 0; i < uart1_recv_data[uart1_enqueue_idx].dataLen; i++)
 	{
 		UsartPrintf(USART_DEBUG, "0x%02x,", uart1_recv_data[uart1_enqueue_idx].buf[i]);

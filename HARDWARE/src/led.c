@@ -49,7 +49,7 @@ void Led_Init(void)
 	GPIO_InitTypeDef gpioInitStrcut;
 
 	//使能时钟
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC|RCC_APB2Periph_GPIOD, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
 	
 	//IO配置
 	gpioInitStrcut.GPIO_Mode = GPIO_Mode_Out_PP;
@@ -57,15 +57,8 @@ void Led_Init(void)
 	gpioInitStrcut.GPIO_Speed = GPIO_Speed_50MHz;
 	//IO初始化
 	GPIO_Init(GPIOC, &gpioInitStrcut);
-
-
-	gpioInitStrcut.GPIO_Pin = GPIO_Pin_12;
-	GPIO_Init(GPIOD, &gpioInitStrcut);
-
-	
     
-    Led_Set(LED_1, LED_OFF);
-    Led_Set(LED_2, LED_OFF);
+    Led_Set(LED_1, LED_ON);
 }
 
 /*

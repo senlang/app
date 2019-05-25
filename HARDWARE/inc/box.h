@@ -75,5 +75,6 @@ extern uint8_t motor_run_direction;
 
 extern uint8_t trigger_calc_flag; //0;1;2
 
+extern uint8_t  g_src_board_id;
 
 #endif

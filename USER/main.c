@@ -92,10 +92,10 @@ void MOTOR_Task(void *pdata);
 
 
 //货道时长统计
-#define trigger_calc_runtime_TASK_PRIO		16
+#define Trigger_CalcRuntime_Task_PRIO		16
 #define trigger_calc_runtime_STK_SIZE		384
-OS_STK trigger_calc_runtime_TASK_STK[trigger_calc_runtime_STK_SIZE]; //
-void trigger_calc_runtime_Task(void *pdata);
+OS_STK Trigger_CalcRuntime_Task_STK[trigger_calc_runtime_STK_SIZE]; //
+void Trigger_CalcRuntime_Task(void *pdata);
 
 
 //心跳任务
@@ -133,6 +133,7 @@ uint16_t board_add_finish = 0;/*1111 1111每一个bit表示1个单板*/
 
 uint8_t key_init = 0;
 
+uint8_t  g_src_board_id = 0;
 
 extern struct status_report_request_info_struct  heart_info;
 extern uint8_t track_work;
@@ -194,21 +195,22 @@ void Hardware_Init(void)
 	
 	
 	//TIM3_Int_Init(9999,7199);//10Khz的计数频率，计数到5000为500ms  
-	TIM3_Int_Init(999,7199);//10Khz的计数频率，计数到5000为500ms  
-
+	TIM3_Int_Init(999,7199);//10Khz的计数频率，计数到5000为500ms
 
 	BoardId_Init();
 
 	for(i = 0; i < 10; i++)
 	{
-		Led_Set(LED_1, LED_ON);
-		delay_ms(50);
 		Led_Set(LED_1, LED_OFF);
+		delay_ms(50);
+		Led_Set(LED_1, LED_ON);
 		delay_ms(50);
 	}
 	
 	Iwdg_Init(4, 1250); 														//64分频，每秒625次，重载1250次，2s
 
+	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
+	
 	heart_info.board_status = FIRSTBOOT_STATUS;
 	board_send_message(STATUS_REPORT_REQUEST, &heart_info);
 	heart_info.board_status = STANDBY_STATUS;
@@ -255,17 +257,15 @@ int main(void)
 
 	OSTaskCreate(Drug_Push_Task, (void *)0, (OS_STK*)&Drug_Push_TASK_STK[Drug_Push_STK_SIZE- 1], Drug_Push_TASK_PRIO);
 
-	OSTaskCreate(trigger_calc_runtime_Task, (void *)0, (OS_STK*)&trigger_calc_runtime_TASK_STK[trigger_calc_runtime_STK_SIZE- 1], trigger_calc_runtime_TASK_PRIO);
+	OSTaskCreate(Trigger_CalcRuntime_Task, (void *)0, (OS_STK*)&Trigger_CalcRuntime_Task_STK[trigger_calc_runtime_STK_SIZE- 1], Trigger_CalcRuntime_Task_PRIO);
 
 	OSTaskCreate(KEY_Task, (void *)0, (OS_STK*)&KEY_TASK_STK[KEY_STK_SIZE- 1], KEY_TASK_PRIO);
 
 	OSTaskCreate(Info_Parse_Task, (void *)0, (OS_STK*)&PARSE_TASK_STK[PARSE_STK_SIZE- 1], PARSE_TASK_PRIO);
 
 	os_task_err = OSTaskCreate(Track_Run_Task, (void *)0, (OS_STK*)&TRACK_TASK_STK[TRACK_STK_SIZE- 1], TRACK_TASK_PRIO);
-	UsartPrintf(USART_DEBUG, "%s[%d]os_task_err = %d\r\n", __FUNCTION__, __LINE__, os_task_err);
 
 	os_task_err = OSTaskCreate(Track_OverCurrent_Task, (void *)0, (OS_STK*)&OVERCURRENT_TASK_STK[OVERCURRENT_STK_SIZE- 1], OVERCURRENT_TASK_PRIO);
-	UsartPrintf(USART_DEBUG, "%s[%d]os_task_err = %d\r\n", __FUNCTION__, __LINE__, os_task_err);
 
 	//os_task_err = OSTaskCreate(SENSOR_Task, (void *)0, (OS_STK*)&SENSOR_TASK_STK[SENSOR_STK_SIZE- 1], SENSOR_TASK_PRIO);
 	//UsartPrintf(USART_DEBUG, "%s[%d]os_task_err = %d\r\n", __FUNCTION__, __LINE__, os_task_err);
@@ -277,6 +277,47 @@ int main(void)
 
 	return 0;
 }
+
+
+
+//单板测试
+int main_t(void)
+{	
+	int i = 0;
+	
+	delay_init();	//systick初始化
+	Led_Init();		//LED初始化
+	
+    Led_Set(LED_1, LED_ON);
+
+
+	for(i = 0; i < 10; i++)
+	{
+		Led_Set(LED_1, LED_OFF);
+		delay_ms(100);
+		Led_Set(LED_1, LED_ON);
+		delay_ms(100);
+	}
+	
+	while(1)
+	{	
+		Led_Set(LED_1, LED_OFF);
+		delay_ms(1000);
+		Led_Set(LED_1, LED_ON);
+		delay_ms(1000);
+	}
+
+	return 0;
+}
+
+
+
+
+
+
+
+
+
 
 /*
 ************************************************************
@@ -525,7 +566,7 @@ extern uint16_t running_time;
 
 
 #if 1
-void trigger_calc_runtime_Task(void *pdata)
+void Trigger_CalcRuntime_Task(void *pdata)
 {
 	INT8U			 err;
 	uint8_t i = 0;
@@ -533,9 +574,8 @@ void trigger_calc_runtime_Task(void *pdata)
 	SemOfCalcTime = OSSemCreate(0);
 	while(1)
 	{
-		UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
 		OSSemPend(SemOfCalcTime, 0u, &err);
-		UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
+		UsartPrintf(USART_DEBUG, "Trigger_CalcRuntime_Task run!!!!!!!!!!!!\r\n");
 		trigger_calc_flag = 0;
 		motor_run_detect_flag = 0;
 		key_init = 1;
@@ -672,7 +712,7 @@ void trigger_calc_runtime_Task(void *pdata)
 	OSSemDel(SemOfCalcTime, 0, &err);
 }
 #else
-void trigger_calc_runtime_Task(void *pdata)
+void Trigger_CalcRuntime_Task(void *pdata)
 {
 	INT8U			 err;
 	uint8_t i = 0;
@@ -680,9 +720,9 @@ void trigger_calc_runtime_Task(void *pdata)
 	SemOfCalcTime = OSSemCreate(0);
 	while(1)
 	{
-		UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
+		UsartPrintf(USART_DEBUG, "Trigger_CalcRuntime_Task run!!!!!!!!!!!!\r\n");
 		OSSemPend(SemOfCalcTime, 0u, &err);
-		UsartPrintf(USART_DEBUG, "trigger_calc_runtime_Task run!!!!!!!!!!!!\r\n");
+		UsartPrintf(USART_DEBUG, "Trigger_CalcRuntime_Task run!!!!!!!!!!!!\r\n");
 		trigger_calc_flag = 0;
 		motor_run_detect_flag = 0;
 		key_init = 1;
@@ -800,15 +840,26 @@ void Track_OverCurrent_Task(void *pdata)
 	
 	while(1)
 	{
-		UsartPrintf(USART_DEBUG, "Track_OverCurrent_Task!!!\r\n");
 		OSSemPend(SemOfOverCurrent, 0u, &err);
-		RTOS_TimeDlyHMSM(0, 0, 2, 0);
+		RTOS_TimeDlyHMSM(0, 0, 1, 0);
 		
 		motor_run_detect_flag = 0;
 		UsartPrintf(USART_DEBUG, "Track[%d] do OverCurrent protect!!!\r\n", motor_run_detect_track_num);
-		set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_RUN_BACKWARD);
+
+		if(motor_run_direction == MOTOR_RUN_BACKWARD)
+		{
+			Motor_Set(MOTOR_RUN_FORWARD);
+			set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_RUN_FORWARD);
+		}
+		else if(motor_run_direction == MOTOR_RUN_FORWARD)
+		{
+			Motor_Set(MOTOR_RUN_BACKWARD);
+			set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_RUN_BACKWARD);
+		}
 		RTOS_TimeDlyHMSM(0, 0, 1, 0);
+		
 		set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_STOP);
+		Motor_Set(motor_run_direction);
 	}
 	OSSemDel(SemOfOverCurrent, 0, &err);
 }

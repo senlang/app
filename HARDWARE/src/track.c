@@ -297,6 +297,7 @@ int Track_run(MOTOR_ENUM run_mode)
 			{
 				if(track_struct[x][y].push_time > KEY_DELAY_MS)
 				{
+					RTOS_TimeDlyHMSM(0, 0, 2, 0);
 					delay_s = (track_struct[x][y].push_time - KEY_DELAY_MS)/10;
 					delay_ms = ((track_struct[x][y].push_time - KEY_DELAY_MS) %10) * 100;
 					UsartPrintf(USART_DEBUG, "start:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", x*10 + y + 1, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);

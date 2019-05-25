@@ -34,7 +34,7 @@ void Light_Init(void)
 	GPIO_Init(GPIOA, &gpioInitStruct);							//≥ı ºªØGPIO
 
 	
-	Light_Set(LIGHT_OFF);
+	Light_Set(LIGHT_ON);
 }
 
 /*

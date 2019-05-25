@@ -62,12 +62,18 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 	
 	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
 	
-	if(0)//(check_sum != test_request->checksum)
+	if(check_sum != test_request->checksum)
 	{
 		UsartPrintf(USART_DEBUG, "check sum fail : 0x%02x, 0x%02x\r\n", check_sum, test_request->checksum);  
 		send_command_ack(&cmd_ack_info);
 		return;
 	}
+	
+	cmd_ack_info.board_id = g_src_board_id;
+	cmd_ack_info.rsp_cmd_type = test_request->cmd_type;
+	cmd_ack_info.status = 1;
+	send_command_ack((void *)&cmd_ack_info);
+	
 	
 	test_request->info.board_id = inputdata[3];
 	test_request->info.test_mode = inputdata[4];
@@ -132,7 +138,6 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 			{
 				Belt_Set(COLLECT_BELT, BELT_STOP);
 			}
-
 		}
 		else if(test_request->info.test_mode == COMPRESSOR_TEST)
 		{
@@ -185,11 +190,28 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 		{
 			if(test_request->info.test_status == BOX_TEXT_MODE_OPEN)
 			{
-				Door_Control_Set(MOTOR_RUN_FORWARD);
+				Door_Control_Set(MOTOR_RUN_BACKWARD);
+				while(Door_Key_Detect(DOOR_OPEN) == SENSOR_NO_DETECT){
+					RTOS_TimeDlyHMSM(0, 0, 0, 100);
+				};
+				Door_Control_Set(MOTOR_STOP);
 			}
 			else if(test_request->info.test_status == BOX_TEXT_MODE_CLOSE)
 			{
-				Door_Control_Set(MOTOR_RUN_BACKWARD);
+				Door_Control_Set(MOTOR_RUN_FORWARD);
+				while(Door_Key_Detect(DOOR_CLOSE) == SENSOR_NO_DETECT)
+				{
+					if(Sensor_Detect() == SENSOR_DETECT)
+					{
+						Door_Control_Set(MOTOR_STOP);
+					}
+					else
+					{
+						Door_Control_Set(MOTOR_RUN_FORWARD);
+					}
+					RTOS_TimeDlyHMSM(0, 0, 0, 100);
+				};
+				Door_Control_Set(MOTOR_STOP);
 			}
 		}
 		else if(test_request->info.test_mode == LIGHT_TEST)
@@ -217,18 +239,7 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 		}
 
 	}
-	
-	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
-	
-	cmd_ack_info.board_id = g_src_board_id;
-	cmd_ack_info.rsp_cmd_type = test_request->cmd_type;
-
-	
-	cmd_ack_info.status = 1;
-	send_command_ack((void *)&cmd_ack_info);
-	
-	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
-	
+			
 	return;
 }
 

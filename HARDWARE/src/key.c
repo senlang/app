@@ -319,15 +319,18 @@ void EXTI4_IRQHandler(void)
 		delay_ms(10);
 		if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN) 					//消抖后检查是否有过流
 		{		
-			
+			UsartPrintf(USART_DEBUG, "OverCurrent Dir = %d\r\n", motor_run_direction);
 			if(motor_run_detect_flag == 1){
-				set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_STOP);
 				
-				OSSemQuery (SemOfOverCurrent, &sema_info);
-				//if(sema_info.OSCnt == 0)
-				//OSSemPost(SemOfOverCurrent);
-
 				UsartPrintf(USART_DEBUG, "Track[%d] Arrive End Position!!!!!!\r\n", motor_run_detect_track_num);
+				
+				set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_STOP);
+
+				OSSemQuery (SemOfOverCurrent, &sema_info);
+				UsartPrintf(USART_DEBUG, "sema_info.OSCnt = %d!!!!!!\r\n", sema_info.OSCnt);
+
+				if(sema_info.OSCnt == 0)
+				OSSemPost(SemOfOverCurrent);
 			}
 
 			if(key_init == 0 && trigger_calc_flag == 0)
@@ -452,6 +455,8 @@ void EXTI9_5_IRQHandler(void)
 			{
 				UsartPrintf(USART_DEBUG, "KEY0:Track %d Arrive First Position!!!!!!\r\n", motor_run_detect_track_num);
 				set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_STOP);
+				
+				OSSemPost(SemOfOverCurrent);
 			}
 			else if(trigger_calc_flag == 1)
 			{
@@ -491,8 +496,11 @@ void EXTI9_5_IRQHandler(void)
 		{		
 			UsartPrintf(USART_DEBUG, "Dir = %d\r\n", motor_run_direction);
 			if(motor_run_detect_flag == 1){
+				
 				set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_STOP);
 				UsartPrintf(USART_DEBUG, "KEY1:Track %d Arrive End Position!!!!!!\r\n", motor_run_detect_track_num);
+				
+				OSSemPost(SemOfOverCurrent);
 			}
 			else if(trigger_calc_flag == 1)
 			{

@@ -489,7 +489,6 @@ struct track_trigger_calc_runtime{
     uint8_t track_backward_runtime;//ªÿÕÀ ±≥§
 };
 
-extern uint8_t  g_src_board_id;
 extern struct motor_control_struct  motor_struct[TOTAL_PUSH_CNT];
 
 extern int motor_enqueue_idx;

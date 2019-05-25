@@ -40,7 +40,6 @@
 
 
 
-uint8_t  g_src_board_id = 0;  
 //static uint8_t g_board_status = 0;  
 //static uint8_t g_error_code = 0;  
 //static uint8_t test[2] = {1,2}; 
@@ -1247,12 +1246,12 @@ void up_packet_parser(unsigned char *src, int len)
 		uart1_shared_rx_buf = src + chk_offset;
 		
 		//UsartPrintf(USART_DEBUG, "chk_offset[%d]\r\n", chk_offset);
-		UsartPrintf(USART_DEBUG, "up_packet_parser:");
+		UsartPrintf(USART_DEBUG, "UART2 PACKET Parse:");
 		for(i = 0; i < len; i++)
 		{
 			UsartPrintf(USART_DEBUG, "0x%02x,", *(src + i));
 		}
-		UsartPrintf(USART_DEBUG, "\r\n:");
+		UsartPrintf(USART_DEBUG, "\r\n\r\n");
 		
 		if(*uart1_shared_rx_buf != START_CODE)
 		{
@@ -1333,12 +1332,12 @@ void packet_parser(unsigned char *src, int len)
     struct track_calc_request_struct track_calc_request; 
 
 	
-	UsartPrintf(USART_DEBUG, "packet_parser:");
+	UsartPrintf(USART_DEBUG, "UART1 PACKET Parse:");
 	for(i = 0; i < len; i++)
 	{
 		UsartPrintf(USART_DEBUG, "0x%02x,", *(src + i));
 	}
-	UsartPrintf(USART_DEBUG, "\r\n:");
+	UsartPrintf(USART_DEBUG, "\r\n\r\n:");
 
 	do
 	{
@@ -1354,7 +1353,7 @@ void packet_parser(unsigned char *src, int len)
 			goto	PARSER_CONTINUE;
 		}
 
-		UsartPrintf(USART_DEBUG, "start code = 0x%02x, boardid = 0x%02x, cmd = 0x%02x!!\r\n", *(uart1_shared_rx_buf), *(uart1_shared_rx_buf + 3), *(uart1_shared_rx_buf + 2));
+		//UsartPrintf(USART_DEBUG, "start code = 0x%02x, boardid = 0x%02x, cmd = 0x%02x!!\r\n", *(uart1_shared_rx_buf), *(uart1_shared_rx_buf + 3), *(uart1_shared_rx_buf + 2));
 		
 		pkt_len = *(uart1_shared_rx_buf + 1) + 1;//data + checksum
 		cmd_type = *(uart1_shared_rx_buf + 2);
