@@ -183,7 +183,6 @@ void Hardware_Init(void)
 	
 	Door_Init();	//前后大门控制初始化
 	
-	Light_Init();	//灯箱初始化
 	
 	Track_Init();	//货道初始化
 	
@@ -198,6 +197,10 @@ void Hardware_Init(void)
 	TIM3_Int_Init(999,7199);//10Khz的计数频率，计数到5000为500ms
 
 	BoardId_Init();
+
+	if(g_src_board_id == 2)
+	Light_Init();	//灯箱初始化
+
 
 	for(i = 0; i < 10; i++)
 	{
@@ -356,7 +359,7 @@ void UART1_RECEIVE_Task(void *pdata)
 		do{
 			if(uart1_receive_data() == 0)
 				break;
-			RTOS_TimeDly(2);
+			RTOS_TimeDly(20);
 		}while(1);
 	}
 }
@@ -386,10 +389,12 @@ void UART2_RECEIVE_Task(void *pdata)
 	while(1)
 	{
 		OSSemPend(SemOfUart2RecvData, 0u, &err);
+		UsartPrintf(USART_DEBUG, "UART2_RECEIVE_Task--------\r\n");
+		
 		do{
 			if(uart2_receive_data() == 0)
 				break;
-			RTOS_TimeDly(2);
+			RTOS_TimeDly(20);
 		}while(1);
 	}
 }

@@ -48,6 +48,29 @@ int down_data_parse(void)
 }
 
   
+extern uint8_t  g_src_board_id;
+int uart2_receive_data(void)
+{
+	int retval = -1;
+	
+	
+	//UsartPrintf(USART_DEBUG, "UART2 Data[%d]=0x%02x\r\n", 
+	//				uasrt2_recv_data[uart2_enqueue_idx].dataLen, 
+	//				uasrt2_recv_data[uart2_dequeue_idx].buf[uasrt2_recv_data[uart2_enqueue_idx].dataLen]);
+
+	if(UART2_IO_Receive() == 0)
+	return retval;
+
+	uart2_enqueue_idx++;
+	if(uart2_enqueue_idx >= UART_MAX_IDX)
+	uart2_enqueue_idx = 0;
+	
+	uart2_parse_protocol();
+	
+	UART2_IO_ClearRecive();
+	
+	return 0;
+}
 int down_shared_buf_copy(unsigned char *src, int len)
 {  	
 	return 0;
@@ -65,7 +88,7 @@ int uart2_parse_protocol(void)
 	int len;
 	int count = 0;
 
-	//UsartPrintf(USART_DEBUG, "uart2:en idx = %d, de idx = %d\r\n", uart2_enqueue_idx, uart2_dequeue_idx);
+	UsartPrintf(USART_DEBUG, "uart2:en idx = %d, de idx = %d\r\n", uart2_enqueue_idx, uart2_dequeue_idx);
 
 	if (uart2_enqueue_idx != uart2_dequeue_idx)
 	{
@@ -81,7 +104,7 @@ int uart2_parse_protocol(void)
 		return 0;
 	}
 	
-	//UsartPrintf(USART_DEBUG, "count = %d\r\n", count);
+	UsartPrintf(USART_DEBUG, "count = %d\r\n", count);
 
 	while(count > 0)
 	{
@@ -100,19 +123,6 @@ int uart2_parse_protocol(void)
 }
 
 
-extern uint8_t  g_src_board_id;
-int uart2_receive_data(void)
-{
-	int retval = -1;
-
-	if(UART2_IO_Receive() == 0)
-	return retval;
-
-	uart2_parse_protocol();
-	
-	UART2_IO_ClearRecive();
-	return 0;
-}
 
 
 

@@ -184,7 +184,7 @@ void Usart1_Init(unsigned int baud)
 	nvicInitStruct.NVIC_IRQChannel = USART1_IRQn;
 	nvicInitStruct.NVIC_IRQChannelCmd = ENABLE;
 	nvicInitStruct.NVIC_IRQChannelPreemptionPriority = 0;
-	nvicInitStruct.NVIC_IRQChannelSubPriority = 2;
+	nvicInitStruct.NVIC_IRQChannelSubPriority = 0;
 	NVIC_Init(&nvicInitStruct);
 	
 	USART_GetFlagStatus(USART1, USART_FLAG_TC);
