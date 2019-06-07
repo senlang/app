@@ -1235,27 +1235,28 @@ void up_packet_parser(unsigned char *src, int len)
 	int chk_offset = 0;
 	int pkt_len = 0;
 	int board_id = 0;
-	unsigned char *uart1_shared_rx_buf; 
+	unsigned char *uart2_shared_rx_buf; 
 	//char cmd_type = 0;
 	int i = 0;
 	//unsigned char forward_data[32] = {0};
 	struct push_medicine_complete_struct push_medicine_complete_request;
 
+
+	UsartPrintf(USART_DEBUG, "UART2 PACKET Parse:");
+	for(i = 0; i < len; i++)
+	{
+		UsartPrintf(USART_DEBUG, "0x%02x,", *(src + i));
+	}
+	UsartPrintf(USART_DEBUG, "\r\n\r\n");
+
+
 	do
 	{
-		uart1_shared_rx_buf = src + chk_offset;
+		uart2_shared_rx_buf = src + chk_offset;
 		
-		//UsartPrintf(USART_DEBUG, "chk_offset[%d]\r\n", chk_offset);
-		UsartPrintf(USART_DEBUG, "UART2 PACKET Parse:");
-		for(i = 0; i < len; i++)
+		if(*uart2_shared_rx_buf != START_CODE)
 		{
-			UsartPrintf(USART_DEBUG, "0x%02x,", *(src + i));
-		}
-		UsartPrintf(USART_DEBUG, "\r\n\r\n");
-		
-		if(*uart1_shared_rx_buf != START_CODE)
-		{
-			UsartPrintf(USART_DEBUG, "start code error: 0x%02x\r\n", *(uart1_shared_rx_buf));
+			UsartPrintf(USART_DEBUG, "start code error: 0x%02x\r\n", *(uart2_shared_rx_buf));
 			chk_offset++;
 			goto	UPDATA_CONTINUE;
 		}		
@@ -1267,30 +1268,38 @@ void up_packet_parser(unsigned char *src, int len)
 			break;
 		}	
 
-		pkt_len = *(uart1_shared_rx_buf + 1) + 1;//data + checksum
+		pkt_len = *(uart2_shared_rx_buf + 1) + 1;//data + checksum
 
-		if(up_packet_preparser(uart1_shared_rx_buf, pkt_len - 1) == FALSE)
+
+		UsartPrintf(USART_DEBUG, "uart2 Data:");
+		for(i = 0; i < pkt_len; i++)
+		{
+			UsartPrintf(USART_DEBUG, "0x%02x,", *(uart2_shared_rx_buf + i));
+		}
+		UsartPrintf(USART_DEBUG, "\r\n");
+
+		if(up_packet_preparser(uart2_shared_rx_buf, pkt_len - 1) == FALSE)
 		{
 			chk_offset++;
+			UsartPrintf(USART_DEBUG, "CheckSum error, chk_offset:%d\r\n", chk_offset);
 			goto	UPDATA_CONTINUE;
 		}
-		UART1_IO_Send(uart1_shared_rx_buf, pkt_len);
 
-		memcpy(&push_medicine_complete_request, uart1_shared_rx_buf, pkt_len);
+		memcpy(&push_medicine_complete_request, uart2_shared_rx_buf, pkt_len);
 
 		if(1 == g_src_board_id)
 		{
-			if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_COMPLETE)) //收到出货完成状态上报响应
+			if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_COMPLETE)) //收到出货完成状态上报响应
 			{	 
-				board_id = *(uart1_shared_rx_buf + 3);
+				board_id = *(uart2_shared_rx_buf + 3);
 				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_PUSH_MEDICINE_COMPLETE, Board[%d], Track[%d]!!\r\n", push_medicine_complete_request.info.board_id, push_medicine_complete_request.info.medicine_track_number);
 				//TODO:统一由1号单板处理，在收集齐所有单板状态后统一上报安卓板
 				if(push_medicine_complete_request.info.medicine_track_number == 0xFF)
 				board_push_finish &= ~(1<<(board_id - 1));
 			}  
-			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_MCU_ADD_MEDICINE_COMPLETE)) //收到补货完成状态上报响应
+			else if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_MCU_ADD_MEDICINE_COMPLETE)) //收到补货完成状态上报响应
 			{  
-				board_id = *(uart1_shared_rx_buf + 3);
+				board_id = *(uart2_shared_rx_buf + 3);
 				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MCU_ADD_MEDICINE_COMPLETE, Board[%d], Track[%d]!!\r\n", push_medicine_complete_request.info.board_id, push_medicine_complete_request.info.medicine_track_number);
 				if(push_medicine_complete_request.info.medicine_track_number == 0xFF)
 				board_add_finish &= ~(1<<board_id);
@@ -1301,8 +1310,9 @@ void up_packet_parser(unsigned char *src, int len)
 				break;
 			}
 		}
+
+		UsartPrintf(USART_DEBUG, "uart2 pkt_len = %d, chk_offset = %d, len = %d!!\r\n", pkt_len, chk_offset, len);
 		chk_offset = chk_offset + pkt_len;
-		//UsartPrintf(USART_DEBUG, "chk_offset = %d, len = %d!!\r\n", chk_offset, len);
 		UPDATA_CONTINUE:
 	}while(chk_offset > 0 && chk_offset < len);
 		
@@ -1332,7 +1342,7 @@ void packet_parser(unsigned char *src, int len)
     struct track_calc_request_struct track_calc_request; 
 
 	
-	UsartPrintf(USART_DEBUG, "UART1 PACKET Parse:");
+	UsartPrintf(USART_DEBUG, "UART1 packet_parser:");
 	for(i = 0; i < len; i++)
 	{
 		UsartPrintf(USART_DEBUG, "0x%02x,", *(src + i));
@@ -1358,6 +1368,16 @@ void packet_parser(unsigned char *src, int len)
 		pkt_len = *(uart1_shared_rx_buf + 1) + 1;//data + checksum
 		cmd_type = *(uart1_shared_rx_buf + 2);
 		board_id = *(uart1_shared_rx_buf + 3);
+
+		UsartPrintf(USART_DEBUG, "uart1 Data:");
+		for(i = 0; i < pkt_len; i++)
+		{
+			UsartPrintf(USART_DEBUG, "0x%02x,", *(uart1_shared_rx_buf + i));
+		}
+		UsartPrintf(USART_DEBUG, "\r\n");
+
+
+
 
 		check_sum = add_checksum(uart1_shared_rx_buf, pkt_len - 1);
 		
@@ -1505,8 +1525,9 @@ void packet_parser(unsigned char *src, int len)
 			}
 		}
 		
+		UsartPrintf(USART_DEBUG, "uart1 pkt_len = %d, chk_offset = %d, len = %d!!\r\n", pkt_len, chk_offset, len);
 		chk_offset = chk_offset + pkt_len;
-		//UsartPrintf(USART_DEBUG, "chk_offset = %d, len = %d!!\r\n", chk_offset, len);
+		
 		PARSER_CONTINUE:
 	}while(chk_offset > 0 && chk_offset < len);
 		

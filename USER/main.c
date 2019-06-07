@@ -209,15 +209,14 @@ void Hardware_Init(void)
 		Led_Set(LED_1, LED_ON);
 		delay_ms(50);
 	}
-	
-	Iwdg_Init(4, 1250); 														//64分频，每秒625次，重载1250次，2s
-
-	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
-	
+		
+	delay_ms(g_src_board_id * 100);
 	heart_info.board_status = FIRSTBOOT_STATUS;
 	board_send_message(STATUS_REPORT_REQUEST, &heart_info);
 	heart_info.board_status = STANDBY_STATUS;
-	
+
+	Iwdg_Init(4, 1250); 														//64分频，每秒625次，重载1250次，2s
+
 	//UsartPrintf(USART_DEBUG, "Hardware init OK\r\n");						//提示初始化完成	
 }
 
@@ -404,20 +403,23 @@ void HEART_Task(void *pdata)
 {
 	int heart_count = 0;
 	
+	heart_count = g_src_board_id * 2 - 1;
+	
+	UsartPrintf(USART_DEBUG, "heart_count = %d\r\n", heart_count);
 	while(1)
 	{	
 		Led_Set(LED_1, LED_OFF);
 		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
 		Led_Set(LED_1, LED_ON);
 		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
-		heart_count++;
 
-		if(heart_count == 15)
+		if(heart_count >= 15)
 		{
 			UsartPrintf(USART_DEBUG, "Heart Report--------\r\n");
 			board_send_message(STATUS_REPORT_REQUEST, &heart_info);
 			heart_count = 0;
 		}
+		heart_count++;
 	}
 }
 
