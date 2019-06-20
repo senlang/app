@@ -339,8 +339,8 @@ int Track_run(MOTOR_ENUM run_mode)
 	{
 		mcu_push_medicine_track_only(g_src_board_id, 0xFF);
 		board_push_finish &= ~(1<<(g_src_board_id - 1));
-		if(1 == g_src_board_id)
-		OSSemPost(SemOfConveyor);
+		//if(1 == g_src_board_id)
+		//OSSemPost(SemOfConveyor);
 	}
 	else if(MOTOR_RUN_BACKWARD == run_mode)
 	{

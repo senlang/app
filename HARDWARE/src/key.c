@@ -447,7 +447,7 @@ void EXTI9_5_IRQHandler(void)
 	if(EXTI_GetITStatus(EXTI_Line8)==SET)//是8线的中断
 	{
 		delay_ms(10);
-		UsartPrintf(USART_DEBUG, "KEY0 CHECK DOWN: ", motor_run_direction);
+		UsartPrintf(USART_DEBUG, "Forward:KEY0 CHECK DOWN: ", motor_run_direction);
 		if((KeyScan(GPIOB, KEY0) == KEYDOWN)&& (motor_run_direction == MOTOR_RUN_FORWARD)) 					//
 		{		
 			UsartPrintf(USART_DEBUG, "Dir = %d\r\n", motor_run_direction);
@@ -495,7 +495,7 @@ void EXTI9_5_IRQHandler(void)
 	//后退到位检查
 	if(EXTI_GetITStatus(EXTI_Line9) == SET)//是8线的中断
 	{
-		UsartPrintf(USART_DEBUG, "KEY1 CHECK DOWN:", motor_run_direction);
+		UsartPrintf(USART_DEBUG, "Backword:KEY1 CHECK DOWN:", motor_run_direction);
 		delay_ms(10);
 		if((KeyScan(GPIOB, KEY1) == KEYDOWN)&&(motor_run_direction == MOTOR_RUN_BACKWARD))					//
 		{		

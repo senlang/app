@@ -141,6 +141,16 @@ extern uint8_t track_work;
 uint8_t board_drug_push_status[BOARD_ID_MAX] = {0};
 
 
+//START 任务
+//设置任务优先级
+#define START_TASK_PRIO      			20 //开始任务的优先级设置为最低
+//设置任务堆栈大小
+#define START_STK_SIZE  				128
+//任务堆栈，8字节对齐	
+static OS_STK START_TASK_STK[START_STK_SIZE];
+//任务函数
+void start_task(void *pdata);		
+
 
 /*
 ************************************************************
@@ -164,10 +174,16 @@ void Hardware_Init(void)
 	delay_init();	//systick初始化
 	
 	Led_Init();		//LED初始化
+	
+	Debug_USART_Config();	//初始化串口   115200bps	
+	
+	Usart1_Init(115200);	//初始化串口1
+	
+	Usart2_Init(115200);	//初始化串口2 ok
+	
+	EXTIX_Init();	//按键中断初始化
 
 	Key_Init();		//按键初始化
-
-	EXTIX_Init();	//终端初始化
 
 	Motor_Init();	//电机初始化
 	
@@ -183,15 +199,7 @@ void Hardware_Init(void)
 	
 	Door_Init();	//前后大门控制初始化
 	
-	
 	Track_Init();	//货道初始化
-	
-	Debug_USART_Config();	//初始化串口   115200bps	
-
-	Usart1_Init(115200);
-	
-	Usart2_Init(115200);
-	
 	
 	//TIM3_Int_Init(9999,7199);//10Khz的计数频率，计数到5000为500ms  
 	TIM3_Int_Init(999,7199);//10Khz的计数频率，计数到5000为500ms
@@ -220,6 +228,56 @@ void Hardware_Init(void)
 	//UsartPrintf(USART_DEBUG, "Hardware init OK\r\n");						//提示初始化完成	
 }
 
+
+int main(void)
+{ 		   
+   	Hardware_Init();		//系统初始化		  
+	OSInit();   
+	OSTaskCreate(start_task,(void *)0,(OS_STK *)&START_TASK_STK[START_STK_SIZE-1],START_TASK_PRIO );//创建起始任务
+	OSStart();	  						    
+}   	  
+//开始任务
+void start_task(void *pdata)
+{
+	OS_CPU_SR cpu_sr=0;
+	
+	pdata = pdata; 	 
+	
+	OSStatInit();		//初始化统计任务.这里会延时1秒钟左右	
+	
+	OS_ENTER_CRITICAL();//进入临界区(无法被中断打断)    
+	
+	OSTaskCreate(IWDG_Task, (void *)0, (OS_STK*)&IWDG_TASK_STK[IWDG_STK_SIZE - 1], IWDG_TASK_PRIO);
+
+	OSTaskCreate(HEART_Task, (void *)0, (OS_STK*)&HEART_TASK_STK[HEART_STK_SIZE - 1], HEART_TASK_PRIO);
+
+	OSTaskCreate(UART1_RECEIVE_Task, (void *)0, (OS_STK*)&UP_RECEIVE_TASK_STK[UP_RECEIVE_STK_SIZE - 1], UP_RECEIVE_TASK_PRIO);
+
+	OSTaskCreate(UART2_RECEIVE_Task, (void *)0, (OS_STK*)&DOWN_RECEIVE_TASK_STK[DOWN_RECEIVE_STK_SIZE - 1], DOWN_RECEIVE_TASK_PRIO);
+
+	OSTaskCreate(MOTOR_Task, (void *)0, (OS_STK*)&MOTOR_TASK_STK[MOTOR_STK_SIZE- 1], MOTOR_TASK_PRIO);
+
+	OSTaskCreate(Drug_Push_Task, (void *)0, (OS_STK*)&Drug_Push_TASK_STK[Drug_Push_STK_SIZE- 1], Drug_Push_TASK_PRIO);
+
+	OSTaskCreate(Trigger_CalcRuntime_Task, (void *)0, (OS_STK*)&Trigger_CalcRuntime_Task_STK[trigger_calc_runtime_STK_SIZE- 1], Trigger_CalcRuntime_Task_PRIO);
+
+	//OSTaskCreate(KEY_Task, (void *)0, (OS_STK*)&KEY_TASK_STK[KEY_STK_SIZE- 1], KEY_TASK_PRIO);
+
+	OSTaskCreate(Info_Parse_Task, (void *)0, (OS_STK*)&PARSE_TASK_STK[PARSE_STK_SIZE- 1], PARSE_TASK_PRIO);
+
+	OSTaskCreate(Track_Run_Task, (void *)0, (OS_STK*)&TRACK_TASK_STK[TRACK_STK_SIZE- 1], TRACK_TASK_PRIO);
+
+	OSTaskCreate(Track_OverCurrent_Task, (void *)0, (OS_STK*)&OVERCURRENT_TASK_STK[OVERCURRENT_STK_SIZE- 1], OVERCURRENT_TASK_PRIO);
+					   
+	OSTaskSuspend(START_TASK_PRIO);	//挂起起始任务.
+	
+	OS_EXIT_CRITICAL();	//退出临界区(可以被中断打断)
+}
+
+
+
+
+
 /*
 ************************************************************
 *	函数名称：	main
@@ -233,7 +291,7 @@ void Hardware_Init(void)
 *	说明：		
 ************************************************************
 */
-int main(void)
+int main_0(void)
 {	
 	INT8U os_task_err = 0;
 	
@@ -248,12 +306,12 @@ int main(void)
 	//创建应用任务
 	
 	OSTaskCreate(IWDG_Task, (void *)0, (OS_STK*)&IWDG_TASK_STK[IWDG_STK_SIZE - 1], IWDG_TASK_PRIO);
+	
+	OSTaskCreate(HEART_Task, (void *)0, (OS_STK*)&HEART_TASK_STK[HEART_STK_SIZE - 1], HEART_TASK_PRIO);
 
 	OSTaskCreate(UART1_RECEIVE_Task, (void *)0, (OS_STK*)&UP_RECEIVE_TASK_STK[UP_RECEIVE_STK_SIZE - 1], UP_RECEIVE_TASK_PRIO);
 
 	OSTaskCreate(UART2_RECEIVE_Task, (void *)0, (OS_STK*)&DOWN_RECEIVE_TASK_STK[DOWN_RECEIVE_STK_SIZE - 1], DOWN_RECEIVE_TASK_PRIO);
-	
-	OSTaskCreate(HEART_Task, (void *)0, (OS_STK*)&HEART_TASK_STK[HEART_STK_SIZE - 1], HEART_TASK_PRIO);
 	
 	OSTaskCreate(MOTOR_Task, (void *)0, (OS_STK*)&MOTOR_TASK_STK[MOTOR_STK_SIZE- 1], MOTOR_TASK_PRIO);
 
@@ -283,16 +341,14 @@ int main(void)
 
 
 //单板测试
-int main_t(void)
+int main_1(void)
 {	
 	int i = 0;
 	
 	delay_init();	//systick初始化
 	Led_Init();		//LED初始化
-	
     Led_Set(LED_1, LED_ON);
-
-
+    
 	for(i = 0; i < 10; i++)
 	{
 		Led_Set(LED_1, LED_OFF);
@@ -313,6 +369,25 @@ int main_t(void)
 }
 
 
+
+
+
+//单板测试
+int main_2(void)
+{	
+	Hardware_Init();
+	
+	while(1)
+	{	
+		Led_Set(LED_1, LED_OFF);
+		Iwdg_Feed(); 		//喂狗
+		delay_ms(500);
+		Led_Set(LED_1, LED_ON);
+		Iwdg_Feed(); 		//喂狗
+		delay_ms(500);
+	}
+	return 0;
+}
 
 
 

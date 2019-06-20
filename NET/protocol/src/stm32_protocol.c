@@ -151,8 +151,8 @@ void mcu_push_medicine_track_only(uint8_t board, uint8_t track_number)
 	
 	memset(&push_complete_info, 0x00, sizeof(push_complete_info));
 	push_complete_info.board_id = board;
-	push_complete_info.track_status = 0;
 	push_complete_info.medicine_track_number = track_number;
+	push_complete_info.track_status = 0;
 	board_send_message(PUSH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
 }
 
@@ -162,8 +162,8 @@ void mcu_add_medicine_track_only(uint8_t board, uint8_t track_number)
 	
 	memset(&push_complete_info, 0x00, sizeof(push_complete_info));
 	push_complete_info.board_id = board;
-	push_complete_info.track_status = 0;
 	push_complete_info.medicine_track_number = track_number;
+	push_complete_info.track_status = 0;
 	board_send_message(MCU_REPLENISH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
 }
 
@@ -742,10 +742,29 @@ void parse_push_medicine_request(struct push_medicine_request_struct *push_medic
 				valid_cnt++;
 				cmd_ack_info.status = 1;
 			}
+			/*02 07 20 1 0 0 xx*//*货道出货*/
 			else if((push_medicine_request->info[valid_cnt].medicine_track_number == 0) && (push_medicine_request->info[valid_cnt].push_time == 0))
 			{
-				//OSSemPost(SemOfConveyor);
+				/*依次检查货道时间是否全为0，非0将环境货道出货线程*/
+				/*
+				for(x = 0; x < 10; x++)
+				{
+					for(y = 0; y < 10; y++)
+					{
+						if(track_struct[x][y].push_time > KEY_DELAY_MS)
+						{
+							OSSemPost(SemOfTrack);
+							break;
+						}
+					}
+				}
+				*/
+				if(board_push_finish & (1 << (g_src_board_id - 1)))
 				OSSemPost(SemOfTrack);
+
+				/*开始唤醒传送带和取货口动作*/
+				if(1 == g_src_board_id)
+				OSSemPost(SemOfConveyor);
 				
 				cmd_ack_info.status = 1;
 
@@ -1392,6 +1411,7 @@ void packet_parser(unsigned char *src, int len)
 		{
 			if(cmd_type == CMD_PUSH_MEDICINE_REQUEST)
 			{
+				/*请求出货指令转发*/
 				if(preparse_push_medicine_request(&push_medicine_request, uart1_shared_rx_buf) == TRUE)
 				{
 					UsartPrintf(USART_DEBUG, "board_push_finish: 0x%02x\r\n", board_push_finish);
@@ -1419,13 +1439,14 @@ void packet_parser(unsigned char *src, int len)
 					}
 				}
 				else
-				{
+				{	
+					/*请求出货，更新全局变量bit位*/
 					board_push_finish |= 1<<(board_id - 1);
 				}
 			}
 			else if(cmd_type == CMD_REPLENISH_MEDICINE_REQUEST)
 			{
-				//if(preparse_replenish_medicine_request(&replenish_medicine_request, uart1_shared_rx_buf) == TRUE)
+				/*请求补货完成指令转发*/
 				if(preparse_push_medicine_request(&push_medicine_request, uart1_shared_rx_buf) == TRUE)
 				{
 					UsartPrintf(USART_DEBUG, "board_add_finish: 0x%02x\r\n", board_add_finish);
