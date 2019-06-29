@@ -35,6 +35,7 @@
 
 #include "ucos_ii.h"
 
+#include "queue.h"
 
 DATA_IO_INFO up_recv_data_info;
 UART_DATA uart1_recv_data[UART_MAX_IDX];
@@ -43,6 +44,7 @@ int uart1_enqueue_idx = 0;
 int uart1_dequeue_idx = 0;
 
 extern OS_EVENT *SemOfUart1RecvData;          //
+extern struct node* UartMsgNode;
 
 
 void UART1_IO_ClearRecive(void);
@@ -220,13 +222,13 @@ void Usart1_Init(unsigned int baud)
 */
 void UART1_IO_Send(unsigned char *str, unsigned short len)
 {
-
 	unsigned short count = 0;
+	
 	UsartPrintf(USART_DEBUG, "UART1 Send[%d] : ", len);
 	for(; count < len; count++)											//发送一帧数据
 	{
-		UsartPrintf(USART_DEBUG, "0x%02x,", *(str));
-		USART_SendData(USART1, *str++);
+		UsartPrintf(USART_DEBUG, "0x%02x,", *(str + count));
+		USART_SendData(USART1, *(str + count));
 		while(USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET);
 	}
 	UsartPrintf(USART_DEBUG, "\r\n\r\n");

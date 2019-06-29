@@ -79,9 +79,6 @@ int down_shared_buf_copy(unsigned char *src, int len)
 
 
 
-
-
-
 int uart2_parse_protocol(void)
 {
 	unsigned char *src;
@@ -111,8 +108,10 @@ int uart2_parse_protocol(void)
 		//UsartPrintf(USART_DEBUG, "uart2:en idx = %d, de idx = %d\r\n", uart2_enqueue_idx, uart2_dequeue_idx);
 		src = uasrt2_recv_data[uart2_dequeue_idx].buf;
 		len = uasrt2_recv_data[uart2_dequeue_idx].dataLen;
-		
+
+		//if(IsACKMsg(src, len))
 		UART1_IO_Send(src, len);
+		
 		up_packet_parser(src, len);
 		
 		uart2_dequeue_idx++;

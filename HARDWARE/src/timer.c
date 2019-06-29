@@ -55,7 +55,7 @@ void TIM3_IRQHandler(void)   //TIM3中断
 {
     if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET) 
     {
-        TIM_ClearITPendingBit(TIM3, TIM_IT_Update  );  
+        TIM_ClearITPendingBit(TIM3, TIM_IT_Update);  
         if(!trigger_calc_runtime)      //flag用来看有不有暂停计时
         {
         	running_time = 0;
@@ -66,12 +66,4 @@ void TIM3_IRQHandler(void)   //TIM3中断
 		//UsartPrintf(USART_DEBUG, "running_time = %d\r\n", running_time);
     }
 }
-
-
-
-
-
-
-
-
 

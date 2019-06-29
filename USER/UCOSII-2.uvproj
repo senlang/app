@@ -681,6 +681,16 @@
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\src\timer.c</FilePath>
             </File>
+            <File>
+              <FileName>malloc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\SYSTEM\src\malloc.c</FilePath>
+            </File>
+            <File>
+              <FileName>queue.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\SYSTEM\src\queue.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -730,16 +740,6 @@
               <FileName>stm32_uart2.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\NET\device\src\stm32_uart2.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>MALLOC</GroupName>
-          <Files>
-            <File>
-              <FileName>malloc.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\MALLOC\malloc.c</FilePath>
             </File>
           </Files>
         </Group>

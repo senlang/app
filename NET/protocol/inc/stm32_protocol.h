@@ -6,7 +6,6 @@
 
 
 
-#define MAX_PAYLOAD_LEN 32 //byte
 
 #define STX_CODE_SIZE 1  
 #define PACKET_LEN_SIZE 1  
@@ -82,6 +81,12 @@
 /*查询指令*/
 #define QUERY_REQUEST_INFO_SIZE 1 //即(2字节	2字节	2字节)   
 #define QUERY_REQUEST_PACKET_SIZE (IPUC + QUERY_REQUEST_INFO_SIZE + CHECKSUM_SIZE)  
+
+/*单片机内部补货完成*/
+#define ADD_MEDICINE_CONPLETE_REQUEST_INFO_SIZE 3 //即(1字节	字节)   
+#define ADD_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE (IPUC + ADD_MEDICINE_CONPLETE_REQUEST_INFO_SIZE + CHECKSUM_SIZE)  
+
+
 
 
 
@@ -201,8 +206,8 @@ typedef struct _uart_msg_struct
 	uint8_t start_code; 
 	uint8_t packet_len;
 	uint8_t cmd_type;
-	uint8_t *payload;	 
-	uint8_t checksum; 
+    uint8_t board_id;  
+	uint8_t tmp[16];	 
 }uart_msg_struct;
 
 typedef struct _ack_struct  
@@ -210,8 +215,9 @@ typedef struct _ack_struct
 	uint8_t start_code; 
 	uint8_t packet_len;
 	uint8_t cmd_type;
-    uint8_t board_id;  
-	uint8_t checksum; 
+	uint8_t pl_cmd_type;
+    uint8_t pl_board_id;
+	uint8_t tmp[8];	 
 }ack_struct; 
 
 
@@ -277,6 +283,7 @@ struct replenish_medicine_request_info_struct
 {  
     uint8_t board_id;  
     uint8_t medicine_track_number;  
+    uint8_t dirtion;  
     uint16_t push_time;  	
 }; 
 
@@ -351,6 +358,25 @@ struct push_medicine_complete_struct
 	struct push_medicine_complete_request_info_struct info;
 	uint8_t checksum; 
 }; 
+
+
+/*单片机内部维护的出货完成*/
+struct add_medicine_complete_request_info_struct  
+{  
+    uint8_t board_id;  
+    uint8_t medicine_track_number;  
+    uint8_t track_status;  
+}; 
+
+struct add_medicine_complete_struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	struct add_medicine_complete_request_info_struct info;
+	uint8_t checksum; 
+}; 
+
 
 
 
@@ -530,6 +556,9 @@ void packet_parser(unsigned char *src, int len);
 void up_packet_parser(unsigned char *src, int len);
 uint8_t up_packet_preparser(unsigned char *src, int len);
 
+uint8_t IsACKMsg(unsigned char *src, int len);
+
+
 int board_send_message(int msg_type, void *input_data);
 void mcu_push_medicine_open_door_complete(void);
 void mcu_push_medicine_close_door_complete(void);
@@ -537,6 +566,5 @@ void mcu_push_medicine_track_only(uint8_t board, uint8_t track_number);
 void mcu_add_medicine_track_only(uint8_t board, uint8_t track_number);
 
 void send_track_runtime_report( void *input_data);
-
 
 #endif

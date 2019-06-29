@@ -15,6 +15,8 @@
 //通讯协议
 #include "stm32_protocol.h"
 
+//mem
+#include "malloc.h"
 
 #define SW_VERSION		"SV 1.1.0"
 
@@ -27,21 +29,21 @@ void IWDG_Task(void *pdata);
 
 //UART1 串口数据接收
 #define UP_RECEIVE_TASK_PRIO		7 //
-#define UP_RECEIVE_STK_SIZE		512
+#define UP_RECEIVE_STK_SIZE		1024
 OS_STK UP_RECEIVE_TASK_STK[UP_RECEIVE_STK_SIZE]; //
 void UART1_RECEIVE_Task(void *pdata);
 
 
 //UART2 串口数据接收
 #define DOWN_RECEIVE_TASK_PRIO		8 //
-#define DOWN_RECEIVE_STK_SIZE		512
+#define DOWN_RECEIVE_STK_SIZE		1024
 OS_STK DOWN_RECEIVE_TASK_STK[DOWN_RECEIVE_STK_SIZE]; //
 void UART2_RECEIVE_Task(void *pdata);
 
 
 //uart1 接收消息解析
 #define PARSE_TASK_PRIO		9
-#define PARSE_STK_SIZE		512
+#define PARSE_STK_SIZE		1024
 OS_STK PARSE_TASK_STK[PARSE_STK_SIZE];
 void Info_Parse_Task(void *pdata);
 
@@ -105,6 +107,14 @@ OS_STK HEART_TASK_STK[HEART_STK_SIZE]; //
 void HEART_Task(void *pdata);
 
 
+//消息重传
+#define MSG_SEND_TASK_PRIO		18
+#define MSG_SEND_STK_SIZE		256
+OS_STK MSG_SEND_TASK_STK[MSG_SEND_STK_SIZE]; //
+void Message_Send_Task(void *pdata);
+
+
+
 
 OS_EVENT *SemOfMotor;        	//Motor控制信号量
 OS_EVENT *SemOfUart1RecvData;	//uart1 串口接收数据信号量
@@ -116,6 +126,8 @@ OS_EVENT *SemOfConveyor;        	//Motor控制信号量
 OS_EVENT *SemOfTrack;        	//track 控制信号量
 OS_EVENT *SemOfCalcTime;        	//触发货道时间统计信号量
 OS_EVENT *SemOfOverCurrent;				//过流保护信号量
+
+OS_EVENT *MsgMutex;
 
 uint8_t trigger_calc_flag = 0;
 uint8_t trigger_calc_runtime = 0;
@@ -140,6 +152,7 @@ extern uint8_t track_work;
 
 uint8_t board_drug_push_status[BOARD_ID_MAX] = {0};
 
+struct node* UartMsgNode = NULL;
 
 //START 任务
 //设置任务优先级
@@ -175,10 +188,10 @@ void Hardware_Init(void)
 	
 	Led_Init();		//LED初始化
 	
-	Debug_USART_Config();	//初始化串口   115200bps	
-	
+	Debug_USART_Config(); //初始化串口   115200bps	
+		
 	Usart1_Init(115200);	//初始化串口1
-	
+		
 	Usart2_Init(115200);	//初始化串口2 ok
 	
 	EXTIX_Init();	//按键中断初始化
@@ -225,13 +238,21 @@ void Hardware_Init(void)
 
 	Iwdg_Init(4, 1250); 														//64分频，每秒625次，重载1250次，2s
 
-	//UsartPrintf(USART_DEBUG, "Hardware init OK\r\n");						//提示初始化完成	
+	mem_init(SRAMIN);			//内部内存池初始化
+
+	UsartPrintf(USART_DEBUG, " Current Board ID:0x%x\r\n", g_src_board_id); 
 }
 
 
 int main(void)
 { 		   
-   	Hardware_Init();		//系统初始化		  
+   	Hardware_Init();		//系统初始化	
+   	
+   	MessageDealQueueCreate();//消息队列初始化
+   	
+	UsartPrintf(USART_DEBUG, "SW_VERSION: %s\r\n", SW_VERSION);		
+	UsartPrintf(USART_DEBUG, "Version Build: %s %s\r\n", __DATE__, __TIME__);
+	
 	OSInit();   
 	OSTaskCreate(start_task,(void *)0,(OS_STK *)&START_TASK_STK[START_STK_SIZE-1],START_TASK_PRIO );//创建起始任务
 	OSStart();	  						    
@@ -261,7 +282,7 @@ void start_task(void *pdata)
 
 	OSTaskCreate(Trigger_CalcRuntime_Task, (void *)0, (OS_STK*)&Trigger_CalcRuntime_Task_STK[trigger_calc_runtime_STK_SIZE- 1], Trigger_CalcRuntime_Task_PRIO);
 
-	//OSTaskCreate(KEY_Task, (void *)0, (OS_STK*)&KEY_TASK_STK[KEY_STK_SIZE- 1], KEY_TASK_PRIO);
+	OSTaskCreate(Message_Send_Task, (void *)0, (OS_STK*)&MSG_SEND_TASK_STK[MSG_SEND_STK_SIZE- 1], MSG_SEND_TASK_PRIO);
 
 	OSTaskCreate(Info_Parse_Task, (void *)0, (OS_STK*)&PARSE_TASK_STK[PARSE_STK_SIZE- 1], PARSE_TASK_PRIO);
 
@@ -373,7 +394,7 @@ int main_1(void)
 
 
 //单板测试
-int main_2(void)
+int main_134(void)
 {	
 	Hardware_Init();
 	
@@ -488,7 +509,7 @@ void HEART_Task(void *pdata)
 		Led_Set(LED_1, LED_ON);
 		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
 
-		if(heart_count >= 15)
+		if(heart_count >= 30)
 		{
 			UsartPrintf(USART_DEBUG, "Heart Report--------\r\n");
 			board_send_message(STATUS_REPORT_REQUEST, &heart_info);
@@ -531,7 +552,7 @@ void Track_Run_Task(void *pdata)
 void Drug_Push_Task(void *pdata)
 {
 	uint8_t delay_time = 10;
-	uint8_t run_time = 0;
+	uint16_t run_time = 0;
 	INT8U            err;
 	int conveyor = 0;
 
@@ -539,16 +560,27 @@ void Drug_Push_Task(void *pdata)
 	
 	while(1)
 	{		
-		
 		OSSemPend(SemOfConveyor, 0u, &err);
+		run_time = 0;
 		do{
-			UsartPrintf(USART_DEBUG, "board_push_finish = 0x%x!!!!!!!!!!\r\n", board_push_finish);
-
+			UsartPrintf(USART_DEBUG, "board_push_finish = 0x%x, runtime = %d!!!!!!!!!!\r\n", board_push_finish, run_time/2);
 			if(board_push_finish == 0)
 			break;
 
-			RTOS_TimeDlyHMSM(0, 0, 0, 500);
+			RTOS_TimeDlyHMSM(0, 0, 0, 300);
+			run_time ++;
+			if(run_time >= 300)// 150s后未出货完成开始回收
+			{
+				break;
+			}
 		}while(1);
+		if(run_time >= 300)// 150s后未出货完成开始回收
+		{
+			Push_Belt_Run();
+			Collect_Belt_Run();
+			board_push_finish = 0;
+			break;
+		}
 
 		UsartPrintf(USART_DEBUG, "Will run conveyor!!!!!!!!!!\r\n");
 		//conveyor = Push_Belt_Check();		
@@ -945,4 +977,64 @@ void Track_OverCurrent_Task(void *pdata)
 	}
 	OSSemDel(SemOfOverCurrent, 0, &err);
 }
+
+
+void Message_Send_Task(void *pdata)
+{		
+	uint16_t node_num = 0;
+	uint16_t start = 0;
+	uint8_t err = 0;
+	uint8_t i = 0, j = 0;
+	
+	struct node* MsgNode = NULL;
+	struct node* NewMsgNode = NULL;
+	
+	while(1)
+	{
+		//请求信号量
+		OSMutexPend(MsgMutex,0,&err);
+		
+		/*消息队列取消息*/
+		node_num = GetNodeNum(UartMsgNode);
+		UsartPrintf(USART_DEBUG, "node_num[%d]!!!\r\n", node_num);
+
+		MsgNode = UartMsgNode;
+		for(i = 1; i <= node_num; i++)
+		{
+			NewMsgNode = GetMsgNode(MsgNode);
+			if(NewMsgNode)
+			{
+				UsartPrintf(USART_DEBUG, "NewMsgNode[%d]!!!\r\n", NewMsgNode->data.size);
+				for(j = 0; j < NewMsgNode->data.size; j++)
+				{
+					UsartPrintf(USART_DEBUG, "0x%02x,\r\n", NewMsgNode->data.payload[j]);
+				}
+				UsartPrintf(USART_DEBUG, "\r\n");
+				
+				MsgNode = NewMsgNode;
+				if(NewMsgNode->data.uart_idx == UART1_IDX)
+				{
+					UART1_IO_Send(NewMsgNode->data.payload, NewMsgNode->data.size);	
+				}
+				else
+				{
+					UART2_IO_Send(NewMsgNode->data.payload, NewMsgNode->data.size);	
+				}
+			}
+		}
+
+		
+		//释放信号量
+		OSMutexPost(MsgMutex);
+		RTOS_TimeDlyHMSM(0, 0, 3, 0);//等待3s，重传
+	}
+
+	DeleNode(MsgNode, 0);
+}
+
+
+
+
+
+
 

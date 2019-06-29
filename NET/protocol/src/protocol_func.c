@@ -65,14 +65,14 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 	if(check_sum != test_request->checksum)
 	{
 		UsartPrintf(USART_DEBUG, "check sum fail : 0x%02x, 0x%02x\r\n", check_sum, test_request->checksum);  
-		send_command_ack(&cmd_ack_info);
+		send_command_ack(&cmd_ack_info, UART1_IDX);
 		return;
 	}
 	
 	cmd_ack_info.board_id = g_src_board_id;
 	cmd_ack_info.rsp_cmd_type = test_request->cmd_type;
 	cmd_ack_info.status = 1;
-	send_command_ack((void *)&cmd_ack_info);
+	send_command_ack((void *)&cmd_ack_info, UART1_IDX);
 	
 	
 	test_request->info.board_id = inputdata[3];

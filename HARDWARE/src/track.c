@@ -287,31 +287,39 @@ int Track_run(MOTOR_ENUM run_mode)
 	//struct push_medicine_complete_request_info_struct  push_complete_info;
 
 	UsartPrintf(USART_DEBUG, "Enter Track_run, mode[%d]!!!\r\n");
-	Motor_Set(run_mode);
 	for(x = 0; x < 10; x++)
 	{
 		//UsartPrintf(USART_DEBUG, "Enter Track_run x = %d!!!\r\n", x);
-		set_track_x(x, run_mode);
+		//set_track_x(x, run_mode);
 		do{
 			for(y = 0; y < 10; y++)
 			{
 				if(track_struct[x][y].push_time > KEY_DELAY_MS)
 				{
+					
 					RTOS_TimeDlyHMSM(0, 0, 2, 0);
+					
 					delay_s = (track_struct[x][y].push_time - KEY_DELAY_MS)/10;
 					delay_ms = ((track_struct[x][y].push_time - KEY_DELAY_MS) %10) * 100;
-					UsartPrintf(USART_DEBUG, "start:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", x*10 + y + 1, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);
-					set_track_y(y, run_mode);
-					motor_run_detect_track_num = x*10 + y + 1;					
+					
+					motor_run_detect_track_num = x*10 + y + 1;	
+					UsartPrintf(USART_DEBUG, "start:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", motor_run_detect_track_num, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);
+					
+					Motor_Set(track_struct[x][y].motor_run);//电机方向使能
+					set_track(motor_run_detect_track_num, track_struct[x][y].motor_run);//货道使能
+					
 					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
 					
 					motor_run_detect_flag = 1;
+					
 					RTOS_TimeDlyHMSM(0, 0, delay_s, delay_ms);
 					
 					motor_run_detect_flag = 0;
-					set_track_y(y, MOTOR_STOP);
-					UsartPrintf(USART_DEBUG, "stop:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", x*10 + y + 1, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);
+					
+					UsartPrintf(USART_DEBUG, "stop:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", motor_run_detect_track_num, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);
 
+					/*暂时注释，方便消息应答处理*/
+					/*
 					if(MOTOR_RUN_FORWARD == run_mode)
 					{
 						mcu_push_medicine_track_only(g_src_board_id, motor_run_detect_track_num);
@@ -320,12 +328,14 @@ int Track_run(MOTOR_ENUM run_mode)
 					{
 						mcu_add_medicine_track_only(g_src_board_id, motor_run_detect_track_num);
 					}
-
+					*/
+					
+					set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
+					Motor_Set(MOTOR_STOP);	//电机停止
 				}
 			}
 		}while(0);
 		
-		set_track_x(x, MOTOR_STOP);
 	}
 	
 	Motor_Set(MOTOR_STOP);	
@@ -337,16 +347,21 @@ int Track_run(MOTOR_ENUM run_mode)
 	RTOS_TimeDlyHMSM(0, 0, 0, 200);
 	if(MOTOR_RUN_FORWARD == run_mode)
 	{
-		mcu_push_medicine_track_only(g_src_board_id, 0xFF);
-		board_push_finish &= ~(1<<(g_src_board_id - 1));
+		if(g_src_board_id != 1)
+		mcu_push_medicine_track_only(g_src_board_id, 0xFF);//向1号板发送当前单板出货完成
+		
+		board_push_finish &= ~(1<<(g_src_board_id - 1));//清标志
 		//if(1 == g_src_board_id)
 		//OSSemPost(SemOfConveyor);
 	}
 	else if(MOTOR_RUN_BACKWARD == run_mode)
 	{
-		mcu_add_medicine_track_only(g_src_board_id, 0xFF);
-		board_add_finish &= ~(1<<(g_src_board_id - 1));
+		if(g_src_board_id != 1)
+		mcu_add_medicine_track_only(g_src_board_id, 0xFF);//向1号板发送当前单板补货完成
+		
+		board_add_finish &= ~(1<<(g_src_board_id - 1));//清标志
 	}
+	run_mode = MOTOR_STOP;
 
 	UsartPrintf(USART_DEBUG, "Exit Track_run!!!\r\n");
 	return 0;

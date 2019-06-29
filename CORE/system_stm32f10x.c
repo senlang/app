@@ -209,6 +209,7 @@ static void SetSysClock(void);
   * @param  None
   * @retval None
   */
+#if 1
 void SystemInit (void)
 {
   /* Reset the RCC clock configuration to the default reset state(for debug purpose) */
@@ -267,7 +268,43 @@ void SystemInit (void)
   SCB->VTOR = FLASH_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal FLASH. */
 #endif 
 }
+#else
+//ÄÚ²¿¾§Õñ
+void SystemInit (void)
+{
+        /* Set HSION bit */
+        RCC->CR |= (uint32_t)0x00000001;
+        
+        // select HSI as PLL source
+        RCC->CFGR |= (uint32_t)RCC_CFGR_PLLSRC_HSI_Div2;        
+        
+        //PLLCLK=8/2*12=48M
+        RCC->CFGR |= (uint32_t)RCC_CFGR_PLLMULL9;
+        
+         /* HCLK = SYSCLK/1      */
+    RCC->CFGR |= (uint32_t)RCC_CFGR_HPRE_DIV1;
+         
+        /* Enable PLL */
+    RCC->CR |= RCC_CR_PLLON;
+        
+    /* Wait till PLL is ready */
+    while((RCC->CR & RCC_CR_PLLRDY) == 0)
+    {
+    }
+    /* Select PLL as system clock source */
+    RCC->CFGR &= (uint32_t)((uint32_t)~(RCC_CFGR_SW));
+    RCC->CFGR |= (uint32_t)RCC_CFGR_SW_PLL;    
+                
+        /* Wait till PLL is used as system clock source */
+    while ((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)0x08)
+    {
+    }
 
+}
+
+
+
+#endif
 /**
   * @brief  Update SystemCoreClock variable according to Clock Register Values.
   *         The SystemCoreClock variable contains the core clock (HCLK), it can

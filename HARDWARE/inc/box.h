@@ -19,6 +19,8 @@
 #include "light.h"
 #include "sensor.h"
 
+#include "queue.h"
+
 
 #define BOX_TEXT_MODE_CLOSE 0
 #define BOX_TEXT_MODE_OPEN 1 
@@ -76,5 +78,7 @@ extern uint8_t motor_run_direction;
 extern uint8_t trigger_calc_flag; //0;1;2
 
 extern uint8_t  g_src_board_id;
+extern struct node* UartMsgNode;
+extern OS_EVENT *MsgMutex;
 
 #endif

@@ -20,6 +20,7 @@
 
 #include <stdarg.h>
 #include <string.h>
+#include "delay.h"		//Ó²¼þÇý¶¯
 
 
 
@@ -167,48 +168,20 @@ void Debug_USART_Config(void)
 }
 
 
-#if 0
-// ????????
 void USART3_IRQHandler(void) 
 {
-	uint8_t ucTemp;
+	RTOS_EnterInt();
+
 	if(USART_GetITStatus(DEBUG_USARTx,USART_IT_RXNE)!=RESET)
 	{		
-		ucTemp = USART_ReceiveData(DEBUG_USARTx);
-		USART_SendData(DEBUG_USARTx,ucTemp);    
+		USART_ClearFlag(DEBUG_USARTx, USART_FLAG_RXNE);
 	}	 
+	RTOS_ExitInt();
 }
-#endif
-
-
-
-
-///???c???printf???,???????printf??
-int fputc(int ch, FILE *f)
-{
-		/* ??????????? */
-		USART_SendData(DEBUG_USARTx, (uint8_t) ch);
-		
-		/* ?????? */
-		while (USART_GetFlagStatus(DEBUG_USARTx, USART_FLAG_TXE) == RESET);		
-	
-		return (ch);
-}
-
-///???c???scanf???,???????scanf?getchar???
-int fgetc(FILE *f)
-{
-		/* ???????? */
-		while (USART_GetFlagStatus(DEBUG_USARTx, USART_FLAG_RXNE) == RESET);
-
-		return (int)USART_ReceiveData(DEBUG_USARTx);
-}
-
 
 
 void UsartPrintf(USART_TypeDef *USARTx, char *fmt,...)
 {
-
 	unsigned char UsartPrintfBuf[500];
 	va_list ap;
 	unsigned char *pStr = UsartPrintfBuf;
@@ -222,6 +195,5 @@ void UsartPrintf(USART_TypeDef *USARTx, char *fmt,...)
 		USART_SendData(USARTx, *pStr++);
 		while(USART_GetFlagStatus(USARTx, USART_FLAG_TC) == RESET);
 	}
-
 }
 
