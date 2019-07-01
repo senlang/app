@@ -60,6 +60,7 @@ QueuePtr Queue_Create(uint32_t size);
 typedef struct msgqueue
 {
     uint8_t size;
+    uint8_t times;
     uint8_t status;
     uint8_t uart_idx;
     uint8_t *payload;

@@ -1011,7 +1011,6 @@ void Message_Send_Task(void *pdata)
 				}
 				UsartPrintf(USART_DEBUG, "\r\n");
 				
-				MsgNode = NewMsgNode;
 				if(NewMsgNode->data.uart_idx == UART1_IDX)
 				{
 					UART1_IO_Send(NewMsgNode->data.payload, NewMsgNode->data.size);	
@@ -1020,6 +1019,21 @@ void Message_Send_Task(void *pdata)
 				{
 					UART2_IO_Send(NewMsgNode->data.payload, NewMsgNode->data.size);	
 				}
+				NewMsgNode->data.times++;
+				
+				if(NewMsgNode->data.times >= 3)
+				{
+					if(i == node_num)
+					DeleNode(MsgNode, TAIL);
+					else
+					DeleNode(MsgNode, i);
+					NewMsgNode = NULL;
+				}
+				else
+				{
+					MsgNode = NewMsgNode;
+				}
+				
 			}
 		}
 

@@ -578,7 +578,7 @@ void send_track_runtime_report( void *input_data)
 
 	
 	UART1_IO_Send(send_track_runtime, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE); 
-	MessageInsertQueue(send_track_runtime, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE, UART1_IDX);
+	//MessageInsertQueue(send_track_runtime, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE, UART1_IDX);
 } 
 
 
@@ -1459,9 +1459,29 @@ void packet_parser(unsigned char *src, int len)
 			}
 		}
 		
-		if(board_id != g_src_board_id && (board_id > 0 ) && (board_id < BOARD_ID_MAX))
+		//if(board_id != g_src_board_id && (board_id > 0 ) && (board_id < BOARD_ID_MAX))
+		//针对ack message处理
+		if((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_MSG_ACK))//
 		{
-			UsartPrintf(USART_DEBUG, "Board Id not match, forward!!!%d - %d!!\r\n", board_id, g_src_board_id);
+			board_id = *(uart1_shared_rx_buf + 4);
+			if((board_id != g_src_board_id))
+			{
+				UsartPrintf(USART_DEBUG, "[ACK Message]Board Id not match, forward!!!%d - %d!!\r\n", board_id, g_src_board_id);
+				UART2_IO_Send(uart1_shared_rx_buf, pkt_len);	
+			}
+			else
+			{  
+				memcpy(message_ack_buf, uart1_shared_rx_buf, pkt_len);	
+				parse_message_ack(&cmd_ack);  
+				MessageAckCheck(uart1_shared_rx_buf, pkt_len);
+				//print_message_ack(&cmd_ack);	
+				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MSG_ACK!!\r\n");
+			}
+		}
+		else if(board_id != g_src_board_id)
+		{
+			//只针对ID不匹配的消息转发
+			UsartPrintf(USART_DEBUG, "[Other Message]Board Id not match, forward!!!%d - %d!!\r\n", board_id, g_src_board_id);
 			UART2_IO_Send(uart1_shared_rx_buf, pkt_len);	
 		}
 		else
