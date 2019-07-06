@@ -63,6 +63,7 @@ typedef struct msgqueue
     uint8_t times;
     uint8_t status;
     uint8_t uart_idx;
+    uint32_t create_time;
     uint8_t *payload;
 }MsgQueue, *MsgQueuePtr;
 

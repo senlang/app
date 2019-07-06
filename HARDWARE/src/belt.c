@@ -182,3 +182,12 @@ uint8_t Push_Belt_Check(void)
 	return 0;
 }
 
+
+
+void PushBeltControl(uint8_t status)
+{
+	Belt_Set(PUSH_BELT, status);
+}
+
+
+

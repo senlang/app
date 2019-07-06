@@ -3,7 +3,7 @@
 
 #include "stm32f10x.h"
 
-#define BELT_RUN_TIME 8
+#define BELT_RUN_TIME 15
 
 
 typedef enum
@@ -33,6 +33,7 @@ uint8_t Push_Belt_Check(void);
 
 void Belt_Set(BELT_ENUM belt,BELT_WORK_ENUM status);
 
+void PushBeltControl(uint8_t status);
 
 #endif
 

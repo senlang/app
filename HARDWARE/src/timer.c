@@ -4,7 +4,7 @@
 
 extern uint8_t trigger_calc_runtime;
 uint16_t running_time = 0;
-
+uint32_t time_passes = 0;
 
 //////////////////////////////////////////////////////////////////////////////////	 
 //本程序只供学习使用，未经作者许可，不得用于其它任何用途
@@ -55,6 +55,7 @@ void TIM3_IRQHandler(void)   //TIM3中断
 {
     if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET) 
     {
+    	time_passes++;
         TIM_ClearITPendingBit(TIM3, TIM_IT_Update);  
         if(!trigger_calc_runtime)      //flag用来看有不有暂停计时
         {

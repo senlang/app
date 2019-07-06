@@ -562,6 +562,7 @@ void Drug_Push_Task(void *pdata)
 	{		
 		OSSemPend(SemOfConveyor, 0u, &err);
 		run_time = 0;
+		PushBeltControl(BELT_RUN);
 		do{
 			UsartPrintf(USART_DEBUG, "board_push_finish = 0x%x, runtime = %d!!!!!!!!!!\r\n", board_push_finish, run_time/2);
 			if(board_push_finish == 0)
@@ -576,10 +577,10 @@ void Drug_Push_Task(void *pdata)
 		}while(1);
 		if(run_time >= 300)// 150s后未出货完成开始回收
 		{
-			Push_Belt_Run();
+			PushBeltControl(BELT_STOP);
 			Collect_Belt_Run();
 			board_push_finish = 0;
-			break;
+			continue;
 		}
 
 		UsartPrintf(USART_DEBUG, "Will run conveyor!!!!!!!!!!\r\n");
@@ -587,7 +588,8 @@ void Drug_Push_Task(void *pdata)
 		if(1)//(conveyor == 1)
 		{
 			run_time = 0;
-			if(Push_Belt_Run() != 0 )
+			RTOS_TimeDlyHMSM(0, 0, 10, 0);//传送带运行10s 时间
+			if(1)//(Push_Belt_Run() != 0 )
 			{
 				Door_Control_Set(MOTOR_RUN_BACKWARD);
 				do{
@@ -599,7 +601,8 @@ void Drug_Push_Task(void *pdata)
 				}while(Door_Key_Detect(DOOR_OPEN) == SENSOR_NO_DETECT);
 				
 				mcu_push_medicine_open_door_complete();//所有单板出货完成,门已打开
-				
+
+				PushBeltControl(BELT_STOP);
 				UsartPrintf(USART_DEBUG, "Open The Door, End!!!!!!!!!!\r\n");
 				Door_Control_Set(MOTOR_STOP);
 			
@@ -625,10 +628,11 @@ void Drug_Push_Task(void *pdata)
 						break;
 					}
 				}while(Door_Key_Detect(DOOR_CLOSE) == SENSOR_NO_DETECT);
+				
 				Door_Control_Set(MOTOR_STOP);
 				mcu_push_medicine_close_door_complete();
 				UsartPrintf(USART_DEBUG, "Close The Door, End!!!!!!!!!!\r\n");
-
+				
 				Collect_Belt_Run();
 			}
 			conveyor = 0;
@@ -1009,7 +1013,7 @@ void Message_Send_Task(void *pdata)
 				{
 					UsartPrintf(USART_DEBUG, "0x%02x,\r\n", NewMsgNode->data.payload[j]);
 				}
-				UsartPrintf(USART_DEBUG, "\r\n");
+				UsartPrintf(USART_DEBUG, "<--Retry Send Message\r\n");
 				
 				if(NewMsgNode->data.uart_idx == UART1_IDX)
 				{

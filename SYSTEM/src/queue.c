@@ -3,6 +3,8 @@
 #include "stm32_protocol.h"
 #include "usart.h"
 
+extern uint8_t  g_src_board_id;
+
 /**
  * 获得队列使用量
  * @param  queue
@@ -276,7 +278,6 @@ struct node* GetNode(struct node *pHeader, uint16_t num)
 //获取链表节点地址
 struct node* GetMsgNode(struct node *pHeader)
 {
-	uint8_t i;
 	struct node *p = pHeader;
 
 	if(NULL == p->pNext)
@@ -489,7 +490,19 @@ void MessageAckCheck(unsigned char *pdata, uint16_t size)
 			
 			if((ack_msg.pl_board_id == cmd_msg.board_id) && (ack_msg.pl_cmd_type == cmd_msg.cmd_type))
 			{
-				UsartPrintf(USART_DEBUG, "Receive ack message!!!\r\n");
+				UsartPrintf(USART_DEBUG, "Receive ack message, Will Delete From queue!!!\r\n");
+				if(i == node_num)
+				DeleNode(MsgNode, TAIL);
+				else
+				DeleNode(MsgNode, i);
+				NewMsgNode = NULL;
+			}
+			else if((g_src_board_id == 1) && 
+				(ack_msg.pl_board_id == 1) &&
+				((cmd_msg.board_id == 0xff)||(cmd_msg.board_id == 0xfe)) && 
+				(ack_msg.pl_cmd_type == cmd_msg.cmd_type))
+			{
+				UsartPrintf(USART_DEBUG, "Receive Andriod ack message, Will Delete From queue!!!\r\n");
 				if(i == node_num)
 				DeleNode(MsgNode, TAIL);
 				else
@@ -510,7 +523,6 @@ void MessageAckCheck(unsigned char *pdata, uint16_t size)
 void MessageInsertQueue(unsigned char *pdata, uint16_t size, uint8_t uart_idx)
 {
 	struct node* Uart1MsgNode = NULL;
-	uint8_t j = 0;
 	
 	Uart1MsgNode = CreateMsgNode();
 	UsartPrintf(USART_DEBUG, "Uart1MsgNode = 0x%p\r\n\r\n", Uart1MsgNode);

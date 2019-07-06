@@ -515,16 +515,27 @@ struct track_trigger_calc_runtime{
     uint8_t track_backward_runtime;//ªÿÕÀ ±≥§
 };
 
-extern struct motor_control_struct  motor_struct[TOTAL_PUSH_CNT];
+extern uint8_t track_work;
 
 extern int motor_enqueue_idx;
+
 extern int motor_dequeue_idx;
 
 extern int enqueue_replenish_index;
+
 extern int dequeue_replenish_index;
 
 extern uint16_t calibrate_track_selected;
+
 extern unsigned char calibrate_enable;
+
+extern uint16_t calibrate_track_selected;
+
+extern struct motor_control_struct  motor_struct[TOTAL_PUSH_CNT];
+
+extern struct track_work_struct track_struct[10][10];
+
+
 extern uint16_t calibrate_track_selected;
 
 
@@ -534,12 +545,6 @@ extern uint16_t calibrate_track_selected;
 
 
 
-
-
-
-
-
-int uart1_shared_buf_preparse(unsigned char *src, int len);
 void parse_up_rx_info(void); 
 
 void send_status_report_request(void *input_data); 
