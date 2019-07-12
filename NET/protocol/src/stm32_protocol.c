@@ -81,6 +81,7 @@ extern uint8_t calc_track_start_idx;
 extern uint8_t calc_track_count;
 extern uint16_t board_push_finish;
 extern uint16_t board_add_finish;
+extern uint16_t board_push_ackmsg;
 
 void BoardId_Init(void)
 {
@@ -752,6 +753,7 @@ void up_packet_parser(unsigned char *src, int len)
 		{
 			if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_COMPLETE)) //收到出货完成状态上报响应
 			{	 
+				/*0x02,0x06,0xa0,0x03,0xff,0x00,0xaa*/
 				board_id = *(uart2_shared_rx_buf + 3);
 				memcpy(&push_medicine_complete_request, uart2_shared_rx_buf, pkt_len);
 				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_PUSH_MEDICINE_COMPLETE, Board[%d], Track[%d]!!\r\n", push_medicine_complete_request.info.board_id, push_medicine_complete_request.info.medicine_track_number);
@@ -779,7 +781,14 @@ void up_packet_parser(unsigned char *src, int len)
 				cmd_ack_info.status = 1;
 				send_command_ack(&cmd_ack_info, UART2_IDX);
 			}
-			else 
+			else if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_MSG_ACK))
+			{
+				/*0x02,0x06,0xf0,0xa0,0x03,0x01,0x9c*/
+				board_id = *(uart2_shared_rx_buf + 4);
+				if(*(uart2_shared_rx_buf + 3) == CMD_PUSH_MEDICINE_REQUEST)
+				board_push_ackmsg &= ~(1<<(board_id - 1));
+			}
+			else
 			{
 				UsartPrintf(USART_DEBUG, "Received Data, transfor!!\r\n");
 				break;
@@ -874,7 +883,7 @@ void packet_parser(unsigned char *src, int len)
 					UsartPrintf(USART_DEBUG, "board_push_finish: 0x%02x\r\n", board_push_finish);
 					//转发
 					memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
-					for(i = 1; i <= BOARD_ID_MAX; i++)
+					for(i = 2; i <= BOARD_ID_MAX; i++)
 					{
 						UsartPrintf(USART_DEBUG, "board_push_finish & (1 << (i-1)): %d\r\n", board_push_finish & (1 << (i-1)));
 						if(board_push_finish & (1 << (i-1)))
@@ -884,6 +893,8 @@ void packet_parser(unsigned char *src, int len)
 							*(forward_data + pkt_len - 1) = add_checksum(forward_data, pkt_len - 1);
 							
 							UsartPrintf(USART_DEBUG, "PUSH_MEDICINE_REQUEST Forward: 0x%02x\r\n", *(forward_data + 3));
+
+							MessageInsertQueue(forward_data, pkt_len, UART2_IDX);
 							UART2_IO_Send(forward_data, pkt_len);
 							RTOS_TimeDly(50);
 						}
@@ -893,6 +904,7 @@ void packet_parser(unsigned char *src, int len)
 				{	
 					/*请求出货，更新全局变量bit位*/
 					board_push_finish |= 1<<(board_id - 1);
+					board_push_ackmsg |= 1<<(board_id - 1);
 				}
 			}
 			else if(cmd_type == CMD_REPLENISH_MEDICINE_REQUEST)

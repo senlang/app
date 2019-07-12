@@ -142,6 +142,7 @@ uint8_t motor_run_direction = MOTOR_STOP;	//货道电机方向
 uint8_t key_stat = 0;
 uint16_t board_push_finish = 0;/*1111 1111每一个bit表示1个单板*/
 uint16_t board_add_finish = 0;/*1111 1111每一个bit表示1个单板*/
+uint16_t board_push_ackmsg = 0;/*1111 1111每一个bit表示1个单板*/
 
 uint8_t key_init = 0;
 
@@ -564,8 +565,8 @@ void Drug_Push_Task(void *pdata)
 		run_time = 0;
 		PushBeltControl(BELT_RUN);
 		do{
-			UsartPrintf(USART_DEBUG, "board_push_finish = 0x%x, runtime = %d!!!!!!!!!!\r\n", board_push_finish, run_time/2);
-			if(board_push_finish == 0)
+			UsartPrintf(USART_DEBUG, "board_push_finish = 0x%x, board_push_ackmsg = 0x%x, runtime = %d!!!!!!!!!!\r\n", board_push_finish, board_push_ackmsg, run_time/2);
+			if((board_push_finish == 0))// && (board_push_ackmsg == 0))
 			break;
 
 			RTOS_TimeDlyHMSM(0, 0, 0, 300);
@@ -589,6 +590,8 @@ void Drug_Push_Task(void *pdata)
 		{
 			run_time = 0;
 			RTOS_TimeDlyHMSM(0, 0, 10, 0);//传送带运行10s 时间
+			PushBeltControl(BELT_STOP);
+			
 			if(1)//(Push_Belt_Run() != 0 )
 			{
 				Door_Control_Set(MOTOR_RUN_BACKWARD);
@@ -602,7 +605,6 @@ void Drug_Push_Task(void *pdata)
 				
 				mcu_push_medicine_open_door_complete();//所有单板出货完成,门已打开
 
-				PushBeltControl(BELT_STOP);
 				UsartPrintf(USART_DEBUG, "Open The Door, End!!!!!!!!!!\r\n");
 				Door_Control_Set(MOTOR_STOP);
 			
