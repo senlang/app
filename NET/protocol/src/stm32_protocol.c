@@ -598,6 +598,8 @@ void print_message_ack(struct msg_ack_struct *cmd_ack)
 uint8_t preparse_push_medicine_request(struct push_medicine_request_struct *push_medicine_request, uint8_t *buffer)  
 {  
 	uint8_t check_sum = 0;
+    uint8_t board_id;  
+    uint16_t push_time;  
 	
 	push_medicine_request->start_code= buffer[0];  
 	push_medicine_request->packet_len= buffer[1];  
@@ -616,6 +618,13 @@ uint8_t preparse_push_medicine_request(struct push_medicine_request_struct *push
 	push_medicine_request->info[0].board_id = buffer[3];
 	push_medicine_request->info[0].medicine_track_number = buffer[4];
 	push_medicine_request->info[0].push_time = buffer[5]<<8|buffer[6];
+
+	board_id = push_medicine_request->info[0].board_id;
+ 	push_time = push_medicine_request->info[0].push_time;
+ 	
+	//累加货道总运行时间
+	drag_push_time[board_id] += push_time;
+
 
 	if((push_medicine_request->info[0].board_id == 1) && 
 		(push_medicine_request->info[0].medicine_track_number == 0) && 
@@ -870,13 +879,6 @@ void packet_parser(unsigned char *src, int len)
 		{
 			if(cmd_type == CMD_PUSH_MEDICINE_REQUEST)
 			{
-
-				if(push_medicine_request.info[0].push_time > drag_push_time[push_medicine_request.info[0].board_id])
-				{
-					drag_push_time[push_medicine_request.info[0].board_id] = push_medicine_request.info[0].push_time;
-					drag_push_time_calc_pre = push_medicine_request.info[0].push_time;
-				}
-				
 				/*请求出货指令转发*/
 				if(preparse_push_medicine_request(&push_medicine_request, uart1_shared_rx_buf) == TRUE)
 				{
@@ -1025,4 +1027,32 @@ void packet_parser(unsigned char *src, int len)
 		
 }
 
+
+
+static int cmp(const void *a,const void *b)
+{
+    return *(uint16_t *)b - *(uint16_t *)a;
+}
+
+
+uint16_t GetMaxPushTime(void)
+{
+	uint16_t delay_s = 0;
+	int i = 0;
+
+	for(i = 0; i < BOARD_ID_MAX; i++)
+	{
+		if(drag_push_time[i])
+		{
+			UsartPrintf(USART_DEBUG, "Board[%d] Run[%d]-------------\r\n", i, drag_push_time[i]);
+		}
+	}
+	qsort(drag_push_time, BOARD_ID_MAX, sizeof(drag_push_time[0]),cmp);
+	delay_s = drag_push_time[0]/10;
+	
+	UsartPrintf(USART_DEBUG, "Push_Belt_Run %d, %ds-------------\r\n", drag_push_time[0], delay_s);
+	
+	memset(&drag_push_time[0], 0x00, sizeof(drag_push_time));
+	return delay_s;
+}
 

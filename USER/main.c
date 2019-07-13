@@ -555,7 +555,7 @@ void Drug_Push_Task(void *pdata)
 	uint8_t delay_time = 10;
 	uint16_t run_time = 0;
 	INT8U            err;
-	int conveyor = 0;
+	uint16_t push_time = 0;
 
 	SemOfConveyor= OSSemCreate(0);
 	
@@ -563,15 +563,17 @@ void Drug_Push_Task(void *pdata)
 	{		
 		OSSemPend(SemOfConveyor, 0u, &err);
 		run_time = 0;
+		push_time = GetMaxPushTime();
+		
 		PushBeltControl(BELT_RUN);
 		do{
-			UsartPrintf(USART_DEBUG, "board_push_finish = 0x%x, board_push_ackmsg = 0x%x, runtime = %d!!!!!!!!!!\r\n", board_push_finish, board_push_ackmsg, run_time/2);
+			UsartPrintf(USART_DEBUG, "board_push_finish = 0x%x, board_push_ackmsg = 0x%x, runtime = %d/%d!!!!!!!!!!\r\n", board_push_finish, board_push_ackmsg, run_time, push_time);
 			if((board_push_finish == 0))// && (board_push_ackmsg == 0))
 			break;
 
-			RTOS_TimeDlyHMSM(0, 0, 0, 300);
+			RTOS_TimeDlyHMSM(0, 0, 1, 0);
 			run_time ++;
-			if(run_time >= 300)// 150s后未出货完成开始回收
+			if((run_time >= push_time + 10) && (run_time > 150))// 最大运行时间+10S 后未出货完成开始回收
 			{
 				break;
 			}
@@ -637,7 +639,6 @@ void Drug_Push_Task(void *pdata)
 				
 				Collect_Belt_Run();
 			}
-			conveyor = 0;
 		}
 	}
 }

@@ -25,8 +25,6 @@ void Belt_Init(void);
 
 void Push_Belt_Set(BELT_WORK_ENUM status);
 
-int Push_Belt_Run(void);
-
 int Collect_Belt_Run(void);
 
 uint8_t Push_Belt_Check(void);

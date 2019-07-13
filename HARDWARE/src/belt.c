@@ -122,43 +122,6 @@ void Collect_Belt_Set(BELT_WORK_ENUM status)
 	MotorStatus.ConveyoeSta = status;
 }
 
-
-int cmp(const void *a,const void *b)
-{
-    return *(uint16_t *)b - *(uint16_t *)a;
-}
-
-
-int Push_Belt_Run(void)
-{
-	uint8_t delay_s = 0;
-
-	qsort(drag_push_time, BOARD_ID_MAX, sizeof(drag_push_time[0]),cmp);
-
-	delay_s = drag_push_time[0]/10;
-
-	drag_push_time_calc_pre = drag_push_time_calc_pre = 0;
-	memset(&drag_push_time[0], 0x00, sizeof(drag_push_time));
-
-	
-	UsartPrintf(USART_DEBUG, "Push_Belt_Run %ds-------------\r\n", delay_s);
-	//if(delay_s == 0)
-	//return delay_s;
-	
-	Belt_Set(PUSH_BELT, BELT_RUN);
-	
-	RTOS_TimeDlyHMSM(0, 0, BELT_RUN_TIME, 0);
-	//RTOS_TimeDlyHMSM(0, 0, delay_s + BELT_RUN_TIME, 0);
-	
-	Belt_Set(PUSH_BELT, BELT_STOP);
-
-	//return delay_s;
-	return 1;
-}
-
-
-
-
 int Collect_Belt_Run(void)
 {
 	Belt_Set(COLLECT_BELT, BELT_RUN);

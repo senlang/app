@@ -571,5 +571,6 @@ void mcu_push_medicine_track_only(uint8_t board, uint8_t track_number);
 void mcu_add_medicine_track_only(uint8_t board, uint8_t track_number);
 
 void send_track_runtime_report( void *input_data);
+uint16_t GetMaxPushTime(void);
 
 #endif
