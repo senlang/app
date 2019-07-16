@@ -203,6 +203,7 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 				{
 					if(Sensor_Detect() == SENSOR_DETECT)
 					{
+						UsartPrintf(USART_DEBUG, "Close Door Detect Somebody, Stop!!!!!!!!!!\r\n");
 						Door_Control_Set(MOTOR_STOP);
 					}
 					else
@@ -236,6 +237,10 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 				calibrate_track_selected = 255;
 
 			UsartPrintf(USART_DEBUG, "calibrate_track_selected[%d]\r\n", calibrate_track_selected);
+		}
+		else if(test_request->info.test_mode == FACTORY_TEST)
+		{
+			UsartPrintf(USART_DEBUG, "Factory test!!!!!!!!!!!!!\r\n");
 		}
 
 	}

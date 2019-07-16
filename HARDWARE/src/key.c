@@ -322,9 +322,9 @@ void EXTI4_IRQHandler(void)
 			UsartPrintf(USART_DEBUG, "OverCurrent Dir = %d\r\n", motor_run_direction);
 			if(motor_run_detect_flag == 1){
 				
-				UsartPrintf(USART_DEBUG, "Track[%d] Arrive End Position!!!!!!\r\n", motor_run_detect_track_num);
+				UsartPrintf(USART_DEBUG, "Track[%d] over current!!!!!!\r\n", motor_run_detect_track_num);
 				
-				set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_STOP);
+				set_track(motor_run_detect_track_num, MOTOR_STOP);
 
 				OSSemQuery (SemOfOverCurrent, &sema_info);
 				UsartPrintf(USART_DEBUG, "sema_info.OSCnt = %d!!!!!!\r\n", sema_info.OSCnt);
@@ -370,7 +370,7 @@ void EXTI4_IRQHandler(void)
 			}
 			else if(motor_run_detect_flag == 1){
 				UsartPrintf(USART_DEBUG, "OverCurrent DOWN:Track %d Arrive End Position!!!!!!\r\n", motor_run_detect_track_num);
-				set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_STOP);
+				set_track(motor_run_detect_track_num, MOTOR_STOP);
 			}
 			
 		}
@@ -454,7 +454,7 @@ void EXTI9_5_IRQHandler(void)
 			if(motor_run_detect_flag == 1)
 			{
 				UsartPrintf(USART_DEBUG, "KEY0:Track %d Arrive First Position!!!!!!\r\n", motor_run_detect_track_num);
-				set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_STOP);
+				set_track(motor_run_detect_track_num, MOTOR_STOP);
 
 				OSSemQuery (SemOfOverCurrent, &sema_info);
 				UsartPrintf(USART_DEBUG, "sema_info.OSCnt = %d!!!!!!\r\n", sema_info.OSCnt);
@@ -502,7 +502,7 @@ void EXTI9_5_IRQHandler(void)
 			UsartPrintf(USART_DEBUG, "Dir = %d\r\n", motor_run_direction);
 			if(motor_run_detect_flag == 1){
 				
-				set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_STOP);
+				set_track(motor_run_detect_track_num, MOTOR_STOP);
 				UsartPrintf(USART_DEBUG, "KEY1:Track %d Arrive End Position!!!!!!\r\n", motor_run_detect_track_num);
 
 				OSSemQuery (SemOfOverCurrent, &sema_info);

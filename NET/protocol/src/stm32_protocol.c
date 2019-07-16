@@ -574,8 +574,8 @@ int board_send_message(int msg_type, void *input_data)
 			send_command_ack(input_data, UART1_IDX);
 		break;
 		
-		defualt:
-		break;
+		//defualt:
+		//break;
 	}
 
 	return 0;
@@ -1055,4 +1055,23 @@ uint16_t GetMaxPushTime(void)
 	memset(&drag_push_time[0], 0x00, sizeof(drag_push_time));
 	return delay_s;
 }
+
+void SetTrackTestTime(uint8_t track, uint8_t dir, uint16_t time)
+{
+	int i =0, j = 0;
+
+	i = (track - 1)/10;
+	j = (track - 1)%10;
+	//for(i = 0; i < 10; i++)
+	{
+		//for(j = 0; j < 10; j++)
+		{
+			track_struct[i][j].push_time = time;
+			track_struct[i][j].motor_run = dir;
+    		track_struct[i][j].medicine_track_number = 10 * i + j + 1;
+		}
+	}
+}
+
+
 

@@ -286,7 +286,7 @@ int Track_run(MOTOR_ENUM run_mode)
 	uint16_t delay_ms = 0;
 	//struct push_medicine_complete_request_info_struct  push_complete_info;
 
-	UsartPrintf(USART_DEBUG, "Enter Track_run, mode[%d]!!!\r\n");
+	UsartPrintf(USART_DEBUG, "Enter Track_run, mode[%d]!!!\r\n", run_mode);
 	for(x = 0; x < 10; x++)
 	{
 		//UsartPrintf(USART_DEBUG, "Enter Track_run x = %d!!!\r\n", x);
@@ -299,8 +299,8 @@ int Track_run(MOTOR_ENUM run_mode)
 					
 					RTOS_TimeDlyHMSM(0, 0, 2, 0);
 					
-					delay_s = (track_struct[x][y].push_time - KEY_DELAY_MS)/10;
-					delay_ms = ((track_struct[x][y].push_time - KEY_DELAY_MS) %10) * 100;
+					delay_s = (track_struct[x][y].push_time)/10;
+					delay_ms = ((track_struct[x][y].push_time) % 10) * 100;
 					
 					motor_run_detect_track_num = x*10 + y + 1;	
 					UsartPrintf(USART_DEBUG, "start:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", motor_run_detect_track_num, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);

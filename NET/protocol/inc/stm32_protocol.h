@@ -169,6 +169,7 @@ typedef enum{
 	DRUG_DOOR_TEST, 		//取货口
 	LIGHT_TEST, 			//灯箱
 	CALIBRATE_TRACK_TEST,	//货道手动校准
+	FACTORY_TEST = 0x80,
 	TEST_MODE_MAX,
 }BOARD_TEST_MODE;  
 
@@ -572,5 +573,8 @@ void mcu_add_medicine_track_only(uint8_t board, uint8_t track_number);
 
 void send_track_runtime_report( void *input_data);
 uint16_t GetMaxPushTime(void);
+
+void SetTrackTestTime(uint8_t track, uint8_t dir, uint16_t time);
+
 
 #endif

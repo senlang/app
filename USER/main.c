@@ -64,54 +64,59 @@ OS_STK Drug_Push_TASK_STK[Drug_Push_STK_SIZE];
 void Drug_Push_Task(void *pdata);
 
 
-//按键任务
-#define KEY_TASK_PRIO		12
-#define KEY_STK_SIZE		256
-OS_STK KEY_TASK_STK[KEY_STK_SIZE];
-void KEY_Task(void *pdata);
+
 
 
 //过流保护线程
-#define OVERCURRENT_TASK_PRIO		13
+#define OVERCURRENT_TASK_PRIO		12
 #define OVERCURRENT_STK_SIZE		256
 OS_STK OVERCURRENT_TASK_STK[OVERCURRENT_STK_SIZE];
 void Track_OverCurrent_Task(void *pdata);
 
 
 
-//传感器任务
-#define SENSOR_TASK_PRIO	14
-#define SENSOR_STK_SIZE		128
-OS_STK SENSOR_TASK_STK[SENSOR_STK_SIZE]; 
-void SENSOR_Task(void *pdata);
-
-
 //测试电机控制
-#define MOTOR_TASK_PRIO		15
+#define MOTOR_TASK_PRIO		13
 #define MOTOR_STK_SIZE		256
 OS_STK MOTOR_TASK_STK[MOTOR_STK_SIZE];
 void MOTOR_Task(void *pdata);
 
 
 //货道时长统计
-#define Trigger_CalcRuntime_Task_PRIO		16
+#define Trigger_CalcRuntime_Task_PRIO		14
 #define trigger_calc_runtime_STK_SIZE		384
 OS_STK Trigger_CalcRuntime_Task_STK[trigger_calc_runtime_STK_SIZE]; //
 void Trigger_CalcRuntime_Task(void *pdata);
 
 
 //心跳任务
-#define HEART_TASK_PRIO		17
+#define HEART_TASK_PRIO		15
 #define HEART_STK_SIZE		256
 OS_STK HEART_TASK_STK[HEART_STK_SIZE]; //
 void HEART_Task(void *pdata);
 
 
 //消息重传
-#define MSG_SEND_TASK_PRIO		18
+#define MSG_SEND_TASK_PRIO		16
 #define MSG_SEND_STK_SIZE		256
 OS_STK MSG_SEND_TASK_STK[MSG_SEND_STK_SIZE]; //
 void Message_Send_Task(void *pdata);
+
+
+
+//产测任务
+#define FACTORY_TEST_TASK_PRIO		17
+#define FACTORY_TEST_STK_SIZE		256
+OS_STK FACTORY_TEST_TASK_STK[FACTORY_TEST_STK_SIZE];
+void Factory_Test_Task(void *pdata);
+
+
+
+//产测任务
+#define SENSOR_TASK_PRIO	14
+#define SENSOR_STK_SIZE		128
+OS_STK SENSOR_TASK_STK[SENSOR_STK_SIZE]; 
+void SENSOR_Task(void *pdata);
 
 
 
@@ -247,12 +252,12 @@ void Hardware_Init(void)
 
 int main(void)
 { 		   
-   	Hardware_Init();		//系统初始化	
-   	
-   	MessageDealQueueCreate();//消息队列初始化
+   	Hardware_Init();		//系统初始化
    	
 	UsartPrintf(USART_DEBUG, "SW_VERSION: %s\r\n", SW_VERSION);		
 	UsartPrintf(USART_DEBUG, "Version Build: %s %s\r\n", __DATE__, __TIME__);
+
+   	MessageDealQueueCreate();//消息队列初始化
 	
 	OSInit();   
 	OSTaskCreate(start_task,(void *)0,(OS_STK *)&START_TASK_STK[START_STK_SIZE-1],START_TASK_PRIO );//创建起始任务
@@ -290,7 +295,9 @@ void start_task(void *pdata)
 	OSTaskCreate(Track_Run_Task, (void *)0, (OS_STK*)&TRACK_TASK_STK[TRACK_STK_SIZE- 1], TRACK_TASK_PRIO);
 
 	OSTaskCreate(Track_OverCurrent_Task, (void *)0, (OS_STK*)&OVERCURRENT_TASK_STK[OVERCURRENT_STK_SIZE- 1], OVERCURRENT_TASK_PRIO);
-					   
+
+	OSTaskCreate(Factory_Test_Task, (void *)0, (OS_STK*)&FACTORY_TEST_TASK_STK[FACTORY_TEST_STK_SIZE- 1], FACTORY_TEST_TASK_PRIO);
+	
 	OSTaskSuspend(START_TASK_PRIO);	//挂起起始任务.
 	
 	OS_EXIT_CRITICAL();	//退出临界区(可以被中断打断)
@@ -341,7 +348,6 @@ int main_0(void)
 
 	OSTaskCreate(Trigger_CalcRuntime_Task, (void *)0, (OS_STK*)&Trigger_CalcRuntime_Task_STK[trigger_calc_runtime_STK_SIZE- 1], Trigger_CalcRuntime_Task_PRIO);
 
-	OSTaskCreate(KEY_Task, (void *)0, (OS_STK*)&KEY_TASK_STK[KEY_STK_SIZE- 1], KEY_TASK_PRIO);
 
 	OSTaskCreate(Info_Parse_Task, (void *)0, (OS_STK*)&PARSE_TASK_STK[PARSE_STK_SIZE- 1], PARSE_TASK_PRIO);
 
@@ -433,14 +439,16 @@ int main_134(void)
 */
 void IWDG_Task(void *pdata)
 {
+	uint8_t status = LED_ON;
 
 	while(1)
 	{
-	
 		Iwdg_Feed(); 		//喂狗
 		
-		RTOS_TimeDly(50); 	//挂起任务250ms
-		//UsartPrintf(USART_DEBUG, "feed dog!!!!\r\n");		//提示任务开始执行
+		Led_Set(LED_1, status);
+		status = !status;
+
+		RTOS_TimeDly(50);	//挂起任务250ms
 	}
 }
 
@@ -473,9 +481,7 @@ void Info_Parse_Task(void *pdata)
 				break;
 		}while(1);
 	}
-
 }
-
 
 void UART2_RECEIVE_Task(void *pdata)
 {
@@ -499,22 +505,25 @@ void UART2_RECEIVE_Task(void *pdata)
 void HEART_Task(void *pdata)
 {
 	int heart_count = 0;
+	int have_run_time = 0;
 	
 	heart_count = g_src_board_id * 2 - 1;
 	
 	UsartPrintf(USART_DEBUG, "heart_count = %d\r\n", heart_count);
 	while(1)
 	{	
-		Led_Set(LED_1, LED_OFF);
-		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
-		Led_Set(LED_1, LED_ON);
-		RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
-
-		if(heart_count >= 30)
+		//Led_Set(LED_1, LED_OFF);
+		//RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
+		//Led_Set(LED_1, LED_ON);
+		//RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
+		//if(heart_count >= 30)
+		
+		RTOS_TimeDlyHMSM(0, 1, 0, 0);
 		{
-			UsartPrintf(USART_DEBUG, "Heart Report--------\r\n");
 			board_send_message(STATUS_REPORT_REQUEST, &heart_info);
 			heart_count = 0;
+			have_run_time++;
+			UsartPrintf(USART_DEBUG, "mcu run %dh:%dmin!!!!!!!!!!!!!!!\r\n", have_run_time/60, have_run_time%60);
 		}
 		heart_count++;
 	}
@@ -532,7 +541,7 @@ void MOTOR_Task(void *pdata)
 		UsartPrintf(USART_DEBUG, "Run Motor----------\r\n");		//提示任务开始执行
 		Motor_Start();
 	}
-	//OSSemDel(SemOfMotor, 0, &err);
+	OSSemDel(SemOfMotor, 0, &err);
 }
 
 void Track_Run_Task(void *pdata)
@@ -547,7 +556,7 @@ void Track_Run_Task(void *pdata)
 		UsartPrintf(USART_DEBUG, "Run Track----------\r\n");		//提示任务开始执行
 		Track_run(track_work);
 	}
-	//OSSemDel(SemOfMotor, 0, &err);
+	OSSemDel(SemOfTrack, 0, &err);
 }
 
 void Drug_Push_Task(void *pdata)
@@ -643,32 +652,7 @@ void Drug_Push_Task(void *pdata)
 	}
 }
 
-/*
-************************************************************
-*	函数名称：	KEY_Task
-*
-*	函数功能：	扫描按键是否按下，如果有按下，进行对应的处理
-*
-*	入口参数：	void类型的参数指针
-*
-*	返回参数：	无
-*
-*	说明：		按键任务
-************************************************************
-*/
-void KEY_Task(void *pdata)
-{
-    INT8U            err;
-	SemOfKey = OSSemCreate(0);
-	
-	while(1)
-	{
-		OSSemPend(SemOfKey, 0u, &err);
-		Keyboard();
-		track_calibrate();
-	}
-//	OSSemDel(SemOfKey, 0, &err);
-}
+
 extern void iap_load_app(u32 appxaddr);
 
 
@@ -682,6 +666,45 @@ void SENSOR_Task(void *pdata)
 		//iap_load_app(0x08010000);
 	}
 }
+
+/*
+产测任务
+硬件基本功能测试
+0、串口测试:由uart2发送消息给uart1
+1、货道前进后退
+2、传送带
+3、开关门
+
+02 09 50 id 80 00 00 00 00 74
+
+*/
+void Factory_Test_Task(void *pdata)
+{	
+	int test_time = 0;
+	uint8_t track = 0;
+	uint8_t dir = MOTOR_STOP;
+	
+	while(1)
+	{
+		UsartPrintf(USART_DEBUG, "Facroty test %d, ", test_time);
+		for(track = 1; track <= TRACK_MAX; track++)
+		{
+			UsartPrintf(USART_DEBUG, "trak - %d\r\n", track);
+			
+			SetTrackTestTime(track, MOTOR_RUN_FORWARD, 300);
+			Track_run(dir);
+			SetTrackTestTime(track, MOTOR_RUN_BACKWARD, 300);
+			Track_run(dir);
+			
+			RTOS_TimeDlyHMSM(0, 0, 1, 0);
+		}
+		test_time ++;
+		RTOS_TimeDlyHMSM(0, 0, 10, 0);
+	}
+}
+
+
+
 
 extern uint16_t running_time;
 
@@ -970,17 +993,17 @@ void Track_OverCurrent_Task(void *pdata)
 		if(motor_run_direction == MOTOR_RUN_BACKWARD)
 		{
 			Motor_Set(MOTOR_RUN_FORWARD);
-			set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_RUN_FORWARD);
+			set_track(motor_run_detect_track_num, MOTOR_RUN_FORWARD);
 		}
 		else if(motor_run_direction == MOTOR_RUN_FORWARD)
 		{
 			Motor_Set(MOTOR_RUN_BACKWARD);
-			set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_RUN_BACKWARD);
+			set_track(motor_run_detect_track_num, MOTOR_RUN_BACKWARD);
 		}
 		RTOS_TimeDlyHMSM(0, 0, 1, 0);
 		
-		set_track_y((motor_run_detect_track_num - 1)%10, MOTOR_STOP);
-		Motor_Set(motor_run_direction);
+		set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
+		Motor_Set(MOTOR_STOP);
 	}
 	OSSemDel(SemOfOverCurrent, 0, &err);
 }
@@ -1003,7 +1026,7 @@ void Message_Send_Task(void *pdata)
 		
 		/*消息队列取消息*/
 		node_num = GetNodeNum(UartMsgNode);
-		UsartPrintf(USART_DEBUG, "node_num[%d]!!!\r\n", node_num);
+		//UsartPrintf(USART_DEBUG, "node_num[%d]!!!\r\n", node_num);
 
 		MsgNode = UartMsgNode;
 		for(i = 1; i <= node_num; i++)
