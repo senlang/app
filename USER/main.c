@@ -131,7 +131,7 @@ OS_EVENT *SemOfConveyor;        	//Motor控制信号量
 OS_EVENT *SemOfTrack;        	//track 控制信号量
 OS_EVENT *SemOfCalcTime;        	//触发货道时间统计信号量
 OS_EVENT *SemOfOverCurrent;				//过流保护信号量
-
+OS_EVENT *SemOfFactoryTest;				//出厂测试
 OS_EVENT *MsgMutex;
 
 uint8_t trigger_calc_flag = 0;
@@ -683,10 +683,22 @@ void Factory_Test_Task(void *pdata)
 	int test_time = 0;
 	uint8_t track = 0;
 	uint8_t dir = MOTOR_STOP;
+	uint8_t msg[BOARD_TEST_REQUEST_PACKET_SIZE] = {0x02,0x09,0x50,0xFF,0x80,00,00,00,00,0x74};
+    INT8U            err;
 	
+	SemOfFactoryTest = OSSemCreate(0);
 	while(1)
 	{
+		msg[3] = g_src_board_id;
+		msg[BOARD_TEST_REQUEST_PACKET_SIZE - 1] = add_checksum(msg, BOARD_TEST_REQUEST_PACKET_SIZE - 1);
+		
+		UART2_IO_Send(msg, BOARD_TEST_REQUEST_PACKET_SIZE);	
+		OSSemPend(SemOfFactoryTest, 0u, &err);
+		
 		UsartPrintf(USART_DEBUG, "Facroty test %d, ", test_time);
+		FactoryFuncTest();
+
+		UsartPrintf(USART_DEBUG, "Facroty Track test\r\n");
 		for(track = 1; track <= TRACK_MAX; track++)
 		{
 			UsartPrintf(USART_DEBUG, "trak - %d\r\n", track);

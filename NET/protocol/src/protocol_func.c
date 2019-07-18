@@ -43,6 +43,89 @@ unsigned char add_checksum (unsigned char *buf, unsigned int len)
     return checksum;  
 }  
 
+void FactoryFuncTest(void)
+{  	
+	uint8_t delay = 10;
+	uint16_t people_detect_time = 0;
+	
+	UsartPrintf(USART_DEBUG, "Push Belt test start\r\n");
+	Belt_Set(PUSH_BELT, BELT_RUN);
+	RTOS_TimeDlyHMSM(0, 0, delay, 0);
+	Belt_Set(PUSH_BELT, BELT_STOP);
+	UsartPrintf(USART_DEBUG, "Push Belt test stop\r\n");
+
+
+	UsartPrintf(USART_DEBUG, "Collect Belt test start\r\n");
+	Belt_Set(COLLECT_BELT, BELT_RUN);
+	RTOS_TimeDlyHMSM(0, 0, delay, 0);
+	Belt_Set(COLLECT_BELT, BELT_STOP);
+	UsartPrintf(USART_DEBUG, "Push Belt test stop\r\n");
+			
+
+	UsartPrintf(USART_DEBUG, "Cooling  compressor test start\r\n");
+	Coolingcompressor_Set(COOLING_ON);
+	RTOS_TimeDlyHMSM(0, 0, delay, 0);
+	Coolingcompressor_Set(COOLING_OFF);
+	UsartPrintf(USART_DEBUG, "Cooling  compressor test stop\r\n");
+			
+
+	UsartPrintf(USART_DEBUG, "Cooling  fan test start\r\n");
+	Coolingfan_Set(COOLING_ON);
+	RTOS_TimeDlyHMSM(0, 0, delay, 0);
+	Coolingfan_Set(COOLING_OFF);
+	UsartPrintf(USART_DEBUG, "Cooling  fan test stop\r\n");
+
+	
+
+	UsartPrintf(USART_DEBUG, "Front Door test start\r\n");
+	FrontDoor_Set(BOX_DOOR_OPEN);
+	RTOS_TimeDlyHMSM(0, 0, delay, 0);
+	FrontDoor_Set(BOX_DOOR_CLOSE);
+	UsartPrintf(USART_DEBUG, "Front Door test stop\r\n");
+	
+
+	UsartPrintf(USART_DEBUG, "Back Door test start\r\n");
+	BackDoor_Set(BOX_DOOR_OPEN);
+	RTOS_TimeDlyHMSM(0, 0, delay, 0);
+	BackDoor_Set(BOX_DOOR_CLOSE);
+	UsartPrintf(USART_DEBUG, "Back Door test stop\r\n");
+
+
+	UsartPrintf(USART_DEBUG, "Box Door test start\r\n");
+	Door_Control_Set(MOTOR_RUN_BACKWARD);
+	while(Door_Key_Detect(DOOR_OPEN) == SENSOR_NO_DETECT){
+		RTOS_TimeDlyHMSM(0, 0, 0, 100);
+		
+		people_detect_time ++;
+		if(people_detect_time >= 300)
+		break;
+	};
+	Door_Control_Set(MOTOR_STOP);
+	
+	RTOS_TimeDlyHMSM(0, 0, delay * 2, 0);
+	
+	people_detect_time = 0;
+	Door_Control_Set(MOTOR_RUN_FORWARD);
+	while(Door_Key_Detect(DOOR_CLOSE) == SENSOR_NO_DETECT)
+	{
+		if(Sensor_Detect() == SENSOR_DETECT)
+		{
+			UsartPrintf(USART_DEBUG, "Close Door Detect Somebody, Stop!!!!!!!!!!\r\n");
+			Door_Control_Set(MOTOR_STOP);
+		}
+		else
+		{
+			Door_Control_Set(MOTOR_RUN_FORWARD);
+			people_detect_time ++;
+		}
+		RTOS_TimeDlyHMSM(0, 0, 0, 100);
+
+		if(people_detect_time >= 300)
+		break;
+	};
+	Door_Control_Set(MOTOR_STOP);
+	UsartPrintf(USART_DEBUG, "Box Door test stop\r\n");
+}
 
 void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)  
 {  
@@ -241,6 +324,7 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 		else if(test_request->info.test_mode == FACTORY_TEST)
 		{
 			UsartPrintf(USART_DEBUG, "Factory test!!!!!!!!!!!!!\r\n");
+			OSSemPost(SemOfFactoryTest);
 		}
 
 	}

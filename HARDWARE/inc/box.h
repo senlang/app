@@ -91,6 +91,7 @@ extern OS_EVENT *SemOfOverCurrent;				//过流保护信号量
 extern OS_EVENT *MsgMutex;
 
 
+extern OS_EVENT *SemOfFactoryTest;				//出厂测试
 
 
 

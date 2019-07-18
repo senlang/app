@@ -31,5 +31,6 @@ void parse_message_ack(uint8_t *outputdata, uint8_t *inputdata);
 	
 void print_status_report_request(uint8_t *data);
 
+void FactoryFuncTest(void);
 
 #endif

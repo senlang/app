@@ -44,7 +44,7 @@
 
 
 /*测试动作指令*/
-#define BOARD_TEST_REQUEST_INFO_SIZE 5 //即(1字节	1字节	1字节	2字节)   
+#define BOARD_TEST_REQUEST_INFO_SIZE 6 //即1字节	1字节	1字节	1字节	2字节)   
 #define BOARD_TEST_REQUEST_PACKET_SIZE (IPUC + BOARD_TEST_REQUEST_INFO_SIZE + CHECKSUM_SIZE)  
 
 
