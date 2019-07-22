@@ -91,7 +91,7 @@ void FactoryFuncTest(void)
 	UsartPrintf(USART_DEBUG, "Back Door test stop\r\n");
 
 
-	UsartPrintf(USART_DEBUG, "Box Door test start\r\n");
+	UsartPrintf(USART_DEBUG, "Open Box Door test start\r\n");
 	Door_Control_Set(MOTOR_RUN_BACKWARD);
 	while(Door_Key_Detect(DOOR_OPEN) == SENSOR_NO_DETECT){
 		RTOS_TimeDlyHMSM(0, 0, 0, 100);
@@ -101,9 +101,9 @@ void FactoryFuncTest(void)
 		break;
 	};
 	Door_Control_Set(MOTOR_STOP);
-	
 	RTOS_TimeDlyHMSM(0, 0, delay * 2, 0);
 	
+	UsartPrintf(USART_DEBUG, "Close Box Door test start\r\n");
 	people_detect_time = 0;
 	Door_Control_Set(MOTOR_RUN_FORWARD);
 	while(Door_Key_Detect(DOOR_CLOSE) == SENSOR_NO_DETECT)
@@ -175,30 +175,46 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 		motor_control.medicine_track_number = test_request->info.medicine_track_number = inputdata[6];
 		motor_control.push_time = test_request->info.test_time= inputdata[7]<<8|inputdata[8];
 
+
+
+		
 		UsartPrintf(USART_DEBUG, "test mode[%d]\r\n",test_request->info.test_mode);
 		if(test_request->info.test_mode == TRACK_TEST)
 		{
+			#if 0
 				if(test_request->info.test_status == 0)
-				motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_FORWARD;
+					motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_FORWARD;
 				else
-				motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_BACKWARD;
+					motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_BACKWARD;
 
 
 				motor_struct[motor_enqueue_idx].motor_work_mode = CMD_TEST_REQUEST;
-				
+
 				memcpy(&motor_struct[motor_enqueue_idx].info, &motor_control, sizeof(struct motor_control_info_struct));
 
 				UsartPrintf(USART_DEBUG, "board_id = %d\r\n",motor_struct[motor_enqueue_idx].info.board_id);
 				UsartPrintf(USART_DEBUG, "medicine_track_number = %d\r\n",motor_struct[motor_enqueue_idx].info.medicine_track_number);
 				UsartPrintf(USART_DEBUG, "push_time = %d\r\n",motor_struct[motor_enqueue_idx].info.push_time);
 
-				
+
 				motor_enqueue_idx++;
 				if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
 				motor_enqueue_idx = 0;
 
 				UsartPrintf(USART_DEBUG, "send sem,motor_enqueue_idx[%d]-------------\r\n", motor_enqueue_idx);
 				OSSemPost(SemOfMotor);
+			#else
+				if(test_request->info.test_status == 0)
+				{
+					SetTrackTestTime(motor_control.medicine_track_number, MOTOR_RUN_FORWARD, motor_control.push_time);
+					Track_run_only(MOTOR_RUN_FORWARD);
+				}
+				else
+				{
+					SetTrackTestTime(motor_control.medicine_track_number, MOTOR_RUN_BACKWARD, motor_control.push_time);
+					Track_run_only(MOTOR_RUN_BACKWARD);
+				}
+			#endif
 		}
 		else if(test_request->info.test_mode == PUSH_BELT_TEST)
 		{
@@ -379,8 +395,6 @@ void print_push_medicine_request(uint8_t *data)
 
 void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)  
 {  
-  	uint8_t request_cnt = 0;
-	uint8_t valid_cnt = 0;
 	uint8_t i = 0;
 	uint8_t check_sum = 0;
 	uint8_t try_cnt = 0;
@@ -388,6 +402,7 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 	uint8_t y = 0;
 	struct msg_ack_info_struct cmd_ack_info;
 	struct push_medicine_request_struct *push_medicine_request = (struct push_medicine_request_struct *)outputdata;
+	uint8_t x_track_is_run = 0;
 
 	cmd_ack_info.status = 0;
 	push_medicine_request->start_code= inputdata[0];  
@@ -400,19 +415,17 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 	
 	cmd_ack_info.board_id = g_src_board_id;
 	cmd_ack_info.rsp_cmd_type = push_medicine_request->cmd_type;
+	
 	if(check_sum != push_medicine_request->checksum)
 	{
-		
 		UsartPrintf(USART_DEBUG, "check sum fail : 0x%02x, 0x%02x\r\n", check_sum, push_medicine_request->checksum);  
 		send_command_ack(&cmd_ack_info, UART1_IDX);
 		return;
 	}
-		
-	request_cnt = (push_medicine_request->packet_len - IPUC)/PUSH_MEDICINE_REQUEST_INFO_SIZE;
-	UsartPrintf(USART_DEBUG, "request_cnt: 0x%02x\r\n", request_cnt);  
 
 	while((motor_enqueue_idx == motor_dequeue_idx - 1) && (try_cnt <= 5))
 	{
+		RTOS_TimeDlyHMSM(0, 0, 0, 100);
 		try_cnt++;
 	}
 	
@@ -422,69 +435,65 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 		return;
 	}
 	
-	for(i = 0; i < request_cnt; i++)
+	push_medicine_request->info[0].board_id = inputdata[3];
+	UsartPrintf(USART_DEBUG, "board_id: 0x%02x, 0x%02x\r\n", push_medicine_request->info[0].board_id, g_src_board_id);  
+
+	
+	if(push_medicine_request->info[0].board_id == g_src_board_id)
 	{
-		push_medicine_request->info[valid_cnt].board_id = inputdata[3 + i * PUSH_MEDICINE_REQUEST_INFO_SIZE];
-		UsartPrintf(USART_DEBUG, "board_id: 0x%02x, 0x%02x\r\n", push_medicine_request->info[valid_cnt].board_id, g_src_board_id);  
+		push_medicine_request->info[0].medicine_track_number = inputdata[4];
+		push_medicine_request->info[0].push_time = inputdata[5]<<8|inputdata[6];
 
-		
-		if(push_medicine_request->info[valid_cnt].board_id == g_src_board_id)
+		if((push_medicine_request->info[0].medicine_track_number != 0) && (push_medicine_request->info[0].push_time != 0))
 		{
-			push_medicine_request->info[valid_cnt].medicine_track_number = inputdata[4 + i * PUSH_MEDICINE_REQUEST_INFO_SIZE];
-			push_medicine_request->info[valid_cnt].push_time = inputdata[5 + i * PUSH_MEDICINE_REQUEST_INFO_SIZE]<<8|inputdata[6 + i * PUSH_MEDICINE_REQUEST_INFO_SIZE];
+			//motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_FORWARD;
+			//motor_struct[motor_enqueue_idx].motor_work_mode = CMD_PUSH_MEDICINE_REQUEST;
+			//memcpy(&motor_struct[motor_enqueue_idx].info, &push_medicine_request->info[valid_cnt], sizeof(struct motor_control_info_struct));
 
-			if((push_medicine_request->info[valid_cnt].medicine_track_number != 0) && (push_medicine_request->info[valid_cnt].push_time != 0))
+			//motor_enqueue_idx++;
+			//if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
+			//motor_enqueue_idx = 0;	
+
+			x = (push_medicine_request->info[0].medicine_track_number - 1)/10;
+			y = (push_medicine_request->info[0].medicine_track_number - 1)%10;
+			UsartPrintf(USART_DEBUG, "medicine_track_number = %d, track_struct[%d][%d].push_time = %d\r\n", push_medicine_request->info[0].medicine_track_number, x, y, track_struct[x][y].push_time);
+			track_struct[x][y].motor_run = MOTOR_RUN_FORWARD;
+			track_struct[x][y].medicine_track_number = push_medicine_request->info[0].medicine_track_number;
+			track_struct[x][y].push_time = push_medicine_request->info[0].push_time;
+			cmd_ack_info.status = 1;
+		}
+		/*02 07 20 1 0 0 xx*//*货道出货*/
+		else if((push_medicine_request->info[0].medicine_track_number == 0) && (push_medicine_request->info[0].push_time == 0))
+		{
+			/*依次检查货道时间是否全为0，非0将环境货道出货线程*/
+			/*检查当前单板是否要出货*/
+			for(x = 0; x < 10; x++)
 			{
-				//motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_FORWARD;
-				//motor_struct[motor_enqueue_idx].motor_work_mode = CMD_PUSH_MEDICINE_REQUEST;
-				//memcpy(&motor_struct[motor_enqueue_idx].info, &push_medicine_request->info[valid_cnt], sizeof(struct motor_control_info_struct));
-
-				//motor_enqueue_idx++;
-				//if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
-				//motor_enqueue_idx = 0;	
-
-				x = (push_medicine_request->info[valid_cnt].medicine_track_number - 1)/10;
-				y = (push_medicine_request->info[valid_cnt].medicine_track_number - 1)%10;
-				UsartPrintf(USART_DEBUG, "medicine_track_number = %d, track_struct[%d][%d].push_time = %d\r\n", push_medicine_request->info[valid_cnt].medicine_track_number, x, y, track_struct[x][y].push_time);
-				track_struct[x][y].motor_run = MOTOR_RUN_FORWARD;
-				track_struct[x][y].medicine_track_number = push_medicine_request->info[valid_cnt].medicine_track_number;
-				track_struct[x][y].push_time = push_medicine_request->info[valid_cnt].push_time;
-				valid_cnt++;
-				cmd_ack_info.status = 1;
-			}
-			/*02 07 20 1 0 0 xx*//*货道出货*/
-			else if((push_medicine_request->info[valid_cnt].medicine_track_number == 0) && (push_medicine_request->info[valid_cnt].push_time == 0))
-			{
-				/*依次检查货道时间是否全为0，非0将环境货道出货线程*/
-				/*检查当前单板是否要出货*/
-				for(x = 0; x < 10; x++)
+				for(y = 0; y < 10; y++)
 				{
-					for(y = 0; y < 10; y++)
+					if(track_struct[x][y].push_time)
 					{
-						if(track_struct[x][y].push_time > KEY_DELAY_MS)
-						{
-							OSSemPost(SemOfTrack);
-							break;
-						}
+						x_track_is_run = 1;
+						break;
 					}
 				}
-
-				/*开始唤醒传送带和取货口动作*/
-				if(1 == g_src_board_id)
-				OSSemPost(SemOfConveyor);
-				
-				cmd_ack_info.status = 1;
-
-				track_work = MOTOR_RUN_FORWARD;
-				UsartPrintf(USART_DEBUG, "Receive push complete!!!!!!!!!!!!\r\n");
 			}
-		}
-		
-		if(valid_cnt)
-		{
-			//OSSemPost(SemOfMotor);
+			
+			if(x_track_is_run)
+			OSSemPost(SemOfTrack);
+
+			/*开始唤醒传送带和取货口动作*/
+			if(1 == g_src_board_id)
+			OSSemPost(SemOfConveyor);
+			
+			cmd_ack_info.status = 1;
+
+			track_work = MOTOR_RUN_FORWARD;
+			UsartPrintf(USART_DEBUG, "Receive push complete!!!!!!!!!!!!\r\n");
 		}
 	}
+
+	
 	cmd_ack_info.board_id = g_src_board_id;
 	cmd_ack_info.rsp_cmd_type = push_medicine_request->cmd_type;
 	send_command_ack(&cmd_ack_info, UART1_IDX);

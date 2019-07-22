@@ -384,21 +384,12 @@ uint8_t DeleNode(struct node *pHeader, uint16_t num)
 			p=p->pNext;//指向下一个节点
 		}
 		p1->pNext = NULL;
+		
+		myfree(SRAMIN, p1->data.payload);
 		myfree(SRAMIN, p);
 	}
 	else if(num > 0 && num != TAIL)//在链表中间删除节点
 	{
-		for(i=0;i<num-1;i++)
-		{
-			if(NULL != p->pNext)//增加节点的位置不得大于链表长度
-			{
-				p=p->pNext;
-			}
-			else
-			{
-				return FAULSE;
-			}
-		}
 		p1 = p->pNext;
 		p2 = p1->pNext;
 		p->pNext = p2;
@@ -420,7 +411,7 @@ uint16_t GetNodeNum(struct node *pHeader)
 		return FAULSE;
 	}
 
-	for(i=1; p->pNext != NULL; i++)
+	for(i = 0; p->pNext != NULL; i++)
 	{
 		p = p->pNext;
 	}
@@ -469,11 +460,18 @@ void MessageAckCheck(unsigned char *pdata, uint16_t size)
 	/*消息队列取消息*/
 	node_num = GetNodeNum(UartMsgNode);
 	UsartPrintf(USART_DEBUG, "MessageAckCheck node_num[%d]!!!\r\n", node_num);
+	if(node_num == 0)
+	{
+		UsartPrintf(USART_DEBUG, "MessageAckQueue is empty!!!\r\n", node_num);
+		goto FINISH_MSGCHK;
+	}
 	
 	MsgNode = UartMsgNode;
 	for(i = 1; i <= node_num; i++)
 	{
 		NewMsgNode = GetMsgNode(MsgNode);
+		UsartPrintf(USART_DEBUG, "Node[%d/%d]!!!\r\n", i, node_num);
+		
 		if(NewMsgNode)
 		{
 			UsartPrintf(USART_DEBUG, "NewMsgNode[%d]!!!\r\n", NewMsgNode->data.size);
@@ -486,7 +484,6 @@ void MessageAckCheck(unsigned char *pdata, uint16_t size)
 			
 			UsartPrintf(USART_DEBUG, "board_id:0x%02x, 0x%02x. cmd_type: 0x%02x, 0x%02x\r\n", 
 				ack_msg.pl_board_id, cmd_msg.board_id, ack_msg.pl_cmd_type, cmd_msg.cmd_type);
-
 			
 			if((ack_msg.pl_board_id == cmd_msg.board_id) && (ack_msg.pl_cmd_type == cmd_msg.cmd_type))
 			{
@@ -495,7 +492,8 @@ void MessageAckCheck(unsigned char *pdata, uint16_t size)
 				DeleNode(MsgNode, TAIL);
 				else
 				DeleNode(MsgNode, i);
-				NewMsgNode = NULL;
+				UsartPrintf(USART_DEBUG, "Remain Node:%d!!!\r\n", GetNodeNum(UartMsgNode));
+				break;
 			}
 			else if((g_src_board_id == 1) && 
 				(ack_msg.pl_board_id == 1) &&
@@ -507,7 +505,8 @@ void MessageAckCheck(unsigned char *pdata, uint16_t size)
 				DeleNode(MsgNode, TAIL);
 				else
 				DeleNode(MsgNode, i);
-				NewMsgNode = NULL;
+				UsartPrintf(USART_DEBUG, "Remain Node:%d!!!\r\n", GetNodeNum(UartMsgNode));
+				break;
 			}
 			else
 			{
@@ -515,7 +514,8 @@ void MessageAckCheck(unsigned char *pdata, uint16_t size)
 			}
 		}
 	}
-	
+
+	FINISH_MSGCHK:
 	//释放信号量
 	OSMutexPost(MsgMutex);
 }

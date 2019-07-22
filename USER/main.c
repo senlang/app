@@ -160,6 +160,9 @@ uint8_t board_drug_push_status[BOARD_ID_MAX] = {0};
 
 struct node* UartMsgNode = NULL;
 
+uint8_t track_is_run = 0;
+
+
 //START 任务
 //设置任务优先级
 #define START_TASK_PRIO      			20 //开始任务的优先级设置为最低
@@ -242,7 +245,7 @@ void Hardware_Init(void)
 	board_send_message(STATUS_REPORT_REQUEST, &heart_info);
 	heart_info.board_status = STANDBY_STATUS;
 
-	Iwdg_Init(4, 1250); 														//64分频，每秒625次，重载1250次，2s
+	//Iwdg_Init(4, 1250); 														//64分频，每秒625次，重载1250次，2s
 
 	mem_init(SRAMIN);			//内部内存池初始化
 
@@ -555,9 +558,45 @@ void Track_Run_Task(void *pdata)
 		
 		UsartPrintf(USART_DEBUG, "Run Track----------\r\n");		//提示任务开始执行
 		Track_run(track_work);
+
+		track_work = MOTOR_STOP;
 	}
 	OSSemDel(SemOfTrack, 0, &err);
 }
+
+/*
+void Track_Run_Task(void *pdata)
+{
+    INT8U            err;
+	uint16_t wait_time = 0;
+	
+	SemOfTrack = OSSemCreate(0);
+	while(1)
+	{
+		OSSemPend(SemOfTrack, 0u, &err);
+
+		do{
+			if(track_is_run)
+			{
+				UsartPrintf(USART_DEBUG, "Run Track----------\r\n");		//提示任务开始执行
+				Track_run(track_work);
+			}
+
+			if(wait_time)
+			CleanTrackParam();
+			track_is_run = 0;
+			track_work = MOTOR_STOP;
+			break;
+
+
+			RTOS_TimeDlyHMSM(0, 0, 1, 0);
+			
+			wait_time++;
+		}while(1);
+	}
+	OSSemDel(SemOfTrack, 0, &err);
+}
+*/
 
 void Drug_Push_Task(void *pdata)
 {
@@ -565,6 +604,8 @@ void Drug_Push_Task(void *pdata)
 	uint16_t run_time = 0;
 	INT8U            err;
 	uint16_t push_time = 0;
+	uint8_t drug_push_status = 0;
+	
 
 	SemOfConveyor= OSSemCreate(0);
 	
@@ -578,16 +619,19 @@ void Drug_Push_Task(void *pdata)
 		do{
 			UsartPrintf(USART_DEBUG, "board_push_finish = 0x%x, board_push_ackmsg = 0x%x, runtime = %d/%d!!!!!!!!!!\r\n", board_push_finish, board_push_ackmsg, run_time, push_time);
 			if((board_push_finish == 0))// && (board_push_ackmsg == 0))
-			break;
+			{
+				drug_push_status = 1;
+				break;
+			}
 
 			RTOS_TimeDlyHMSM(0, 0, 1, 0);
 			run_time ++;
-			if((run_time >= push_time + 10) && (run_time > 150))// 最大运行时间+10S 后未出货完成开始回收
+			if((run_time >= push_time + 20) && (run_time > 150))// 最大运行时间+10S 后未出货完成开始回收
 			{
 				break;
 			}
 		}while(1);
-		if(run_time >= 300)// 150s后未出货完成开始回收
+		if(drug_push_status == 0)// 150s后未出货完成开始回收
 		{
 			PushBeltControl(BELT_STOP);
 			Collect_Belt_Run();
@@ -675,7 +719,7 @@ void SENSOR_Task(void *pdata)
 2、传送带
 3、开关门
 
-02 09 50 id 80 00 00 00 00 74
+02 09 50 id 80 00 00 00 00 DF
 
 */
 void Factory_Test_Task(void *pdata)
@@ -701,12 +745,13 @@ void Factory_Test_Task(void *pdata)
 		UsartPrintf(USART_DEBUG, "Facroty Track test\r\n");
 		for(track = 1; track <= TRACK_MAX; track++)
 		{
-			UsartPrintf(USART_DEBUG, "trak - %d\r\n", track);
+			UsartPrintf(USART_DEBUG, "track - %d\r\n", track);
 			
 			SetTrackTestTime(track, MOTOR_RUN_FORWARD, 300);
-			Track_run(dir);
+			Track_run_only(MOTOR_RUN_FORWARD);
+			
 			SetTrackTestTime(track, MOTOR_RUN_BACKWARD, 300);
-			Track_run(dir);
+			Track_run_only(MOTOR_RUN_BACKWARD);
 			
 			RTOS_TimeDlyHMSM(0, 0, 1, 0);
 		}
@@ -743,7 +788,6 @@ void Trigger_CalcRuntime_Task(void *pdata)
 			{
 				if(i == 0)
 				{
-					
 					trigger_calc_runtime = 0;	//清计时
 					RTOS_TimeDlyHMSM(0, 0, 2, 0);	//延时2S
 					
@@ -822,25 +866,34 @@ void Trigger_CalcRuntime_Task(void *pdata)
 					UsartPrintf(USART_DEBUG, "Track[%d], do little backword11\r\n", cur_calc_track);
 				}
 				do{
-					if(Key_Check(KEY2))//Key_Check(KEY0)||Key_Check(KEY1)
+					//if(Key_Check(KEY2))//Key_Check(KEY0)||Key_Check(KEY1)
+					if(1)
 					{
-						if(i == 0)
+						if((i == 0) && Key_Check(KEY0))
 						{
 							Track_trigger_calc_runtime(1, MOTOR_STOP);
 							trigger_calc_flag = 0;
+							UsartPrintf(USART_DEBUG, "Forward Key Block!!!!\r\n");
+							break;
 						}	
-						else if( i == 1 || i == 2)
+						else if((i == 1)&&Key_Check(KEY1))
 						{
 							Track_trigger_calc_runtime(0, MOTOR_STOP);
 							trigger_calc_flag = 0;
+							UsartPrintf(USART_DEBUG, "Backword Key Block!!!!\r\n");
+							break;
+						}
+						else if((i == 2)&&Key_Check(KEY0))
+						{
+							Track_trigger_calc_runtime(0, MOTOR_STOP);
+							trigger_calc_flag = 0;
+							UsartPrintf(USART_DEBUG, "Little Forward Key Block!!!!\r\n");
+							break;
 						}
 						else if(i == 3)
 						{
 
 						}
-
-						UsartPrintf(USART_DEBUG, "Track block occur, error!!!!\r\n");
-						break;
 					}
 					if(running_time >= 600)
 					{
@@ -1049,7 +1102,7 @@ void Message_Send_Task(void *pdata)
 				UsartPrintf(USART_DEBUG, "NewMsgNode[%d]!!!\r\n", NewMsgNode->data.size);
 				for(j = 0; j < NewMsgNode->data.size; j++)
 				{
-					UsartPrintf(USART_DEBUG, "0x%02x,\r\n", NewMsgNode->data.payload[j]);
+					UsartPrintf(USART_DEBUG, "0x%02x,", NewMsgNode->data.payload[j]);
 				}
 				UsartPrintf(USART_DEBUG, "<--Retry Send Message\r\n");
 				
@@ -1063,7 +1116,7 @@ void Message_Send_Task(void *pdata)
 				}
 				NewMsgNode->data.times++;
 				
-				if(NewMsgNode->data.times >= 3)
+				if(NewMsgNode->data.times >= 5)
 				{
 					if(i == node_num)
 					DeleNode(MsgNode, TAIL);
@@ -1082,7 +1135,7 @@ void Message_Send_Task(void *pdata)
 		
 		//释放信号量
 		OSMutexPost(MsgMutex);
-		RTOS_TimeDlyHMSM(0, 0, 3, 0);//等待3s，重传
+		RTOS_TimeDlyHMSM(0, 0, 2, 0);//等待2s，重传
 	}
 
 	DeleNode(MsgNode, 0);

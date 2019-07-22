@@ -33,6 +33,10 @@ int Track_trigger(uint8_t track_num, MOTOR_ENUM run_mode);//»õµÀ¿ØÖÆ
 
 uint8_t set_track_y(uint16_t col, uint8_t status);
 
+void CleanTrackParam(void);
+
+int Track_run_only(MOTOR_ENUM run_mode);
+
 
 #endif
 

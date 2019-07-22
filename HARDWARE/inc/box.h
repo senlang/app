@@ -94,6 +94,7 @@ extern OS_EVENT *MsgMutex;
 extern OS_EVENT *SemOfFactoryTest;				//³ö³§²âÊÔ
 
 
+extern uint8_t track_is_run;
 
 
 
