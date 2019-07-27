@@ -1,8 +1,8 @@
 #ifndef _DATA_IO_H_
 #define _DATA_IO_H_
 
-#define UART_MAX_IDX 100
-#define UART_BUF_MAX_LEN 0x10
+#define UART_MAX_IDX 64
+#define UART_BUF_MAX_LEN 64
 
 #define REV_OK		0	//接收完成标志
 #define REV_WAIT	1	//接收未完成标志

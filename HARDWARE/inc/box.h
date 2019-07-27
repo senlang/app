@@ -25,6 +25,7 @@
 #define BOX_TEXT_MODE_CLOSE 0
 #define BOX_TEXT_MODE_OPEN 1 
 
+
 //定义药柜相关的结构体
 typedef struct
 {
@@ -81,22 +82,13 @@ extern OS_EVENT *SemOfMotor;        	//Motor控制信号量
 extern OS_EVENT *SemOfUart1RecvData;	//uart1 串口接收数据信号量
 extern OS_EVENT *SemOfUart2RecvData;	//uart2 串口接收数据信号量
 extern OS_EVENT *SemOfDataParse;	//数据解析线程信号量
-
 extern OS_EVENT *SemOfKey;				// 按键控制信号量
 extern OS_EVENT *SemOfConveyor;        	//Motor控制信号量
 extern OS_EVENT *SemOfTrack;        	//track 控制信号量
 extern OS_EVENT *SemOfCalcTime;        	//触发货道时间统计信号量
 extern OS_EVENT *SemOfOverCurrent;				//过流保护信号量
-
 extern OS_EVENT *MsgMutex;
-
-
 extern OS_EVENT *SemOfFactoryTest;				//出厂测试
-
-
-extern uint8_t track_is_run;
-
-
 
 
 #endif

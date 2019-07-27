@@ -25,6 +25,7 @@
 #include "track.h"
 #include "delay.h"
 #include "usart.h"
+#include "key.h"
 #include "stm32_protocol.h"
 
 extern uint8_t  g_src_board_id;  
@@ -300,7 +301,7 @@ int Track_run(MOTOR_ENUM run_mode)
 		{
 			if(track_struct[x][y].push_time > KEY_DELAY_MS)
 			{
-				RTOS_TimeDlyHMSM(0, 0, 2, 0);
+				RTOS_TimeDlyHMSM(0, 0, 0, 500);
 				
 				delay_s = (track_struct[x][y].push_time - KEY_DELAY_MS)/10;
 				delay_ms = ((track_struct[x][y].push_time - KEY_DELAY_MS) % 10) * 100;
@@ -333,6 +334,33 @@ int Track_run(MOTOR_ENUM run_mode)
 				{
 					mcu_add_medicine_track_only(g_src_board_id, motor_run_detect_track_num);
 				}
+
+				#if 1
+				RTOS_TimeDlyHMSM(0, 0, 0, 500);
+				if(KeyScan(GPIOB, KEY0) == KEYDOWN)//行程开关检测到到达货道头
+				{
+					UsartPrintf(USART_DEBUG, "Forward detect keep down\r\n");
+
+					Motor_Set(MOTOR_RUN_BACKWARD);//电机方向使能
+					set_track(motor_run_detect_track_num, MOTOR_RUN_BACKWARD);//货道使能
+					
+					RTOS_TimeDlyHMSM(0, 0, 1, 0);
+					
+					set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
+					Motor_Set(MOTOR_STOP);	//电机停止
+				}
+				else if(KeyScan(GPIOB, KEY1) == KEYDOWN)//行程开关检测到到达货尾
+				{
+					UsartPrintf(USART_DEBUG, "Backword detect keep down\r\n");
+					Motor_Set(MOTOR_RUN_FORWARD);//电机方向使能
+					set_track(motor_run_detect_track_num, MOTOR_RUN_BACKWARD);//货道使能
+					
+					RTOS_TimeDlyHMSM(0, 0, 1, 0);
+					
+					set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
+					Motor_Set(MOTOR_STOP);	//电机停止
+				}
+				#endif
 			}
 		}
 		
@@ -387,7 +415,7 @@ int Track_run_only(MOTOR_ENUM run_mode)
 		{
 			if(track_struct[x][y].push_time > KEY_DELAY_MS)
 			{
-				RTOS_TimeDlyHMSM(0, 0, 2, 0);
+				RTOS_TimeDlyHMSM(0, 0, 0, 500);
 				
 				delay_s = (track_struct[x][y].push_time - KEY_DELAY_MS)/10;
 				delay_ms = ((track_struct[x][y].push_time - KEY_DELAY_MS) % 10) * 100;
@@ -410,17 +438,36 @@ int Track_run_only(MOTOR_ENUM run_mode)
 				set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
 				Motor_Set(MOTOR_STOP);	//电机停止
 
+				#if 1
+				RTOS_TimeDlyHMSM(0, 0, 0, 500);
+				if(KeyScan(GPIOB, KEY0) == KEYDOWN)//行程开关检测到到达货道头
+				{
+					UsartPrintf(USART_DEBUG, "Forward detect keep down\r\n");
 
-				/*暂时注释，方便消息应答处理*/
-				if(MOTOR_RUN_FORWARD == run_mode)
-				{
-					mcu_push_medicine_track_only(g_src_board_id, motor_run_detect_track_num);
+					Motor_Set(MOTOR_RUN_BACKWARD);//电机方向使能
+					set_track(motor_run_detect_track_num, MOTOR_RUN_BACKWARD);//货道使能
+					
+					RTOS_TimeDlyHMSM(0, 0, 1, 0);
+					
+					set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
+					Motor_Set(MOTOR_STOP);	//电机停止
 				}
-				else if(MOTOR_RUN_BACKWARD == run_mode)
+				else if(KeyScan(GPIOB, KEY1) == KEYDOWN)//行程开关检测到到达货尾
 				{
-					mcu_add_medicine_track_only(g_src_board_id, motor_run_detect_track_num);
+					UsartPrintf(USART_DEBUG, "Backword detect keep down\r\n");
+					Motor_Set(MOTOR_RUN_FORWARD);//电机方向使能
+					set_track(motor_run_detect_track_num, MOTOR_RUN_BACKWARD);//货道使能
+					
+					RTOS_TimeDlyHMSM(0, 0, 1, 0);
+					
+					set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
+					Motor_Set(MOTOR_STOP);	//电机停止
 				}
+				#endif
+				
 			}
+
+			
 		}
 		
 	}

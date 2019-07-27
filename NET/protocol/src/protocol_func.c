@@ -25,6 +25,8 @@
 #include "protocol_func.h"
 
 
+extern uint32_t time_passes;
+extern uint32_t TrunkInitTime;
 
 
 /*  
@@ -461,6 +463,8 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 			track_struct[x][y].medicine_track_number = push_medicine_request->info[0].medicine_track_number;
 			track_struct[x][y].push_time = push_medicine_request->info[0].push_time;
 			cmd_ack_info.status = 1;
+			
+			TrunkInitTime = time_passes;
 		}
 		/*02 07 20 1 0 0 xx*//*货道出货*/
 		else if((push_medicine_request->info[0].medicine_track_number == 0) && (push_medicine_request->info[0].push_time == 0))
@@ -488,6 +492,7 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 			
 			cmd_ack_info.status = 1;
 
+			TrunkInitTime = 0;
 			track_work = MOTOR_RUN_FORWARD;
 			UsartPrintf(USART_DEBUG, "Receive push complete!!!!!!!!!!!!\r\n");
 		}

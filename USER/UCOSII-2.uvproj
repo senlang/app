@@ -682,14 +682,14 @@
               <FilePath>..\HARDWARE\src\timer.c</FilePath>
             </File>
             <File>
-              <FileName>malloc.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\SYSTEM\src\malloc.c</FilePath>
-            </File>
-            <File>
               <FileName>queue.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\SYSTEM\src\queue.c</FilePath>
+            </File>
+            <File>
+              <FileName>malloc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\SYSTEM\src\malloc.c</FilePath>
             </File>
           </Files>
         </Group>

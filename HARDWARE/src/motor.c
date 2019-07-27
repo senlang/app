@@ -95,22 +95,24 @@ void Motor_Init(void)
 */
 void Motor_Set(MOTOR_ENUM status)
 {
-	motor_run_direction = status;
 
 	if(MOTOR_STOP == status)
 	{	
 		GPIO_WriteBit(GPIOC, GPIO_Pin_4, Bit_RESET);
 		GPIO_WriteBit(GPIOC, GPIO_Pin_5, Bit_RESET);
+		motor_run_direction = status;
 	}
 	else if(MOTOR_RUN_FORWARD== status)
 	{	
 		GPIO_WriteBit(GPIOC, GPIO_Pin_4, Bit_SET);
 		GPIO_WriteBit(GPIOC, GPIO_Pin_5, Bit_RESET);
+		motor_run_direction = status;
 	}
 	else if(MOTOR_RUN_BACKWARD== status)
 	{	
 		GPIO_WriteBit(GPIOC, GPIO_Pin_4, Bit_RESET);
 		GPIO_WriteBit(GPIOC, GPIO_Pin_5, Bit_SET);
+		motor_run_direction = status;
 	}
 	MotorStatus.MotorSta = status;
 }

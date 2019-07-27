@@ -155,12 +155,21 @@ uint8_t  g_src_board_id = 0;
 
 extern struct status_report_request_info_struct  heart_info;
 extern uint8_t track_work;
+extern uint32_t time_passes;
 
 uint8_t board_drug_push_status[BOARD_ID_MAX] = {0};
 
 struct node* UartMsgNode = NULL;
 
-uint8_t track_is_run = 0;
+uint8_t NeedClearBuffer = 0;
+uint32_t TrunkInitTime = 0;
+
+
+/*内存块32 *100*/
+#ifdef USE_OS_MEM
+OS_MEM *MemBuf = NULL;
+INT8U MemPartition[100][32];
+#endif
 
 
 //START 任务
@@ -247,23 +256,34 @@ void Hardware_Init(void)
 
 	//Iwdg_Init(4, 1250); 														//64分频，每秒625次，重载1250次，2s
 
-	mem_init(SRAMIN);			//内部内存池初始化
-
 	UsartPrintf(USART_DEBUG, " Current Board ID:0x%x\r\n", g_src_board_id); 
 }
 
 
 int main(void)
 { 		   
+    INT8U err;
+	
    	Hardware_Init();		//系统初始化
    	
+
 	UsartPrintf(USART_DEBUG, "SW_VERSION: %s\r\n", SW_VERSION);		
 	UsartPrintf(USART_DEBUG, "Version Build: %s %s\r\n", __DATE__, __TIME__);
 
-   	MessageDealQueueCreate();//消息队列初始化
 	
 	OSInit();   
+
+	#ifdef USE_OS_MEM
+	/*分配内存*/
+    MemBuf = OSMemCreate(MemPartition, 100, 32, &err);
+    #else
+	mem_init(SRAMIN);			//内部内存池初始化
+	#endif
+	
+   	MessageDealQueueCreate();//消息队列初始化
+   	
 	OSTaskCreate(start_task,(void *)0,(OS_STK *)&START_TASK_STK[START_STK_SIZE-1],START_TASK_PRIO );//创建起始任务
+
 	OSStart();	  						    
 }   	  
 //开始任务
@@ -509,6 +529,7 @@ void HEART_Task(void *pdata)
 {
 	int heart_count = 0;
 	int have_run_time = 0;
+	//uint16_t wait_time = 0;
 	
 	heart_count = g_src_board_id * 2 - 1;
 	
@@ -520,6 +541,12 @@ void HEART_Task(void *pdata)
 		//Led_Set(LED_1, LED_ON);
 		//RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
 		//if(heart_count >= 30)
+		
+		if(TrunkInitTime && (time_passes - TrunkInitTime > 600))
+		{
+			CleanTrackParam();
+			track_work = MOTOR_STOP;
+		}
 		
 		RTOS_TimeDlyHMSM(0, 1, 0, 0);
 		{
@@ -546,7 +573,7 @@ void MOTOR_Task(void *pdata)
 	}
 	OSSemDel(SemOfMotor, 0, &err);
 }
-
+/*
 void Track_Run_Task(void *pdata)
 {
     INT8U            err;
@@ -563,40 +590,23 @@ void Track_Run_Task(void *pdata)
 	}
 	OSSemDel(SemOfTrack, 0, &err);
 }
+*/
 
-/*
 void Track_Run_Task(void *pdata)
 {
     INT8U            err;
-	uint16_t wait_time = 0;
 	
 	SemOfTrack = OSSemCreate(0);
 	while(1)
 	{
-		OSSemPend(SemOfTrack, 0u, &err);
-
-		do{
-			if(track_is_run)
-			{
-				UsartPrintf(USART_DEBUG, "Run Track----------\r\n");		//提示任务开始执行
-				Track_run(track_work);
-			}
-
-			if(wait_time)
-			CleanTrackParam();
-			track_is_run = 0;
-			track_work = MOTOR_STOP;
-			break;
-
-
-			RTOS_TimeDlyHMSM(0, 0, 1, 0);
-			
-			wait_time++;
-		}while(1);
+		OSSemPend(SemOfTrack, 0u, &err);		
+		UsartPrintf(USART_DEBUG, "Run Track----------\r\n");		//提示任务开始执行
+		Track_run(track_work);
+		
+		track_work = MOTOR_STOP;
 	}
 	OSSemDel(SemOfTrack, 0, &err);
 }
-*/
 
 void Drug_Push_Task(void *pdata)
 {
@@ -608,6 +618,12 @@ void Drug_Push_Task(void *pdata)
 	
 
 	SemOfConveyor= OSSemCreate(0);
+
+	/*上电启动传送带，回收药品*/
+	//PushBeltControl(BELT_RUN);
+	//RTOS_TimeDlyHMSM(0, 0, 60, 0);
+	//Collect_Belt_Run();
+	//PushBeltControl(BELT_STOP);
 	
 	while(1)
 	{		
@@ -720,13 +736,13 @@ void SENSOR_Task(void *pdata)
 3、开关门
 
 02 09 50 id 80 00 00 00 00 DF
-
 */
+
 void Factory_Test_Task(void *pdata)
 {	
 	int test_time = 0;
 	uint8_t track = 0;
-	uint8_t dir = MOTOR_STOP;
+	//uint8_t dir = MOTOR_STOP;
 	uint8_t msg[BOARD_TEST_REQUEST_PACKET_SIZE] = {0x02,0x09,0x50,0xFF,0x80,00,00,00,00,0x74};
     INT8U            err;
 	
@@ -1050,9 +1066,10 @@ void Track_OverCurrent_Task(void *pdata)
 	while(1)
 	{
 		OSSemPend(SemOfOverCurrent, 0u, &err);
-		RTOS_TimeDlyHMSM(0, 0, 1, 0);
 		
+		RTOS_TimeDlyHMSM(0, 0, 0, 100);
 		motor_run_detect_flag = 0;
+		
 		UsartPrintf(USART_DEBUG, "Track[%d] do OverCurrent protect!!!\r\n", motor_run_detect_track_num);
 
 		if(motor_run_direction == MOTOR_RUN_BACKWARD)
@@ -1077,47 +1094,61 @@ void Track_OverCurrent_Task(void *pdata)
 void Message_Send_Task(void *pdata)
 {		
 	uint16_t node_num = 0;
-	uint16_t start = 0;
+	uint32_t cur_time = 0;
 	uint8_t err = 0;
-	uint8_t i = 0, j = 0;
+	uint8_t i = 0, j = 0, node_i = 0;
 	
 	struct node* MsgNode = NULL;
 	struct node* NewMsgNode = NULL;
+
+	if(UartMsgNode == NULL)
+	UartMsgNode = CreateNode();
 	
 	while(1)
 	{
 		//请求信号量
 		OSMutexPend(MsgMutex,0,&err);
-		
+
+		cur_time = time_passes;
 		/*消息队列取消息*/
 		node_num = GetNodeNum(UartMsgNode);
-		//UsartPrintf(USART_DEBUG, "node_num[%d]!!!\r\n", node_num);
+		//UsartPrintf(USART_DEBUG, "node_num[%d]cur_time[%d]!!!\r\n", node_num, cur_time);
 
 		MsgNode = UartMsgNode;
-		for(i = 1; i <= node_num; i++)
+		for(i = 1, node_i = 1; i <= node_num; i++)
 		{
-			NewMsgNode = GetMsgNode(MsgNode);
+			//NewMsgNode = GetMsgNode(MsgNode);
+			NewMsgNode = GetNode(UartMsgNode, node_i);	
+			UsartPrintf(USART_DEBUG, "Message_Send_Task Node[%d/%d]node_p[%d]!!!\r\n", i, node_num, node_i);
+			
 			if(NewMsgNode)
 			{
-				UsartPrintf(USART_DEBUG, "NewMsgNode[%d]!!!\r\n", NewMsgNode->data.size);
-				for(j = 0; j < NewMsgNode->data.size; j++)
+				UsartPrintf(USART_DEBUG, "NewMsgNode data.size[%d]time[%d]times[%d]!!!\r\n", 
+					NewMsgNode->data.size, NewMsgNode->data.create_time,NewMsgNode->data.times);
+
+				if(cur_time >= NewMsgNode->data.create_time + (NewMsgNode->data.times + 1) * 600)
 				{
-					UsartPrintf(USART_DEBUG, "0x%02x,", NewMsgNode->data.payload[j]);
+					for(j = 0; j < NewMsgNode->data.size; j++)
+					{
+						UsartPrintf(USART_DEBUG, "0x%02x,", NewMsgNode->data.payload[j]);
+					}
+					UsartPrintf(USART_DEBUG, "<--Retry Send Message\r\n");
+					
+					if(NewMsgNode->data.uart_idx == UART1_IDX)
+					{
+						UART1_IO_Send(NewMsgNode->data.payload, NewMsgNode->data.size); 
+					}
+					else
+					{
+						UART2_IO_Send(NewMsgNode->data.payload, NewMsgNode->data.size); 
+					}
+					NewMsgNode->data.times++;
 				}
-				UsartPrintf(USART_DEBUG, "<--Retry Send Message\r\n");
 				
-				if(NewMsgNode->data.uart_idx == UART1_IDX)
-				{
-					UART1_IO_Send(NewMsgNode->data.payload, NewMsgNode->data.size);	
-				}
-				else
-				{
-					UART2_IO_Send(NewMsgNode->data.payload, NewMsgNode->data.size);	
-				}
-				NewMsgNode->data.times++;
 				
 				if(NewMsgNode->data.times >= 5)
 				{
+					UsartPrintf(USART_DEBUG, "Retry Send TimeOut, Delete Node[%d]\r\n", i);
 					if(i == node_num)
 					DeleNode(MsgNode, TAIL);
 					else
@@ -1127,15 +1158,16 @@ void Message_Send_Task(void *pdata)
 				else
 				{
 					MsgNode = NewMsgNode;
+					node_i++;
 				}
-				
 			}
+			RTOS_TimeDlyHMSM(0, 0, 0, 100);//两个包间隔100ms发送
 		}
-
-		
 		//释放信号量
 		OSMutexPost(MsgMutex);
-		RTOS_TimeDlyHMSM(0, 0, 2, 0);//等待2s，重传
+
+		
+		RTOS_TimeDlyHMSM(0, 0, 1, 0);//等待2s，重传
 	}
 
 	DeleNode(MsgNode, 0);

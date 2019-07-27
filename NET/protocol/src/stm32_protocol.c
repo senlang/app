@@ -51,7 +51,7 @@ uint16_t drag_push_time_calc = 0;
 uint8_t track_work = 0;
 
 
-static uint32_t buf_bitmap = 0;  
+//static uint32_t buf_bitmap = 0;  
   
 
 //static unsigned char txr_buf[MAX_PAYLOAD_LEN + 32];  
@@ -82,6 +82,7 @@ extern uint8_t calc_track_count;
 extern uint16_t board_push_finish;
 extern uint16_t board_add_finish;
 extern uint16_t board_push_ackmsg;
+
 
 void BoardId_Init(void)
 {
@@ -155,7 +156,6 @@ void mcu_add_medicine_track_only(uint8_t board, uint8_t track_number)
 	board_send_message(MCU_REPLENISH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
 }
 
-
 void send_status_report_request(void *input_data)  
 {  
     uint8_t send_statu_report_request_data[STATUS_REPORT_REQUEST_PACKET_SIZE];  
@@ -180,6 +180,7 @@ void send_status_report_request(void *input_data)
     send_statu_report_request_data[7] = add_checksum(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE);  
 
 	UART1_IO_Send(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE);  
+	//MessageInsertQueue(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE, UART1_IDX);
 }  
 
 
@@ -931,7 +932,7 @@ void packet_parser(unsigned char *src, int len)
 					UsartPrintf(USART_DEBUG, "board_add_finish: 0x%02x\r\n", board_add_finish);
 					//×ª·¢
 					memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
-					for(i = 0; i < BOARD_ID_MAX; i++)
+					for(i = 2; i <= BOARD_ID_MAX; i++)
 					{	
 						UsartPrintf(USART_DEBUG, "board_add_finish & (1 << (i-1)): %d\r\n", board_add_finish & (1 << (i-1)));
 						if(board_add_finish & (1 << (i-1)))
@@ -940,6 +941,8 @@ void packet_parser(unsigned char *src, int len)
 							*(forward_data + 3) = i;
 							*(forward_data + pkt_len - 1) = add_checksum(forward_data, pkt_len - 1);
 							UsartPrintf(USART_DEBUG, "REPLENISH_MEDICINE_REQUEST Forward: 0x%02x\r\n", *(forward_data + 3));
+
+							MessageInsertQueue(forward_data, pkt_len, UART2_IDX);
 							UART2_IO_Send(forward_data, pkt_len);
 							RTOS_TimeDly(50);
 						}

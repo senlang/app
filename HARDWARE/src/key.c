@@ -450,7 +450,7 @@ void EXTI9_5_IRQHandler(void)
 	{
 		delay_ms(10);
 		UsartPrintf(USART_DEBUG, "Forward:KEY0 CHECK DOWN: ", motor_run_direction);
-		if((KeyScan(GPIOB, KEY0) == KEYDOWN)&& (motor_run_direction == MOTOR_RUN_FORWARD)) 					//
+		if((KeyScan(GPIOB, KEY0) == KEYDOWN))//&& (motor_run_direction == MOTOR_RUN_FORWARD)) 					//
 		{		
 			UsartPrintf(USART_DEBUG, "Dir = %d\r\n", motor_run_direction);
 			if(motor_run_detect_flag == 1)
@@ -499,7 +499,7 @@ void EXTI9_5_IRQHandler(void)
 	{
 		UsartPrintf(USART_DEBUG, "Backword:KEY1 CHECK DOWN:", motor_run_direction);
 		delay_ms(10);
-		if((KeyScan(GPIOB, KEY1) == KEYDOWN)&&(motor_run_direction == MOTOR_RUN_BACKWARD))					//
+		if((KeyScan(GPIOB, KEY1) == KEYDOWN))//&&(motor_run_direction == MOTOR_RUN_BACKWARD))					//
 		{		
 			UsartPrintf(USART_DEBUG, "Dir = %d\r\n", motor_run_direction);
 			if(motor_run_detect_flag == 1){
