@@ -565,8 +565,6 @@ void print_replenish_medicine_request(uint8_t *data)
 
 void parse_replenish_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 {  
-  	uint8_t request_cnt = 0;
-	uint8_t valid_cnt = 0;
 	uint8_t i = 0;
 	uint8_t check_sum = 0;
 	struct msg_ack_info_struct cmd_ack_info;
@@ -597,21 +595,21 @@ void parse_replenish_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 		return;
 	}
 		
-	request_cnt = (replenish_medicine_request->packet_len - IPUC)/REPLENISH_MEDICINE_REQUEST_INFO_SIZE;
-	UsartPrintf(USART_DEBUG, "request_cnt: 0x%02x\r\n", request_cnt);  
+	//request_cnt = (replenish_medicine_request->packet_len - IPUC)/REPLENISH_MEDICINE_REQUEST_INFO_SIZE;
+	//UsartPrintf(USART_DEBUG, "request_cnt: 0x%02x\r\n", request_cnt);  
 
-	for(i = 0; i < request_cnt; i++)
+	//for(i = 0; i < request_cnt; i++)
 	{
-		replenish_medicine_request->info[valid_cnt].board_id = inputdata[3 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE];
-		UsartPrintf(USART_DEBUG, "board_id: 0x%02x\r\n", replenish_medicine_request->info[valid_cnt].board_id);  
+		replenish_medicine_request->info[0].board_id = inputdata[3 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE];
+		UsartPrintf(USART_DEBUG, "board_id: 0x%02x\r\n", replenish_medicine_request->info[0].board_id);  
 		
-		if(replenish_medicine_request->info[valid_cnt].board_id == g_src_board_id)
+		if(replenish_medicine_request->info[0].board_id == g_src_board_id)
 		{
-			replenish_medicine_request->info[valid_cnt].medicine_track_number = inputdata[4 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE];
-			replenish_medicine_request->info[valid_cnt].dirtion = inputdata[5 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE];
-			replenish_medicine_request->info[valid_cnt].push_time = inputdata[6 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE]<<8|inputdata[7 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE];
+			replenish_medicine_request->info[0].medicine_track_number = inputdata[4 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE];
+			replenish_medicine_request->info[0].dirtion = inputdata[5 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE];
+			replenish_medicine_request->info[0].push_time = inputdata[6 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE]<<8|inputdata[7 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE];
 
-			if((replenish_medicine_request->info[valid_cnt].medicine_track_number != 0) && (replenish_medicine_request->info[valid_cnt].push_time != 0))
+			if((replenish_medicine_request->info[0].medicine_track_number != 0) && (replenish_medicine_request->info[0].push_time != 0))
 			{
 				//motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_BACKWARD;
 				//motor_struct[motor_enqueue_idx].motor_work_mode = CMD_REPLENISH_MEDICINE_REQUEST;
@@ -621,33 +619,28 @@ void parse_replenish_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 				//if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
 				//motor_enqueue_idx = 0;
 
-
-				x = (replenish_medicine_request->info[valid_cnt].medicine_track_number - 1)/10;
-				y = (replenish_medicine_request->info[valid_cnt].medicine_track_number - 1)%10;
-				track_struct[x][y].motor_run = replenish_medicine_request->info[valid_cnt].dirtion;
-				track_struct[x][y].medicine_track_number = replenish_medicine_request->info[valid_cnt].medicine_track_number;
-				track_struct[x][y].push_time = replenish_medicine_request->info[valid_cnt].push_time;
-
-
-				valid_cnt++;
-
+				x = (replenish_medicine_request->info[0].medicine_track_number - 1)/10;
+				y = (replenish_medicine_request->info[0].medicine_track_number - 1)%10;
+				track_struct[x][y].motor_run = replenish_medicine_request->info[0].dirtion;
+				track_struct[x][y].medicine_track_number = replenish_medicine_request->info[0].medicine_track_number;
+				track_struct[x][y].push_time = replenish_medicine_request->info[0].push_time;
+				
+				TrunkInitTime = time_passes;
 			}
-			else if((replenish_medicine_request->info[valid_cnt].medicine_track_number == 0) && (replenish_medicine_request->info[valid_cnt].push_time == 0))
+			else if((replenish_medicine_request->info[0].medicine_track_number == 0) && (replenish_medicine_request->info[0].push_time == 0))
 			{
 				OSSemPost(SemOfTrack);
 				cmd_ack_info.status = 1;
 			
 				track_work = MOTOR_RUN_BACKWARD;
+				TrunkInitTime = 0;
 				UsartPrintf(USART_DEBUG, "Receive replenish complete!!!!!!!!!!!!\r\n");
 			}
 		}
 
 
-		if(valid_cnt)
-		{
-			//OSSemPost(SemOfMotor);
-			cmd_ack_info.status = 1;
-		}
+	
+		cmd_ack_info.status = 1;
 	}
 	cmd_ack_info.board_id = g_src_board_id;
 	cmd_ack_info.rsp_cmd_type = replenish_medicine_request->cmd_type;

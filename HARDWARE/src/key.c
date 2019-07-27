@@ -316,7 +316,6 @@ void EXTI4_IRQHandler(void)
 #endif  	
 	if(EXTI_GetITStatus(EXTI_Line4)==SET)//是8线的中断
 	{
-		/*
 		delay_ms(10);
 		if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN) 					//消抖后检查是否有过流
 		{		
@@ -379,7 +378,6 @@ void EXTI4_IRQHandler(void)
 		{
 			//UsartPrintf(USART_DEBUG, "UP-------------\r\n");
 		}
-		*/
 	}
 	EXTI_ClearITPendingBit(EXTI_Line4);  //清除LINE2上的中断标志位	
 #ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.

@@ -301,7 +301,7 @@ int Track_run(MOTOR_ENUM run_mode)
 		{
 			if(track_struct[x][y].push_time > KEY_DELAY_MS)
 			{
-				RTOS_TimeDlyHMSM(0, 0, 0, 500);
+				RTOS_TimeDlyHMSM(0, 0, 1, 0);
 				
 				delay_s = (track_struct[x][y].push_time - KEY_DELAY_MS)/10;
 				delay_ms = ((track_struct[x][y].push_time - KEY_DELAY_MS) % 10) * 100;

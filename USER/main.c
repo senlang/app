@@ -544,8 +544,10 @@ void HEART_Task(void *pdata)
 		
 		if(TrunkInitTime && (time_passes - TrunkInitTime > 600))
 		{
+			UsartPrintf(USART_DEBUG, "In 60s not receive finish cmd, clear!!!!\r\n", time_passes, TrunkInitTime);
 			CleanTrackParam();
 			track_work = MOTOR_STOP;
+			TrunkInitTime = 0;
 		}
 		
 		RTOS_TimeDlyHMSM(0, 1, 0, 0);
