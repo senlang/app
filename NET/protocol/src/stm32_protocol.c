@@ -797,7 +797,7 @@ void up_packet_parser(unsigned char *src, int len)
 				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MCU_ADD_MEDICINE_COMPLETE, Board[%d], Track[%d]!!\r\n", add_medicine_complete_request.info.board_id, add_medicine_complete_request.info.medicine_track_number);
 
 				if(add_medicine_complete_request.info.medicine_track_number == 0xFF)
-				board_add_finish &= ~(1<<board_id);
+				board_add_finish &= ~(1<<(board_id - 1));
 				
 				cmd_ack_info.board_id = board_id;
 				cmd_ack_info.rsp_cmd_type = CMD_MCU_ADD_MEDICINE_COMPLETE;
@@ -913,6 +913,9 @@ void packet_parser(unsigned char *src, int len)
 
 							MessageInsertQueue(forward_data, pkt_len, UART2_IDX);
 							UART2_IO_Send(forward_data, pkt_len);
+							RTOS_TimeDly(500);
+							
+							UART2_IO_Send(forward_data, pkt_len);//重传
 							RTOS_TimeDly(50);
 						}
 					}
@@ -944,6 +947,9 @@ void packet_parser(unsigned char *src, int len)
 
 							MessageInsertQueue(forward_data, pkt_len, UART2_IDX);
 							UART2_IO_Send(forward_data, pkt_len);
+							RTOS_TimeDly(500);
+							
+							UART2_IO_Send(forward_data, pkt_len);//重传
 							RTOS_TimeDly(50);
 						}
 					}				

@@ -146,4 +146,3 @@ unsigned char Door_Key_Detect(unsigned char door_detect)
 	return ret_val;
 }
 
-

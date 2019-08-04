@@ -306,6 +306,7 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 					{
 						UsartPrintf(USART_DEBUG, "Close Door Detect Somebody, Stop!!!!!!!!!!\r\n");
 						Door_Control_Set(MOTOR_STOP);
+						RTOS_TimeDlyHMSM(0, 0, 10, 0);
 					}
 					else
 					{
@@ -325,6 +326,17 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 			else if(test_request->info.test_status == BOX_TEXT_MODE_CLOSE)
 			{
 				Light_Set(LIGHT_OFF);
+			}
+		}
+		else if(test_request->info.test_mode == LIFTER_TEST)
+		{
+			if(test_request->info.test_status == LIFTER_UP)
+			{
+				Lifter_Set(LIFTER_UP);
+			}
+			else if(test_request->info.test_status == LIFTER_FALL)
+			{
+				Lifter_Set(LIFTER_FALL);
 			}
 		}
 		else if(test_request->info.test_mode == CALIBRATE_TRACK_TEST)

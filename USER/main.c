@@ -220,25 +220,31 @@ void Hardware_Init(void)
 	
 	Door_Control_Init();//
 	
-	Door_Key_Init();	//取药口滑动门初始化
-
-	Sensor_Init();		//人体检测传感器初始化
-
-	Belt_Init();	//传送带初始化
-	
-	Cooling_Init();	//制冷设备初始化
-	
-	Door_Init();	//前后大门控制初始化
-	
 	Track_Init();	//货道初始化
 	
 	//TIM3_Int_Init(9999,7199);//10Khz的计数频率，计数到5000为500ms  
 	TIM3_Int_Init(999,7199);//10Khz的计数频率，计数到5000为500ms
 
 	BoardId_Init();
+	
+	if(g_src_board_id == 1)
+	{
+		Door_Key_Init();	//取药口滑动门初始化
 
-	if(g_src_board_id == 2)
-	Light_Init();	//灯箱初始化
+		Sensor_Init();		//人体检测传感器初始化
+
+		Belt_Init();		//传送带初始化
+
+		Door_Init();		//前后大门控制初始化
+
+		Lifter_Init();		//取药升降机初始化
+	}
+	else if(g_src_board_id == 2)
+	{
+		Light_Init();	//灯箱初始化
+		
+		Cooling_Init();	//制冷设备初始化
+	}
 
 
 	for(i = 0; i < 10; i++)
@@ -667,6 +673,8 @@ void Drug_Push_Task(void *pdata)
 			
 			if(1)//(Push_Belt_Run() != 0 )
 			{
+				Lifter_Set(LIFTER_UP);
+				
 				Door_Control_Set(MOTOR_RUN_BACKWARD);
 				do{
 					RTOS_TimeDlyHMSM(0, 0, 0, 100);
@@ -680,15 +688,17 @@ void Drug_Push_Task(void *pdata)
 
 				UsartPrintf(USART_DEBUG, "Open The Door, End!!!!!!!!!!\r\n");
 				Door_Control_Set(MOTOR_STOP);
-			
+
 				RTOS_TimeDlyHMSM(0, 0, delay_time, 0);
+				
 				Door_Control_Set(MOTOR_RUN_FORWARD);
 				run_time = 0;
 				do{
 					if(Sensor_Detect() == SENSOR_DETECT)
 					{
-						Door_Control_Set(MOTOR_STOP);
 						UsartPrintf(USART_DEBUG, "Close Door Detect Somebody, Stop!!!!!!!!!!\r\n");
+						Door_Control_Set(MOTOR_STOP);
+						RTOS_TimeDlyHMSM(0, 0, 10, 0);
 					}
 					else
 					{
@@ -697,9 +707,9 @@ void Drug_Push_Task(void *pdata)
 					}
 					RTOS_TimeDlyHMSM(0, 0, 0, 100);
 					
-					if(run_time >= 300)
+					if(run_time >= 200)
 					{
-						UsartPrintf(USART_DEBUG, "run_time %d > 150\r\n", run_time);
+						UsartPrintf(USART_DEBUG, "run_time %d > 20s\r\n", run_time);
 						break;
 					}
 				}while(Door_Key_Detect(DOOR_CLOSE) == SENSOR_NO_DETECT);
@@ -709,6 +719,7 @@ void Drug_Push_Task(void *pdata)
 				UsartPrintf(USART_DEBUG, "Close The Door, End!!!!!!!!!!\r\n");
 				
 				Collect_Belt_Run();
+				Lifter_Set(LIFTER_FALL);
 			}
 		}
 	}

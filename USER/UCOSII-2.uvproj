@@ -656,6 +656,11 @@
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\src\sensor.c</FilePath>
             </File>
+            <File>
+              <FileName>lifter.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\src\lifter.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

@@ -168,6 +168,7 @@ typedef enum{
 	BACK_DOOR_TEST, 		//后大门
 	DRUG_DOOR_TEST, 		//取货口
 	LIGHT_TEST, 			//灯箱
+	LIFTER_TEST,
 	CALIBRATE_TRACK_TEST,	//货道手动校准
 	FACTORY_TEST = 0x80,
 	TEST_MODE_MAX,

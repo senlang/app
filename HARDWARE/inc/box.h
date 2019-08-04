@@ -18,6 +18,7 @@
 #include "door.h"
 #include "light.h"
 #include "sensor.h"
+#include "lifter.h"
 
 #include "queue.h"
 

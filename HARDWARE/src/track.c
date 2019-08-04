@@ -284,6 +284,7 @@ void CleanTrackParam(void)
 {
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
 	board_add_finish = 0;
+	board_push_finish = 0;
 }
 
 
@@ -325,14 +326,17 @@ int Track_run(MOTOR_ENUM run_mode)
 				Motor_Set(MOTOR_STOP);	//电机停止
 
 
-				/*暂时注释，方便消息应答处理*/
-				if(MOTOR_RUN_FORWARD == run_mode)
+				//if(g_src_board_id != 1)
 				{
-					mcu_push_medicine_track_only(g_src_board_id, motor_run_detect_track_num);
-				}
-				else if(MOTOR_RUN_BACKWARD == run_mode)
-				{
-					mcu_add_medicine_track_only(g_src_board_id, motor_run_detect_track_num);
+					/*暂时注释，方便消息应答处理*/
+					if(MOTOR_RUN_FORWARD == run_mode)
+					{
+						mcu_push_medicine_track_only(g_src_board_id, motor_run_detect_track_num);
+					}
+					else if(MOTOR_RUN_BACKWARD == run_mode)
+					{
+						mcu_add_medicine_track_only(g_src_board_id, motor_run_detect_track_num);
+					}
 				}
 
 				#if 1
@@ -373,9 +377,11 @@ int Track_run(MOTOR_ENUM run_mode)
 	if(MOTOR_RUN_FORWARD == run_mode)
 	{
 		//if(g_src_board_id != 1)
-		mcu_push_medicine_track_only(g_src_board_id, 0xFF);//向1号板发送当前单板出货完成
-		RTOS_TimeDlyHMSM(0, 0, 1, 0);
-		mcu_push_medicine_track_only(g_src_board_id, 0xFF);//向1号板发送当前单板出货完成
+		{
+			mcu_push_medicine_track_only(g_src_board_id, 0xFF);//向1号板发送当前单板出货完成
+			RTOS_TimeDlyHMSM(0, 0, 1, 0);
+			mcu_push_medicine_track_only(g_src_board_id, 0xFF);//向1号板发送当前单板出货完成
+		}
 
 		if(g_src_board_id == 1)
 		board_push_finish &= ~(1<<0);//清标志
