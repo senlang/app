@@ -282,6 +282,14 @@ int Track_run(MOTOR_ENUM run_mode)
 #else
 void CleanTrackParam(void)
 {
+	int i = 0;
+	
+	for(i = 1; i <= TRACK_MAX; i++)
+	{
+		set_track(i, MOTOR_STOP);//货道停止
+	}
+	Motor_Set(MOTOR_STOP);	//电机停止
+	
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
 	board_add_finish = 0;
 	board_push_finish = 0;
@@ -340,7 +348,7 @@ int Track_run(MOTOR_ENUM run_mode)
 				}
 
 				#if 1
-				RTOS_TimeDlyHMSM(0, 0, 0, 500);
+				//RTOS_TimeDlyHMSM(0, 0, 0, 500);
 				if(KeyScan(GPIOB, KEY0) == KEYDOWN)//行程开关检测到到达货道头
 				{
 					UsartPrintf(USART_DEBUG, "Forward detect keep down\r\n");
@@ -369,8 +377,13 @@ int Track_run(MOTOR_ENUM run_mode)
 		}
 		
 	}
-	
-	Motor_Set(MOTOR_STOP);	
+
+
+	for(x = 1; x <= TRACK_MAX; x++)
+	{
+		set_track(x, MOTOR_STOP);//货道停止
+	}
+	Motor_Set(MOTOR_STOP);	//电机停止
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
 
 	RTOS_TimeDlyHMSM(0, 0, 1, 0);
@@ -445,7 +458,7 @@ int Track_run_only(MOTOR_ENUM run_mode)
 				Motor_Set(MOTOR_STOP);	//电机停止
 
 				#if 1
-				RTOS_TimeDlyHMSM(0, 0, 0, 500);
+				//RTOS_TimeDlyHMSM(0, 0, 0, 500);
 				if(KeyScan(GPIOB, KEY0) == KEYDOWN)//行程开关检测到到达货道头
 				{
 					UsartPrintf(USART_DEBUG, "Forward detect keep down\r\n");
@@ -480,6 +493,7 @@ int Track_run_only(MOTOR_ENUM run_mode)
 	
 	Motor_Set(MOTOR_STOP);	
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
+	
 
 	return 0;
 }

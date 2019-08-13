@@ -209,13 +209,16 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 				if(test_request->info.test_status == 0)
 				{
 					SetTrackTestTime(motor_control.medicine_track_number, MOTOR_RUN_FORWARD, motor_control.push_time);
-					Track_run_only(MOTOR_RUN_FORWARD);
+					//Track_run_only(MOTOR_RUN_FORWARD);
+					//CleanTrackParam();
 				}
 				else
 				{
 					SetTrackTestTime(motor_control.medicine_track_number, MOTOR_RUN_BACKWARD, motor_control.push_time);
-					Track_run_only(MOTOR_RUN_BACKWARD);
+					//Track_run_only(MOTOR_RUN_BACKWARD);
+					//CleanTrackParam();
 				}
+				OSSemPost(SemOfTrack);
 			#endif
 		}
 		else if(test_request->info.test_mode == PUSH_BELT_TEST)

@@ -37,6 +37,7 @@ void CleanTrackParam(void);
 
 int Track_run_only(MOTOR_ENUM run_mode);
 
+void CleanTrackParam(void);
 
 #endif
 

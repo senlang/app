@@ -609,7 +609,14 @@ void Track_Run_Task(void *pdata)
 	{
 		OSSemPend(SemOfTrack, 0u, &err);		
 		UsartPrintf(USART_DEBUG, "Run Track----------\r\n");		//提示任务开始执行
+		
 		Track_run(track_work);
+
+		if(0)
+		{
+			Track_run_only(MOTOR_RUN_BACKWARD);
+			CleanTrackParam();
+		}
 		
 		track_work = MOTOR_STOP;
 	}
@@ -650,7 +657,7 @@ void Drug_Push_Task(void *pdata)
 
 			RTOS_TimeDlyHMSM(0, 0, 1, 0);
 			run_time ++;
-			if((run_time >= push_time + 20) && (run_time > 150))// 最大运行时间+10S 后未出货完成开始回收
+			if((run_time >= push_time + 30) && (run_time > 150))// 最大运行时间+30S 后未出货完成开始回收
 			{
 				break;
 			}
@@ -1139,7 +1146,7 @@ void Message_Send_Task(void *pdata)
 				UsartPrintf(USART_DEBUG, "NewMsgNode data.size[%d]time[%d]times[%d]!!!\r\n", 
 					NewMsgNode->data.size, NewMsgNode->data.create_time,NewMsgNode->data.times);
 
-				if(cur_time >= NewMsgNode->data.create_time + (NewMsgNode->data.times + 1) * 600)
+				if(cur_time >= NewMsgNode->data.create_time + (NewMsgNode->data.times + 1) * 30)//超时30*100ms重传
 				{
 					for(j = 0; j < NewMsgNode->data.size; j++)
 					{
@@ -1159,7 +1166,7 @@ void Message_Send_Task(void *pdata)
 				}
 				
 				
-				if(NewMsgNode->data.times >= 5)
+				if(NewMsgNode->data.times >= 5)//设定最大重传次数
 				{
 					UsartPrintf(USART_DEBUG, "Retry Send TimeOut, Delete Node[%d]\r\n", i);
 					if(i == node_num)
@@ -1180,7 +1187,7 @@ void Message_Send_Task(void *pdata)
 		OSMutexPost(MsgMutex);
 
 		
-		RTOS_TimeDlyHMSM(0, 0, 1, 0);//等待2s，重传
+		RTOS_TimeDlyHMSM(0, 0, 1, 0);//等待1s，重传
 	}
 
 	DeleNode(MsgNode, 0);

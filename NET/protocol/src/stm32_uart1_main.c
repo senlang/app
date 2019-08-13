@@ -70,7 +70,7 @@ int uart1_receive_data(void)
 
 int parse_protocol(void)
 {
-	unsigned char *src;
+	unsigned char src[UART_BUF_MAX_LEN];
 	int len;
 	int count = 0;
 	//unsigned char position = 0;
@@ -91,18 +91,21 @@ int parse_protocol(void)
 		return 0;
 	}
 	
-	//UsartPrintf(USART_DEBUG, "count = %d\r\n", count);
+	UsartPrintf(USART_DEBUG, "count = %d\r\n", count);
 
 	while(count > 0)
 	{
-		//UsartPrintf(USART_DEBUG, "11:en idx = %d, de idx = %d\r\n", uart1_enqueue_idx, uart1_dequeue_idx);
-		src = uart1_recv_data[uart1_dequeue_idx].buf;
+		UsartPrintf(USART_DEBUG, "11:en idx = %d, de idx = %d\r\n", uart1_enqueue_idx, uart1_dequeue_idx);
+		memcpy(src, uart1_recv_data[uart1_dequeue_idx].buf, UART_BUF_MAX_LEN);
 		len = uart1_recv_data[uart1_dequeue_idx].dataLen;
+
+		uart1_dequeue_idx++;
+		if(uart1_dequeue_idx >= UART_MAX_IDX)
+		uart1_dequeue_idx = 0;
+		memset(uart1_recv_data[uart1_dequeue_idx].buf, 0x00, UART_BUF_MAX_LEN);
+		
 		packet_parser(src, len);
 		
-		uart1_dequeue_idx++;
-		if(uart1_dequeue_idx >= UART_MAX_IDX - 1)
-		uart1_dequeue_idx = 0;
 		count--;
 	};	
 	return 0;
