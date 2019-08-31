@@ -39,6 +39,7 @@ extern uint8_t motor_run_detect_flag;
 extern uint8_t motor_run_detect_track_num;
 extern uint16_t board_push_finish;
 extern uint16_t board_add_finish;
+extern uint8_t OverCurrentDetected;	//货道开关状态1为检测到
 
 
 //static  uint16_t forward_running_time;  
@@ -310,8 +311,6 @@ int Track_run(MOTOR_ENUM run_mode)
 		{
 			if(track_struct[x][y].push_time > KEY_DELAY_MS)
 			{
-				RTOS_TimeDlyHMSM(0, 0, 1, 0);
-				
 				delay_s = (track_struct[x][y].push_time - KEY_DELAY_MS)/10;
 				delay_ms = ((track_struct[x][y].push_time - KEY_DELAY_MS) % 10) * 100;
 				
@@ -324,14 +323,21 @@ int Track_run(MOTOR_ENUM run_mode)
 				RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
 				
 				motor_run_detect_flag = 1;
+				OverCurrentDetected = 0;
 				
 				RTOS_TimeDlyHMSM(0, 0, delay_s, delay_ms);
 				
 				motor_run_detect_flag = 0;
 				
 				UsartPrintf(USART_DEBUG, "stop:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", motor_run_detect_track_num, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);
+
+
+				/*发生开关检测到，延时1.5S，预留时间给回退*/
+				if(OverCurrentDetected)
+				RTOS_TimeDlyHMSM(0, 0, 1, 500);
 				set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
 				Motor_Set(MOTOR_STOP);	//电机停止
+				OverCurrentDetected = 0;
 
 
 				//if(g_src_board_id != 1)
@@ -434,8 +440,6 @@ int Track_run_only(MOTOR_ENUM run_mode)
 		{
 			if(track_struct[x][y].push_time > KEY_DELAY_MS)
 			{
-				RTOS_TimeDlyHMSM(0, 0, 0, 500);
-				
 				delay_s = (track_struct[x][y].push_time - KEY_DELAY_MS)/10;
 				delay_ms = ((track_struct[x][y].push_time - KEY_DELAY_MS) % 10) * 100;
 				
@@ -448,17 +452,23 @@ int Track_run_only(MOTOR_ENUM run_mode)
 				RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
 				
 				motor_run_detect_flag = 1;
+				OverCurrentDetected = 0;
 				
 				RTOS_TimeDlyHMSM(0, 0, delay_s, delay_ms);
 				
 				motor_run_detect_flag = 0;
 				
 				UsartPrintf(USART_DEBUG, "stop:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", motor_run_detect_track_num, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);
+
+				/*发生开关检测到，延时1.5S，预留时间给回退*/
+				if(OverCurrentDetected)
+				RTOS_TimeDlyHMSM(0, 0, 1, 500);
+				
 				set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
 				Motor_Set(MOTOR_STOP);	//电机停止
+				OverCurrentDetected = 0;
 
 				#if 1
-				//RTOS_TimeDlyHMSM(0, 0, 0, 500);
 				if(KeyScan(GPIOB, KEY0) == KEYDOWN)//行程开关检测到到达货道头
 				{
 					UsartPrintf(USART_DEBUG, "Forward detect keep down\r\n");

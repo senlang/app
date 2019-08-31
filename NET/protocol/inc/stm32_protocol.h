@@ -87,7 +87,7 @@
 #define ADD_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE (IPUC + ADD_MEDICINE_CONPLETE_REQUEST_INFO_SIZE + CHECKSUM_SIZE)  
 
 
-
+#define LOOP_REQUEST_PACKET_SIZE (IPUC + 1 + 1)
 
 
 enum {  
@@ -201,6 +201,8 @@ typedef enum{
 #define CMD_MCU_ADD_MEDICINE_COMPLETE 0xC0	//单板补货完成
 
 #define CMD_MSG_ACK 0xF0	//指令应答
+
+#define CMD_LOOP 0xF1	//主机轮询指令
 
 
 typedef struct _uart_msg_struct

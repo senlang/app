@@ -141,10 +141,11 @@ void UART2_IO_ClearRecive(void);
 void Usart2_Init(unsigned int baud)
 {
 
+	
 	GPIO_InitTypeDef gpioInitStruct;
 	USART_InitTypeDef usartInitStruct;
 	NVIC_InitTypeDef nvicInitStruct;
-
+		
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
 
@@ -276,42 +277,6 @@ void UART2_IO_ClearRecive(void)
 *	说明：		
 ************************************************************
 */
-#if 0
-void USART2_IRQHandler(void)
-{
-	
-	RTOS_EnterInt();
-
-	if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET) //接收中断
-	{
-		if(down_recv_data_info.dataLen >= sizeof(down_recv_data_info.buf))	
-		down_recv_data_info.dataLen = 0; //防止串口被刷爆
-		
-		//UsartPrintf(USART_DEBUG, "irq,0x%02x\r\n", USART_ReceiveData(USART2));
-		down_recv_data_info.buf[down_recv_data_info.dataLen] = USART_ReceiveData(USART2);
-
-		down_recv_data_info.dataLen++;
-		USART_ClearFlag(USART2, USART_FLAG_RXNE);
-	}
-	
-	RTOS_ExitInt();
-
-}
-
-int UART2_IO_Receive(void)
-{
-	unsigned short len = 0;
-	len = down_recv_data_info.dataLen;	
-	if(UART2_IO_WaitRecive() != REV_OK)
-	{
-		//UsartPrintf(USART_DEBUG, "UART2 No Data!!!!!!!!!!!\r\n");
-		return 0;
-	}
-
-	return len;
-}
-
-#else
 void USART2_IRQHandler(void)
 {
 	uint8_t len;
@@ -347,6 +312,89 @@ int UART2_IO_Receive(void)
 	uasrt2_recv_data[uart2_enqueue_idx].status = 1;
 	return uasrt2_recv_data[uart2_enqueue_idx].dataLen;
 }
-#endif
+
+
+
+
+//初始化IO 串口2
+//pclk1:PCLK1时钟频率(Mhz)
+//bound:波特率	  
+void RS485_Init(u32 bound)
+{  
+    GPIO_InitTypeDef GPIO_InitStructure;
+  	USART_InitTypeDef USART_InitStructure;
+ 	NVIC_InitTypeDef NVIC_InitStructure;
+ 
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA|RCC_APB2Periph_GPIOC, ENABLE);//使能GPIOA时钟
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2,ENABLE);//使能USART2时钟
+	
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;				 //PA7端口配置
+ 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP; 		 //推挽输出
+ 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+ 	GPIO_Init(GPIOA, &GPIO_InitStructure);
+ 
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;	//PA2
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;	//复用推挽
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+   
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;//PA3
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING; //浮空输入
+    GPIO_Init(GPIOA, &GPIO_InitStructure);  
+
+	RCC_APB1PeriphResetCmd(RCC_APB1Periph_USART2,ENABLE);//复位串口2
+	RCC_APB1PeriphResetCmd(RCC_APB1Periph_USART2,DISABLE);//停止复位
+ 
+	
+ 	#ifdef EN_USART2_RX		  	//如果使能了接收
+	USART_InitStructure.USART_BaudRate = bound;//一般设置为115200;
+	USART_InitStructure.USART_WordLength = USART_WordLength_8b;//8位数据长度
+	USART_InitStructure.USART_StopBits = USART_StopBits_1;//一个停止位
+	USART_InitStructure.USART_Parity = USART_Parity_No;///奇偶校验位
+	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;//无硬件数据流控制
+	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;//收发模式
+
+    USART_Init(USART2, &USART_InitStructure); ; //初始化串口
+  
+	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn; //使能串口2中断
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3; //先占优先级2级
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3; //从优先级2级
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE; //使能外部中断通道
+	NVIC_Init(&NVIC_InitStructure); //根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器
+ 
+    USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);//开启中断
+   
+    USART_Cmd(USART2, ENABLE);                    //使能串口 
+
+ 	#endif
+
+	RS485_TX_EN=0;			//默认为接收模式
+}
+
+
+
+//RS485发送len个字节.
+//buf:发送区首地址
+//len:发送的字节数
+void RS485_Send_Data(u8 *buf,u8 len)
+{
+	u8 t;
+	
+	UsartPrintf(USART_DEBUG, "RS485 Send[%d] : ", len);
+	for(t=0;t<len;t++)	
+	{
+		UsartPrintf(USART_DEBUG, "0x%02x,", *(buf + t));
+	}
+	UsartPrintf(USART_DEBUG, "\r\n\r\n");
+		
+	RS485_TX_EN=1;			//设置为发送模式
+  	for(t=0;t<len;t++)		//循环发送数据
+	{		   
+		while(USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET);	  
+		USART_SendData(USART2,buf[t]);
+	}	 
+	while(USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET);	
+	
+	RS485_TX_EN=0;				//设置为接收模式	
+}
 
 

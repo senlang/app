@@ -627,8 +627,8 @@ uint8_t preparse_push_medicine_request(struct push_medicine_request_struct *push
 	board_id = push_medicine_request->info[0].board_id;
  	push_time = push_medicine_request->info[0].push_time;
 
-	//累加货道总运行时间
-	drag_push_time[board_id] += push_time;
+	//累加货道总运行时间，为每一个货道预留2s
+	drag_push_time[board_id] += push_time + 20;
 	UsartPrintf(USART_DEBUG, "Push Time Display: board[%d]track[%d]time[%d]\r\n", board_id, push_medicine_request->info[0].medicine_track_number, push_time);  
 	
 	if((push_medicine_request->info[0].board_id == 1) && 

@@ -1,18 +1,7 @@
 #include "tsensor.h"
 #include "delay.h"
 #include "sys.h"
-//////////////////////////////////////////////////////////////////////////////////	 
-//本程序只供学习使用，未经作者许可，不得用于其它任何用途
-//Mini STM32开发板
-//ADC 驱动代码			   
-//正点原子@ALIENTEK
-//技术论坛:www.openedv.com
-//修改日期:2010/6/7 
-//版本：V1.0
-//版权所有，盗版必究。
-//Copyright(C) 正点原子 2009-2019
-//All rights reserved
-////////////////////////////////////////////////////////////////////////////////// 	  
+  
  
 		   
 //初始化ADC
@@ -56,19 +45,19 @@ void T_Adc_Init(void)  //ADC通道初始化
 	while(ADC_GetCalibrationStatus(ADC1));		//获取指定ADC1的校准程序,设置状态则等待
 }
 u16 T_Get_Adc(u8 ch)   
-	{
+{
  
 	ADC_RegularChannelConfig(ADC1, ch, 1, ADC_SampleTime_239Cycles5 );	//ADC1,ADC通道3,规则采样顺序值为1,采样时间为239.5周期	  			    
  
 	ADC_SoftwareStartConvCmd(ADC1, ENABLE);		//使能指定的ADC1的软件转换启动功能
 	while(!ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC ));//等待转换结束
 	return ADC_GetConversionValue(ADC1);	//返回最近一次ADC1规则组的转换结果
-	}
+}
 
 //得到ADC采样内部温度传感器的值
 //取10次,然后平均
 u16 T_Get_Temp(void)
-	{
+{
 	u16 temp_val=0;
 	u8 t;
 	for(t=0;t<10;t++)
@@ -77,7 +66,7 @@ u16 T_Get_Temp(void)
 		delay_ms(5);
 		}
 	return temp_val/10;
-	}
+}
 
  //获取通道ch的转换值
 //取times次,然后平均

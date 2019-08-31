@@ -19,6 +19,7 @@
 #include "light.h"
 #include "sensor.h"
 #include "lifter.h"
+ 
 
 #include "queue.h"
 
@@ -26,6 +27,8 @@
 #define BOX_TEXT_MODE_CLOSE 0
 #define BOX_TEXT_MODE_OPEN 1 
 
+
+#define TRACK_MAX_RUN_TIME 600
 
 //定义药柜相关的结构体
 typedef struct
@@ -90,6 +93,7 @@ extern OS_EVENT *SemOfCalcTime;        	//触发货道时间统计信号量
 extern OS_EVENT *SemOfOverCurrent;				//过流保护信号量
 extern OS_EVENT *MsgMutex;
 extern OS_EVENT *SemOfFactoryTest;				//出厂测试
+extern uint8_t OverCurrentDetected;	//货道开关状态1为检测到
 
 
 #endif

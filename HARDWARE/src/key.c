@@ -325,12 +325,15 @@ void EXTI4_IRQHandler(void)
 				UsartPrintf(USART_DEBUG, "Track[%d] over current!!!!!!\r\n", motor_run_detect_track_num);
 				
 				set_track(motor_run_detect_track_num, MOTOR_STOP);
+				Motor_Set(MOTOR_STOP);
 
 				OSSemQuery (SemOfOverCurrent, &sema_info);
 				UsartPrintf(USART_DEBUG, "sema_info.OSCnt = %d!!!!!!\r\n", sema_info.OSCnt);
 
 				if(sema_info.OSCnt == 0)
 				OSSemPost(SemOfOverCurrent);
+
+				OverCurrentDetected = 1;
 			}
 
 			if(key_init == 0 && trigger_calc_flag == 0)
@@ -455,13 +458,15 @@ void EXTI9_5_IRQHandler(void)
 			{
 				UsartPrintf(USART_DEBUG, "KEY0:Track %d Arrive First Position!!!!!!\r\n", motor_run_detect_track_num);
 				set_track(motor_run_detect_track_num, MOTOR_STOP);
-
+				Motor_Set(MOTOR_STOP);
+				
 				OSSemQuery (SemOfOverCurrent, &sema_info);
 				UsartPrintf(USART_DEBUG, "sema_info.OSCnt = %d!!!!!!\r\n", sema_info.OSCnt);
 
 				if(sema_info.OSCnt == 0)
 				OSSemPost(SemOfOverCurrent);
 				
+				OverCurrentDetected = 1;
 			}
 			else if(trigger_calc_flag == 1)
 			{

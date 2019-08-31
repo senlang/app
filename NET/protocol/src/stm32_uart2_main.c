@@ -113,10 +113,16 @@ int uart2_parse_protocol(void)
 		if(uart2_dequeue_idx >= UART_MAX_IDX)
 		uart2_dequeue_idx = 0;
 
+
+
+		#if 1
 		//if(IsACKMsg(src, len))
 		UART1_IO_Send(src, len);
-		
 		up_packet_parser(src, len);
+		#else
+		/*rs485½Ó¿Ú*/
+		packet_parser(src, len);
+		#endif
 		
 		count--;
 	};	

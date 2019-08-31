@@ -143,6 +143,9 @@ uint8_t calc_track_count = 0;
 uint8_t motor_run_detect_flag = 0;
 uint8_t motor_run_detect_track_num = 0;
 uint8_t motor_run_direction = MOTOR_STOP;	//货道电机方向
+uint8_t OverCurrentDetected = 0;	//货道开关状态1为检测到
+
+
 
 uint8_t key_stat = 0;
 uint16_t board_push_finish = 0;/*1111 1111每一个bit表示1个单板*/
@@ -211,6 +214,8 @@ void Hardware_Init(void)
 	Usart1_Init(115200);	//初始化串口1
 		
 	Usart2_Init(115200);	//初始化串口2 ok
+
+	//RS485_Init(9600);	//初始化rs485
 	
 	EXTIX_Init();	//按键中断初始化
 
@@ -657,7 +662,7 @@ void Drug_Push_Task(void *pdata)
 
 			RTOS_TimeDlyHMSM(0, 0, 1, 0);
 			run_time ++;
-			if((run_time >= push_time + 30) && (run_time > 150))// 最大运行时间+30S 后未出货完成开始回收
+			if((run_time >= push_time + 20) && (run_time > 150))// 最大运行时间+20S 后未出货完成开始回收
 			{
 				break;
 			}
@@ -675,7 +680,7 @@ void Drug_Push_Task(void *pdata)
 		if(1)//(conveyor == 1)
 		{
 			run_time = 0;
-			RTOS_TimeDlyHMSM(0, 0, 10, 0);//传送带运行10s 时间
+			RTOS_TimeDlyHMSM(0, 0, BELT_RUN_TIME, 0);//传送带运行10s 时间
 			PushBeltControl(BELT_STOP);
 			
 			if(1)//(Push_Belt_Run() != 0 )
@@ -762,8 +767,11 @@ void Factory_Test_Task(void *pdata)
 {	
 	int test_time = 0;
 	uint8_t track = 0;
-	//uint8_t dir = MOTOR_STOP;
+	
 	uint8_t msg[BOARD_TEST_REQUEST_PACKET_SIZE] = {0x02,0x09,0x50,0xFF,0x80,00,00,00,00,0x74};
+	
+	uint8_t msg4track[TRACK_RUNTIME_CALC_REQUEST_PACKET_SIZE] = {0x02, 0x06, 0x80, 0x01, 0x01, 0x08, 0x92};
+
     INT8U            err;
 	
 	SemOfFactoryTest = OSSemCreate(0);
@@ -771,8 +779,29 @@ void Factory_Test_Task(void *pdata)
 	{
 		msg[3] = g_src_board_id;
 		msg[BOARD_TEST_REQUEST_PACKET_SIZE - 1] = add_checksum(msg, BOARD_TEST_REQUEST_PACKET_SIZE - 1);
+
+		UsartPrintf(USART_DEBUG, "Send factory test cmd!!!!!\r\n");
+
 		
-		UART2_IO_Send(msg, BOARD_TEST_REQUEST_PACKET_SIZE);	
+		RTOS_TimeDlyHMSM(0, 0, 1, 00);
+		/*产测流程*/
+		//UART2_IO_Send(msg, BOARD_TEST_REQUEST_PACKET_SIZE);	
+		//RS485_Send_Data(msg, BOARD_TEST_REQUEST_PACKET_SIZE);
+
+		/*货道调试*/
+		UART2_IO_Send(msg4track, TRACK_RUNTIME_CALC_REQUEST_PACKET_SIZE);	
+		
+		RTOS_TimeDlyHMSM(0, 0, 0, 50);
+		
+		#if 0
+		for(track = 0; track <= 1000; track++)
+		{
+			msg[0] = track;
+			RS485_Send_Data(msg, BOARD_TEST_REQUEST_PACKET_SIZE);
+			RTOS_TimeDlyHMSM(0, 0, 5, 0);
+		}
+		#endif
+		
 		OSSemPend(SemOfFactoryTest, 0u, &err);
 		
 		UsartPrintf(USART_DEBUG, "Facroty test %d, ", test_time);
@@ -1087,7 +1116,6 @@ void Track_OverCurrent_Task(void *pdata)
 	{
 		OSSemPend(SemOfOverCurrent, 0u, &err);
 		
-		RTOS_TimeDlyHMSM(0, 0, 0, 100);
 		motor_run_detect_flag = 0;
 		
 		UsartPrintf(USART_DEBUG, "Track[%d] do OverCurrent protect!!!\r\n", motor_run_detect_track_num);
@@ -1194,8 +1222,23 @@ void Message_Send_Task(void *pdata)
 }
 
 
-
-
+void LoopMain_Task(void *pdata)
+{
+	uint8_t loop_id = 0;
+	uint8_t msg[LOOP_REQUEST_PACKET_SIZE] = {0x02,0x04,0xF1,0x01,0x00};
+	int i = 0;
+	
+	while(1)
+	{	
+		for(loop_id = 0; loop_id < BOARD_ID_MAX; loop_id++)
+		{
+			msg[3] = loop_id;
+			msg[LOOP_REQUEST_PACKET_SIZE - 1] = add_checksum(msg, LOOP_REQUEST_PACKET_SIZE - 1);
+			RS485_Send_Data(msg, LOOP_REQUEST_PACKET_SIZE);
+			RTOS_TimeDlyHMSM(0, 0, 0, 100);	//挂起任务100ms
+		}
+	}
+}
 
 
 

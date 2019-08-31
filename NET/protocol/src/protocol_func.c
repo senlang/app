@@ -206,6 +206,10 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 				UsartPrintf(USART_DEBUG, "send sem,motor_enqueue_idx[%d]-------------\r\n", motor_enqueue_idx);
 				OSSemPost(SemOfMotor);
 			#else
+			
+				if(motor_control.push_time >= TRACK_MAX_RUN_TIME)
+				motor_control.push_time = TRACK_MAX_RUN_TIME;
+				
 				if(test_request->info.test_status == 0)
 				{
 					SetTrackTestTime(motor_control.medicine_track_number, MOTOR_RUN_FORWARD, motor_control.push_time);
