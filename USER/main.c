@@ -635,6 +635,7 @@ void Drug_Push_Task(void *pdata)
 	INT8U            err;
 	uint16_t push_time = 0;
 	uint8_t drug_push_status = 0;
+	INT8U try_times = 0;
 	
 
 	SemOfConveyor= OSSemCreate(0);
@@ -705,12 +706,14 @@ void Drug_Push_Task(void *pdata)
 				
 				Door_Control_Set(MOTOR_RUN_FORWARD);
 				run_time = 0;
+				try_times = 0;
 				do{
-					if(Sensor_Detect() == SENSOR_DETECT)
+					if((Sensor_Detect() == SENSOR_DETECT)&&(try_times <= 10))
 					{
 						UsartPrintf(USART_DEBUG, "Close Door Detect Somebody, Stop!!!!!!!!!!\r\n");
 						Door_Control_Set(MOTOR_STOP);
-						RTOS_TimeDlyHMSM(0, 0, 10, 0);
+						RTOS_TimeDlyHMSM(0, 0, 10, 0);/.
+						try_times++;
 					}
 					else
 					{
@@ -789,6 +792,8 @@ void Factory_Test_Task(void *pdata)
 		//RS485_Send_Data(msg, BOARD_TEST_REQUEST_PACKET_SIZE);
 
 		/*»õµÀµ÷ÊÔ*/
+		msg4track[3] = g_src_board_id;
+		msg4track[TRACK_RUNTIME_CALC_REQUEST_PACKET_SIZE - 1] = add_checksum(msg4track, TRACK_RUNTIME_CALC_REQUEST_PACKET_SIZE - 1);
 		UART2_IO_Send(msg4track, TRACK_RUNTIME_CALC_REQUEST_PACKET_SIZE);	
 		
 		RTOS_TimeDlyHMSM(0, 0, 0, 50);
@@ -960,16 +965,17 @@ void Trigger_CalcRuntime_Task(void *pdata)
 
 						}
 					}
-					if(running_time >= 600)
+					UsartPrintf(USART_DEBUG, "00running_time = %d!!!!\r\n", running_time);
+					if(running_time >= TRACK_MAX_TIME_MS)
 					{
 						break;
 					}
-					
 					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
 				}while(trigger_calc_flag);
 
 				key_stat = 0;
-				if(running_time >= 600)
+				UsartPrintf(USART_DEBUG, "11running_time = %d!!!!\r\n", running_time);
+				if(running_time >= TRACK_MAX_TIME_MS)
 				{
 					running_time = 0;
 					trigger_calc_runtime = 0;

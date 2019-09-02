@@ -296,11 +296,16 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 		}
 		else if(test_request->info.test_mode == DRUG_DOOR_TEST)
 		{
+			uint16_t run_time = 0;
 			if(test_request->info.test_status == BOX_TEXT_MODE_OPEN)
 			{
 				Door_Control_Set(MOTOR_RUN_BACKWARD);
 				while(Door_Key_Detect(DOOR_OPEN) == SENSOR_NO_DETECT){
 					RTOS_TimeDlyHMSM(0, 0, 0, 100);
+					
+					run_time += 1;					
+					if(run_time >= 300)
+					break;
 				};
 				Door_Control_Set(MOTOR_STOP);
 			}
@@ -318,8 +323,12 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 					else
 					{
 						Door_Control_Set(MOTOR_RUN_FORWARD);
+						run_time += 1;					
 					}
 					RTOS_TimeDlyHMSM(0, 0, 0, 100);
+					
+					if(run_time >= 300)
+					break;
 				};
 				Door_Control_Set(MOTOR_STOP);
 			}
