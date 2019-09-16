@@ -76,12 +76,14 @@ extern OS_EVENT *SemOfKey;          // 按键控制信号量
 extern OS_EVENT *SemOfConveyor;        	//Motor控制信号量
 extern OS_EVENT *SemOfTrack;        	//track 控制信号量
 extern OS_EVENT *SemOfCalcTime;        	//触发货道时间统计信号量
+extern OS_EVENT *SemOf485MsgSend;				//rs485消息轮询发送
 
 extern uint8_t calc_track_start_idx;
 extern uint8_t calc_track_count;
 extern uint16_t board_push_finish;
 extern uint16_t board_add_finish;
 extern uint16_t board_push_ackmsg;
+extern uint16_t board_add_ackmsg;
 
 
 void BoardId_Init(void)
@@ -179,40 +181,15 @@ void send_status_report_request(void *input_data)
 	
     send_statu_report_request_data[7] = add_checksum(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE);  
 
-	UART1_IO_Send(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE);  
-	//MessageInsertQueue(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE, UART1_IDX);
-}  
-
-
-
-void send_push_medicine_request( void *input_data)  
-{  
-	int i = 0;
-	uint8_t send_push_medicine_request_data[PUSH_MEDICINE_REQUEST_PACKET_SIZE];
-	struct push_medicine_paramter *push_medicine_info = (struct push_medicine_paramter * )input_data;
-
-
-	memset(send_push_medicine_request_data, 0x00, PUSH_MEDICINE_REQUEST_PACKET_SIZE);
-	
-	send_push_medicine_request_data[0] = START_CODE;
-	send_push_medicine_request_data[1] = IPUC + PUSH_MEDICINE_REQUEST_INFO_SIZE * push_medicine_info->push_cnt;
-	send_push_medicine_request_data[2] = CMD_PUSH_MEDICINE_REQUEST;
-
-	for(i = 0; i < push_medicine_info->push_cnt; i++)
+	if(g_src_board_id == 1)
 	{
-		send_push_medicine_request_data[3 + i * PUSH_MEDICINE_REQUEST_INFO_SIZE] = push_medicine_info->info[i].board_id;
-		
-		send_push_medicine_request_data[4 + i * PUSH_MEDICINE_REQUEST_INFO_SIZE] = push_medicine_info->info[i].medicine_track_number;
-		
-		send_push_medicine_request_data[5 + i * PUSH_MEDICINE_REQUEST_INFO_SIZE] = (push_medicine_info->info[i].push_time& 0xff00)>>8;
-		send_push_medicine_request_data[6 + i * PUSH_MEDICINE_REQUEST_INFO_SIZE] = push_medicine_info->info[i].push_time;
+		UART1_IO_Send(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE);  
 	}
-	send_push_medicine_request_data[IPUC + PUSH_MEDICINE_REQUEST_INFO_SIZE * push_medicine_info->push_cnt] = add_checksum(send_push_medicine_request_data, IPUC + PUSH_MEDICINE_REQUEST_INFO_SIZE * push_medicine_info->push_cnt);  
-
-	UART2_IO_Send(send_push_medicine_request_data, IPUC + PUSH_MEDICINE_REQUEST_INFO_SIZE * push_medicine_info->push_cnt + CHECKSUM_SIZE);  
-} 
-
-
+	else
+	{
+		NotRetryMessageInsertQueue(send_statu_report_request_data, STATUS_REPORT_REQUEST_PACKET_SIZE, UART2_IDX);
+	}
+}  
 
 void send_push_medicine_complete_request( void *input_data)  
 {
@@ -244,10 +221,19 @@ void send_push_medicine_complete_request( void *input_data)
 	}
 	UsartPrintf(USART_DEBUG, "End\r\n");
 
-	UART1_IO_Send(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE); 
+	if(g_src_board_id == 1)
+	{
+		UART1_IO_Send(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE); 
 
-	if(push_medicine_complete_info->medicine_track_number > TRACK_MAX)
-	MessageInsertQueue(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE, UART1_IDX);
+		if(push_medicine_complete_info->medicine_track_number > TRACK_MAX)
+		MessageInsertQueue(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE, UART1_IDX);
+	}	
+	else
+	{
+		if(push_medicine_complete_info->medicine_track_number > TRACK_MAX)
+		MessageInsertQueue(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE, UART2_IDX);
+	}
+
 } 
 
 
@@ -280,16 +266,20 @@ void mcu_send_push_medicine_complete_request( void *input_data)
 	}
 	UsartPrintf(USART_DEBUG, "\r\n: End");
 
-	UART1_IO_Send(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE); 
 
-	if(push_medicine_complete_info->medicine_track_number > TRACK_MAX)
-	MessageInsertQueue(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE, UART1_IDX);
+	if(g_src_board_id == 1)
+	{
+		UART1_IO_Send(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE);
+
+		if(push_medicine_complete_info->medicine_track_number > TRACK_MAX)
+		MessageInsertQueue(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE, UART1_IDX);
+	}
+	else
+	{
+		if(push_medicine_complete_info->medicine_track_number > TRACK_MAX)
+		MessageInsertQueue(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE, UART2_IDX);
+	}
 } 
-
-
-
-
-
 
 void mcu_send_add_medicine_complete_request( void *input_data)  
 {
@@ -320,44 +310,16 @@ void mcu_send_add_medicine_complete_request( void *input_data)
 	}
 	UsartPrintf(USART_DEBUG, "\r\n: End");
 
-	UART1_IO_Send(send_add_medicine_complete_request_data, ADD_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE);
-
-	if(add_medicine_complete_info->medicine_track_number > TRACK_MAX)
-	MessageInsertQueue(send_add_medicine_complete_request_data, ADD_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE, UART1_IDX);
-} 
-
-
-
-void send_replinish_medicine_request( void *input_data)  
-{  
-	int i = 0;
-	uint8_t send_replinish_medicine_request_data[REPLENISH_MEDICINE_REQUEST_PACKET_SIZE];
-	struct replenish_medicine_paramter *replenish_medicine_info = (struct replenish_medicine_paramter * )input_data;
-
-	memset(send_replinish_medicine_request_data, 0x00, REPLENISH_MEDICINE_REQUEST_PACKET_SIZE);
-	
-	send_replinish_medicine_request_data[0] = START_CODE;
-	send_replinish_medicine_request_data[1] = IPUC + REPLENISH_MEDICINE_REQUEST_INFO_SIZE * replenish_medicine_info->push_cnt;
-	send_replinish_medicine_request_data[2] = CMD_REPLENISH_MEDICINE_REQUEST;
-	
-	UsartPrintf(USART_DEBUG, "replenish_medicine_info->push_cnt[%d]\r\n", replenish_medicine_info->push_cnt);
-
-	for(i = 0; i < replenish_medicine_info->push_cnt; i++)
+	if(g_src_board_id == 1)
 	{
-		send_replinish_medicine_request_data[3 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE] = replenish_medicine_info->info[i].board_id;
-		
-		send_replinish_medicine_request_data[4 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE] = replenish_medicine_info->info[i].medicine_track_number;
-		
-		send_replinish_medicine_request_data[5 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE] = (replenish_medicine_info->info[i].push_time& 0xff00)>>8;
-		send_replinish_medicine_request_data[6 + i * REPLENISH_MEDICINE_REQUEST_INFO_SIZE] = replenish_medicine_info->info[i].push_time;
+		UART1_IO_Send(send_add_medicine_complete_request_data, ADD_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE); 
+		MessageInsertQueue(send_add_medicine_complete_request_data, ADD_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE, UART1_IDX);
 	}
-	send_replinish_medicine_request_data[IPUC + REPLENISH_MEDICINE_REQUEST_INFO_SIZE * replenish_medicine_info->push_cnt] = add_checksum(send_replinish_medicine_request_data, IPUC + REPLENISH_MEDICINE_REQUEST_INFO_SIZE * replenish_medicine_info->push_cnt);  
-
-	UART2_IO_Send(send_replinish_medicine_request_data, IPUC + REPLENISH_MEDICINE_REQUEST_INFO_SIZE * replenish_medicine_info->push_cnt + CHECKSUM_SIZE);  
+	else
+	{
+		MessageInsertQueue(send_add_medicine_complete_request_data, ADD_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE, UART2_IDX);
+	}
 } 
-
-
-
 
 
 
@@ -389,7 +351,8 @@ void send_board_test_request(void *input_data)
 
 	send_board_test_request_data[BOARD_TEST_REQUEST_PACKET_SIZE - 1] = add_checksum(send_board_test_request_data, BOARD_TEST_REQUEST_PACKET_SIZE - 1);  
 
-	UART2_IO_Send(send_board_test_request_data, BOARD_TEST_REQUEST_PACKET_SIZE);  
+	//UART2_IO_Send(send_board_test_request_data, BOARD_TEST_REQUEST_PACKET_SIZE);  
+	MessageInsertQueue(send_board_test_request_data, BOARD_TEST_REQUEST_PACKET_SIZE, UART2_IDX);
 
 	
 	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
@@ -440,82 +403,11 @@ void replenish_complete_test_request(void *input_data)
 
 	replenish_complete_request_data[REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE - 1] = add_checksum(replenish_complete_request_data, REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE - 1);  
 
-	UART2_IO_Send(replenish_complete_request_data, REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE);  
-
+	//UART2_IO_Send(replenish_complete_request_data, REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE);  
+	MessageInsertQueue(replenish_complete_request_data, REPLENISH_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE, UART2_IDX);
 	
 	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
 } 
-
-
-
-
-
-
-
-void push_test(void)
-{
-	struct push_medicine_paramter push_paramter;
-	int i;
-	push_paramter.push_cnt = 1;
-
-	for(i = 0; i < push_paramter.push_cnt; i++)
-	{
-		push_paramter.info[i].board_id = 0x0001;
-		push_paramter.info[i].medicine_track_number = 1 + i;
-		push_paramter.info[i].push_time = 80 + i * 10;
-	}
-
-	send_push_medicine_request((void *)&push_paramter);
-}
-
-
-
-void replenish_test(void)
-{
-	struct replenish_medicine_paramter replenish_paramter;
-	int i;
-	replenish_paramter.push_cnt = 1;
-
-	for(i = 0; i < replenish_paramter.push_cnt; i++)
-	{
-		replenish_paramter.info[i].board_id = 0x0001;
-		replenish_paramter.info[i].medicine_track_number = 1 + i;
-		replenish_paramter.info[i].push_time = 80 + i * 10;
-	}
-
-	send_replinish_medicine_request((void *)&replenish_paramter);
-}
-
-void test_test(void)
-{
-	struct test_request_info_struct test_request_info;
-	
-	test_request_info.board_id = 0x01;
-	test_request_info.test_mode = MOTOR_RUN_FORWARD;
-	test_request_info.medicine_track_number = 0x01;
-	test_request_info.test_time = 200;
-
-
-	send_board_test_request((void *)&test_request_info);
-}
-
-
-
-void calibrate_test(void)
-{
-
-}
-
-
-void replenish_complete_test(void)
-{
-	struct replenish_medicine_complete_request_info_struct replenish_medicine_complete_request_info;
-	
-	replenish_medicine_complete_request_info.board_id = 0x01;
-
-	replenish_complete_test_request((void *)&replenish_medicine_complete_request_info);
-}
-
 
 void send_track_runtime_report( void *input_data)  
 {  
@@ -540,9 +432,15 @@ void send_track_runtime_report( void *input_data)
 	
 	send_track_runtime[TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE - 1] = add_checksum(send_track_runtime, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE - 1);  
 
-	
-	UART1_IO_Send(send_track_runtime, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE); 
-	//MessageInsertQueue(send_track_runtime, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE, UART1_IDX);
+	if(g_src_board_id == 1)
+	{
+		UART1_IO_Send(send_track_runtime, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE); 
+		MessageInsertQueue(send_track_runtime, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE, UART1_IDX);
+	}
+	else
+	{
+		MessageInsertQueue(send_track_runtime, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE, UART2_IDX);
+	}
 } 
 
 
@@ -555,10 +453,6 @@ int board_send_message(int msg_type, void *input_data)
 			send_status_report_request(input_data);
 		break;
 
-		case PUSH_MEDICINE_REQUEST:
-			send_push_medicine_request(input_data);
-		break;
-
 		case PUSH_MEDICINE_COMPLETE_REQUEST:
 			send_push_medicine_complete_request(input_data);
 		break;
@@ -567,15 +461,7 @@ int board_send_message(int msg_type, void *input_data)
 			mcu_send_add_medicine_complete_request(input_data);
 		break;
 
-		case REPLENISH_MEDICINE_COMPLETE_REQUEST:
-			send_replinish_medicine_request(input_data);
-		break;
-
 		case CMD_ACK:
-			send_command_ack(input_data, UART1_IDX);
-		break;
-		
-		case CMD_TRACK_RUNTIME_CALC:
 			send_command_ack(input_data, UART1_IDX);
 		break;
 		
@@ -724,7 +610,7 @@ void up_packet_parser(unsigned char *src, int len)
 	struct add_medicine_complete_struct add_medicine_complete_request;
 	struct msg_ack_info_struct cmd_ack_info;
 
-	UsartPrintf(USART_DEBUG, "UART2 PACKET Parse:");
+	UsartPrintf(USART_DEBUG, "HostBoard All Packet[%d]:", len);
 	for(i = 0; i < len; i++)
 	{
 		UsartPrintf(USART_DEBUG, "0x%02x,", *(src + i));
@@ -752,7 +638,7 @@ void up_packet_parser(unsigned char *src, int len)
 		pkt_len = *(uart2_shared_rx_buf + 1) + 1;//data + checksum
 
 
-		UsartPrintf(USART_DEBUG, "uart2 Data:");
+		UsartPrintf(USART_DEBUG, "One packet:");
 		for(i = 0; i < pkt_len; i++)
 		{
 			UsartPrintf(USART_DEBUG, "0x%02x,", *(uart2_shared_rx_buf + i));
@@ -765,7 +651,6 @@ void up_packet_parser(unsigned char *src, int len)
 			UsartPrintf(USART_DEBUG, "CheckSum error, chk_offset:%d\r\n", chk_offset);
 			goto	UPDATA_CONTINUE;
 		}
-
 
 		if((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_MSG_ACK))
 		{
@@ -808,9 +693,10 @@ void up_packet_parser(unsigned char *src, int len)
 			{
 				/*0x02,0x06,0xf0,0xa0,0x03,0x01,0x9c*/
 				board_id = *(uart2_shared_rx_buf + 4);
-				
 				if(*(uart2_shared_rx_buf + 3) == CMD_PUSH_MEDICINE_REQUEST)
 				board_push_ackmsg &= ~(1<<(board_id - 1));
+				if(*(uart2_shared_rx_buf + 3) == CMD_REPLENISH_MEDICINE_REQUEST)
+				board_add_ackmsg &= ~(1<<(board_id - 1));
 			}
 			else
 			{
@@ -828,7 +714,7 @@ void up_packet_parser(unsigned char *src, int len)
 
 
 
-void packet_parser(unsigned char *src, int len)  
+void packet_parser(unsigned char *src, int len, int uart_idx)  
 {  
 	int chk_offset = 0;
 	int pkt_len = 0;
@@ -844,7 +730,7 @@ void packet_parser(unsigned char *src, int len)
     //struct replenish_medicine_request_struct replenish_medicine_request;
 
 	
-	UsartPrintf(USART_DEBUG, "UART1 packet_parser:");
+	UsartPrintf(USART_DEBUG, "All Packet[%d]:", len);
 	for(i = 0; i < len; i++)
 	{
 		UsartPrintf(USART_DEBUG, "0x%02x,", *(src + i));
@@ -862,7 +748,7 @@ void packet_parser(unsigned char *src, int len)
 			UsartPrintf(USART_DEBUG, "start code error: 0x%02x\r\n", *(uart1_shared_rx_buf));
 			chk_offset++;
 			
-			goto	PARSER_CONTINUE;
+			goto	NEXT_OFFSET;
 		}
 
 		//UsartPrintf(USART_DEBUG, "start code = 0x%02x, boardid = 0x%02x, cmd = 0x%02x!!\r\n", *(uart1_shared_rx_buf), *(uart1_shared_rx_buf + 3), *(uart1_shared_rx_buf + 2));
@@ -871,15 +757,13 @@ void packet_parser(unsigned char *src, int len)
 		cmd_type = *(uart1_shared_rx_buf + 2);
 		board_id = *(uart1_shared_rx_buf + 3);
 
-		UsartPrintf(USART_DEBUG, "uart1 Data:");
+		UsartPrintf(USART_DEBUG, "One Packet:");
 		for(i = 0; i < pkt_len; i++)
 		{
 			UsartPrintf(USART_DEBUG, "0x%02x,", *(uart1_shared_rx_buf + i));
 		}
 		UsartPrintf(USART_DEBUG, "\r\n");
-
-
-
+		
 
 		check_sum = add_checksum(uart1_shared_rx_buf, pkt_len - 1);
 		
@@ -887,10 +771,16 @@ void packet_parser(unsigned char *src, int len)
 		{
 			UsartPrintf(USART_DEBUG, "checksum error: 0x%02x, 0x%02x\r\n", check_sum, uart1_shared_rx_buf[pkt_len - 1]);
 			chk_offset ++;
-			goto	PARSER_CONTINUE;
+			goto	NEXT_OFFSET;
 		}
-		
-		if(1 == g_src_board_id)
+
+
+		if((*uart1_shared_rx_buf == START_CODE)&&(cmd_type == CMD_MSG_ACK)&&(*(uart1_shared_rx_buf + 4) == g_src_board_id))
+		goto START_PARSER;
+
+
+		/*来自uart1 的消息处理*/
+		if((1 == g_src_board_id) && (uart_idx == UART1_IDX))
 		{
 			if(cmd_type == CMD_PUSH_MEDICINE_REQUEST)
 			{
@@ -906,17 +796,16 @@ void packet_parser(unsigned char *src, int len)
 						if(board_push_finish & (1 << (i-1)))
 						{
 							memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
-							*(forward_data + 3) = i;
-							*(forward_data + pkt_len - 1) = add_checksum(forward_data, pkt_len - 1);
+							*(forward_data + 3) = i;//board id
+							*(forward_data + pkt_len - 1) = add_checksum(forward_data, pkt_len - 1);//message len
 							
 							UsartPrintf(USART_DEBUG, "PUSH_MEDICINE_REQUEST Forward: 0x%02x\r\n", *(forward_data + 3));
-
+		
 							MessageInsertQueue(forward_data, pkt_len, UART2_IDX);
-							UART2_IO_Send(forward_data, pkt_len);
-							RTOS_TimeDly(500);
+							RS485_Send_Data(forward_data, pkt_len);
+							RTOS_TimeDlyHMSM(0, 0, 0, 100);
 							
-							UART2_IO_Send(forward_data, pkt_len);//重传
-							RTOS_TimeDly(50);
+							send_query_message(i);
 						}
 					}
 				}
@@ -941,111 +830,154 @@ void packet_parser(unsigned char *src, int len)
 						if(board_add_finish & (1 << (i-1)))
 						{
 							memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
-							*(forward_data + 3) = i;
-							*(forward_data + pkt_len - 1) = add_checksum(forward_data, pkt_len - 1);
+							*(forward_data + 3) = i;	//board id
+							*(forward_data + pkt_len - 1) = add_checksum(forward_data, pkt_len - 1); //message len
 							UsartPrintf(USART_DEBUG, "REPLENISH_MEDICINE_REQUEST Forward: 0x%02x\r\n", *(forward_data + 3));
-
+		
 							MessageInsertQueue(forward_data, pkt_len, UART2_IDX);
-							UART2_IO_Send(forward_data, pkt_len);
-							RTOS_TimeDly(500);
+							RS485_Send_Data(forward_data, pkt_len);
+							RTOS_TimeDlyHMSM(0, 0, 0, 100);
 							
-							UART2_IO_Send(forward_data, pkt_len);//重传
-							RTOS_TimeDly(50);
+							send_query_message(i);
 						}
 					}				
 				}
 				else
 				{
 					board_add_finish |= 1<<(board_id - 1);
+					board_add_ackmsg |= 1<<(board_id - 1);
 				}
 			}
 		}
+
+
+
+
 		
-		//if(board_id != g_src_board_id && (board_id > 0 ) && (board_id < BOARD_ID_MAX))
-		//针对ack message处理
-		if((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_MSG_ACK))//
+		if(g_src_board_id == 1)/*1号板,HOST*/
 		{
-			board_id = *(uart1_shared_rx_buf + 4);
-			if((board_id != g_src_board_id))
+			if((board_id != g_src_board_id)&&(uart_idx == UART1_IDX))/*安卓机器发给其他单板的数据*/
 			{
-				UsartPrintf(USART_DEBUG, "[ACK Message]Board Id not match, forward!!!%d - %d!!\r\n", board_id, g_src_board_id);
-				UART2_IO_Send(uart1_shared_rx_buf, pkt_len);	
-			}
-			else
-			{  
-				parse_message_ack(protocol_data, uart1_shared_rx_buf);  
-				MessageAckCheck(uart1_shared_rx_buf, pkt_len);
-				//print_message_ack(protocol_data);	
-				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MSG_ACK!!\r\n");
-			}
-		}
-		else if(board_id != g_src_board_id)
-		{
-			//只针对ID不匹配的消息转发
-			UsartPrintf(USART_DEBUG, "[Other Message]Board Id not match, forward!!!%d - %d!!\r\n", board_id, g_src_board_id);
-			UART2_IO_Send(uart1_shared_rx_buf, pkt_len);	
-		}
-		else
-		{
-			if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_REQUEST)) //收到状态上报响应
-			{  
-				parse_push_medicine_request(protocol_data, uart1_shared_rx_buf);  
-				print_push_medicine_request(protocol_data);  
-  
-				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_PUSH_MEDICINE_REQUEST!!\r\n");
-			}  
-			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_REPLENISH_MEDICINE_REQUEST)) //收到状态上报响应
-			{  
-				parse_replenish_medicine_request(protocol_data, uart1_shared_rx_buf);	
-				print_replenish_medicine_request(protocol_data);	
+				RS485_Send_Data(uart1_shared_rx_buf, pkt_len);
+				RTOS_TimeDlyHMSM(0, 0, 0, 50);
+				send_query_message(board_id);
+				UsartPrintf(USART_DEBUG, "ID Mismatch(%d->%d). Forward!!!!!!!\r\n", g_src_board_id, board_id);
 				
-				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_REPLENISH_MEDICINE_REQUEST!!\r\n");
-			}   	
-			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_TEST_REQUEST)) //收到状态上报响应
-			{  
-				parse_board_test_request(protocol_data, uart1_shared_rx_buf);  
-				print_board_test_request(protocol_data);  
-				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_TEST_REQUEST!!\r\n");
-			}  
-			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_ADD_MEDICINE_COMPLETE)) //收到状态上报响应
-			{  
-				parse_replenish_complete_request(protocol_data, uart1_shared_rx_buf);
-				print_replenish_complete_request(protocol_data);  
-				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_ADD_MEDICINE_COMPLETE!!\r\n");
-			} 
-			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_MSG_ACK)) //收到状态上报响应
-			{  
-				parse_message_ack(protocol_data, uart1_shared_rx_buf);
-				MessageAckCheck(uart1_shared_rx_buf, pkt_len);
-				//print_message_ack(protocol_data);  
-				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MSG_ACK!!\r\n");
-			} 
-			/*
-			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_STATUS_REPORT_REQUEST)) //收到状态上报请求
-			{  
-				memcpy(status_report_request_buf, uart1_shared_rx_buf, pkt_len);  
-				parse_status_report_request(&status_report_request);  
-				print_status_report_request(&status_report_request);  
-				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_STATUS_REPORT_REQUEST!!\r\n");
-			} 
-			*/
-			else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_TRACK_RUNTIME_CALC)) //收到状态上报请求
-			{  
-				parse_track_runtime_calc_request(protocol_data, uart1_shared_rx_buf);
-				print_track_runtime_calc_request(protocol_data);  
-				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_STATUS_REPORT_REQUEST!!\r\n");
-			} 			
-			else 
+				goto	NEXT_PACKET;
+			}
+			else if(uart_idx == UART2_IDX)/*其他单板发给安卓机的*/
 			{
-				UsartPrintf(USART_DEBUG, "Received Data is Error, drop!!\r\n");
-				break;
+				UART1_IO_Send(uart1_shared_rx_buf, pkt_len);
+				UsartPrintf(USART_DEBUG, "HostBoard From Device Board(%d->%d). Forward!!!!!!!\r\n", g_src_board_id, board_id);
+				
+				goto	NEXT_PACKET;
+			}
+		}
+		else/*非1号板*/
+		{
+			if((board_id != g_src_board_id)&&(uart_idx == UART2_IDX))/*非1号单板，其他单板发送*/
+			{
+				UsartPrintf(USART_DEBUG, "From Device Board(%d->%d). Forward!!!!!!!\r\n", g_src_board_id, board_id);
+				goto	NEXT_PACKET;
+			}
+			else if(uart_idx == UART1_IDX)/*非1号单板，其他单板发送*/
+			{
+				UsartPrintf(USART_DEBUG, "Warnning,cannot!!!!!!!!%d - %d!!\r\n", board_id, g_src_board_id);
+				//goto	NEXT_PACKET;
 			}
 		}
 		
+		#if 0
+		else/*非1号板*/
+		{
+			if((board_id != g_src_board_id)&&(uart_idx == UART2_IDX))/*非1号单板，其他单板发送*/
+			{
+				//只针对ID不匹配的消息丢弃
+				UsartPrintf(USART_DEBUG, "[Other Message]Board Id not match, Drop!!!%d - %d!!\r\n", board_id, g_src_board_id);
+
+				if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_REQUEST)) //收到状态上报响应
+				{  
+					parse_push_medicine_request(protocol_data, uart1_shared_rx_buf);  
+					print_push_medicine_request(protocol_data);  
+		
+					UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_PUSH_MEDICINE_REQUEST!!\r\n");
+				}  
+				else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_REPLENISH_MEDICINE_REQUEST)) //收到状态上报响应
+				{  
+					parse_replenish_medicine_request(protocol_data, uart1_shared_rx_buf);	
+					print_replenish_medicine_request(protocol_data);	
+					
+					UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_REPLENISH_MEDICINE_REQUEST!!\r\n");
+				}		
+				goto	NEXT_PACKET;
+			}
+			else if(uart_idx == UART1_IDX)/*非1号单板，其他单板发送*/
+			{
+				UsartPrintf(USART_DEBUG, "Warnning,cannot!!!!!!!!%d - %d!!\r\n", board_id, g_src_board_id);
+				//goto	NEXT_PACKET;
+			}
+		}
+		#endif
+
+		
+		//针对接收到的message处理
+		START_PARSER:
+		if((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_QUERY_MSG))//收到tx 轮询报文
+		{
+			UsartPrintf(USART_DEBUG, "Recevied Query packet !!\r\n");
+			OSSemPost(SemOf485MsgSend);
+		}
+		else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_MSG_ACK)) //收到消息应答报文
+		{  
+			parse_message_ack(protocol_data, uart1_shared_rx_buf);
+			MessageAckCheck(uart1_shared_rx_buf, pkt_len);
+			//print_message_ack(protocol_data);  
+			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MSG_ACK!!\r\n");
+		} 
+		else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_REQUEST)) //收到出药请求
+		{  
+			parse_push_medicine_request(protocol_data, uart1_shared_rx_buf);  
+			print_push_medicine_request(protocol_data);  
+
+			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_PUSH_MEDICINE_REQUEST!!\r\n");
+		}  
+		else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_REPLENISH_MEDICINE_REQUEST)) //收到补货请求
+		{  
+			parse_replenish_medicine_request(protocol_data, uart1_shared_rx_buf);	
+			print_replenish_medicine_request(protocol_data);	
+			
+			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_REPLENISH_MEDICINE_REQUEST!!\r\n");
+		}   	
+		else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_ADD_MEDICINE_COMPLETE)) //收到收到补货完成
+		{  
+			parse_replenish_complete_request(protocol_data, uart1_shared_rx_buf);
+			print_replenish_complete_request(protocol_data);  
+			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_ADD_MEDICINE_COMPLETE!!\r\n");
+		} 
+		else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_TEST_REQUEST)) //收到接口测试报文
+		{  
+			parse_board_test_request(protocol_data, uart1_shared_rx_buf);  
+			print_board_test_request(protocol_data);  
+			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_TEST_REQUEST!!\r\n");
+		} 
+		else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_TRACK_RUNTIME_CALC)) //收到货道时间计算
+		{  
+			parse_track_runtime_calc_request(protocol_data, uart1_shared_rx_buf);
+			print_track_runtime_calc_request(protocol_data);  
+			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_STATUS_REPORT_REQUEST!!\r\n");
+		} 			
+		else 
+		{
+			UsartPrintf(USART_DEBUG, "Received Data is Error, drop!!\r\n");
+			break;
+		}
+
+		
+		NEXT_PACKET:
 		UsartPrintf(USART_DEBUG, "uart1 pkt_len = %d, chk_offset = %d, len = %d!!\r\n", pkt_len, chk_offset, len);
 		chk_offset = chk_offset + pkt_len;
 		
-		PARSER_CONTINUE:
+		NEXT_OFFSET:
 	}while(chk_offset > 0 && chk_offset < len);
 		
 }
@@ -1073,7 +1005,7 @@ uint16_t GetMaxPushTime(void)
 	qsort(drag_push_time, BOARD_ID_MAX, sizeof(drag_push_time[0]),cmp);
 	delay_s = drag_push_time[0]/10;
 	
-	UsartPrintf(USART_DEBUG, "Push_Belt_Run %d, %ds-------------\r\n", drag_push_time[0], delay_s);
+	UsartPrintf(USART_DEBUG, "drag_push_time %d, %ds-------------\r\n", drag_push_time[0], delay_s);
 	
 	memset(&drag_push_time[0], 0x00, sizeof(drag_push_time));
 	return delay_s;

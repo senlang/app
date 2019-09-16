@@ -331,14 +331,13 @@ int Track_run(MOTOR_ENUM run_mode)
 				
 				UsartPrintf(USART_DEBUG, "stop:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", motor_run_detect_track_num, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);
 
-
 				/*发生开关检测到，延时1.5S，预留时间给回退*/
 				if(OverCurrentDetected)
 				RTOS_TimeDlyHMSM(0, 0, 1, 500);
+				
 				set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
 				Motor_Set(MOTOR_STOP);	//电机停止
 				OverCurrentDetected = 0;
-
 
 				//if(g_src_board_id != 1)
 				{
@@ -354,10 +353,11 @@ int Track_run(MOTOR_ENUM run_mode)
 				}
 
 				#if 1
-				//RTOS_TimeDlyHMSM(0, 0, 0, 500);
-				if(KeyScan(GPIOB, KEY0) == KEYDOWN)//行程开关检测到到达货道头
+				RTOS_TimeDlyHMSM(0, 0, 0, 500);
+				if((Key_Check(ForwardDetectKey) == KEYDOWN)||
+				((MOTOR_RUN_FORWARD == run_mode)&&(Key_Check(CurrentDetectKey) == KEYDOWN)))//行程开关检测到到达货道头
 				{
-					UsartPrintf(USART_DEBUG, "Forward detect keep down\r\n");
+					UsartPrintf(USART_DEBUG, "Forward detect keep down, track[%d]\r\n", motor_run_detect_track_num);
 
 					Motor_Set(MOTOR_RUN_BACKWARD);//电机方向使能
 					set_track(motor_run_detect_track_num, MOTOR_RUN_BACKWARD);//货道使能
@@ -367,9 +367,10 @@ int Track_run(MOTOR_ENUM run_mode)
 					set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
 					Motor_Set(MOTOR_STOP);	//电机停止
 				}
-				else if(KeyScan(GPIOB, KEY1) == KEYDOWN)//行程开关检测到到达货尾
+				else if((Key_Check(BackwardDetectKey) == KEYDOWN)||
+					((MOTOR_RUN_BACKWARD == run_mode)&&(Key_Check(CurrentDetectKey) == KEYDOWN)))//行程开关检测到到达货尾
 				{
-					UsartPrintf(USART_DEBUG, "Backword detect keep down\r\n");
+					UsartPrintf(USART_DEBUG, "Backword detect keep down, track[%d]\r\n", motor_run_detect_track_num);
 					Motor_Set(MOTOR_RUN_FORWARD);//电机方向使能
 					set_track(motor_run_detect_track_num, MOTOR_RUN_BACKWARD);//货道使能
 					
@@ -391,15 +392,14 @@ int Track_run(MOTOR_ENUM run_mode)
 	}
 	Motor_Set(MOTOR_STOP);	//电机停止
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
-
-	RTOS_TimeDlyHMSM(0, 0, 1, 0);
+	
 	if(MOTOR_RUN_FORWARD == run_mode)
 	{
 		//if(g_src_board_id != 1)
 		{
 			mcu_push_medicine_track_only(g_src_board_id, 0xFF);//向1号板发送当前单板出货完成
 			RTOS_TimeDlyHMSM(0, 0, 1, 0);
-			mcu_push_medicine_track_only(g_src_board_id, 0xFF);//向1号板发送当前单板出货完成
+			//mcu_push_medicine_track_only(g_src_board_id, 0xFF);//向1号板发送当前单板出货完成
 		}
 
 		if(g_src_board_id == 1)
@@ -469,7 +469,7 @@ int Track_run_only(MOTOR_ENUM run_mode)
 				OverCurrentDetected = 0;
 
 				#if 1
-				if(KeyScan(GPIOB, KEY0) == KEYDOWN)//行程开关检测到到达货道头
+				if(KeyScan(GPIOB, ForwardDetectKey) == KEYDOWN)//行程开关检测到到达货道头
 				{
 					UsartPrintf(USART_DEBUG, "Forward detect keep down\r\n");
 
@@ -481,7 +481,7 @@ int Track_run_only(MOTOR_ENUM run_mode)
 					set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
 					Motor_Set(MOTOR_STOP);	//电机停止
 				}
-				else if(KeyScan(GPIOB, KEY1) == KEYDOWN)//行程开关检测到到达货尾
+				else if(KeyScan(GPIOB, BackwardDetectKey) == KEYDOWN)//行程开关检测到到达货尾
 				{
 					UsartPrintf(USART_DEBUG, "Backword detect keep down\r\n");
 					Motor_Set(MOTOR_RUN_FORWARD);//电机方向使能
@@ -546,6 +546,38 @@ int Track_trigger_calc_runtime(uint8_t is_init, MOTOR_ENUM run_mode)
 		//send_track_runtime_report(&track_time);
 	}
 	old_status = run_mode;
+	return 0;
+}
+
+int Track_Runtime(uint8_t is_init, MOTOR_ENUM run_mode, MOTOR_ENUM cur_run_mode)
+{
+	Motor_Set(run_mode);
+	set_track(cur_calc_track, run_mode);
+	if(is_init)
+	{
+		memset(&track_time, 0x00, sizeof(struct track_cale_report_info_struct));
+		track_time.track_start_num = cur_calc_track;
+		track_time.board_id = g_src_board_id;
+		running_time = 0;
+		UsartPrintf(USART_DEBUG, "Calc Time[START]%d,%d,%d!!!\r\n", track_time.track_start_num, track_time.track_backward_time, track_time.track_backward_time);
+	}
+	if((!is_init) && (run_mode == MOTOR_STOP))
+	{
+		if(cur_run_mode == MOTOR_RUN_BACKWARD)
+		{
+			track_time.track_backward_time = running_time;
+			UsartPrintf(USART_DEBUG, "Backward Running Time:%d, %\r\n", track_time.track_backward_time, running_time);
+			running_time = 0;
+		}
+		else if(cur_run_mode == MOTOR_RUN_FORWARD)
+		{
+			track_time.track_forward_time = running_time;
+			UsartPrintf(USART_DEBUG, "Forward Running Time :%d, %d\r\n", track_time.track_forward_time, running_time);
+			running_time = 0;
+			send_track_runtime_report(&track_time);
+		}
+		UsartPrintf(USART_DEBUG, "Calc Time[END]%d,%d,%d!!!\r\n", track_time.track_start_num, track_time.track_forward_time, track_time.track_backward_time);
+	}
 	return 0;
 }
 

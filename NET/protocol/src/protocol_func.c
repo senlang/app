@@ -150,15 +150,22 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 	if(check_sum != test_request->checksum)
 	{
 		UsartPrintf(USART_DEBUG, "check sum fail : 0x%02x, 0x%02x\r\n", check_sum, test_request->checksum);  
+		if(g_src_board_id == 1)
 		send_command_ack(&cmd_ack_info, UART1_IDX);
+		else
+		send_command_ack(&cmd_ack_info, UART2_IDX);
+		
 		return;
 	}
 	
 	cmd_ack_info.board_id = g_src_board_id;
 	cmd_ack_info.rsp_cmd_type = test_request->cmd_type;
 	cmd_ack_info.status = 1;
+
+	if(g_src_board_id == 1)
 	send_command_ack((void *)&cmd_ack_info, UART1_IDX);
-	
+	else
+	send_command_ack((void *)&cmd_ack_info, UART2_IDX);
 	
 	test_request->info.board_id = inputdata[3];
 	test_request->info.test_mode = inputdata[4];
@@ -183,47 +190,22 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 		UsartPrintf(USART_DEBUG, "test mode[%d]\r\n",test_request->info.test_mode);
 		if(test_request->info.test_mode == TRACK_TEST)
 		{
-			#if 0
-				if(test_request->info.test_status == 0)
-					motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_FORWARD;
-				else
-					motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_BACKWARD;
-
-
-				motor_struct[motor_enqueue_idx].motor_work_mode = CMD_TEST_REQUEST;
-
-				memcpy(&motor_struct[motor_enqueue_idx].info, &motor_control, sizeof(struct motor_control_info_struct));
-
-				UsartPrintf(USART_DEBUG, "board_id = %d\r\n",motor_struct[motor_enqueue_idx].info.board_id);
-				UsartPrintf(USART_DEBUG, "medicine_track_number = %d\r\n",motor_struct[motor_enqueue_idx].info.medicine_track_number);
-				UsartPrintf(USART_DEBUG, "push_time = %d\r\n",motor_struct[motor_enqueue_idx].info.push_time);
-
-
-				motor_enqueue_idx++;
-				if(motor_enqueue_idx >= TOTAL_PUSH_CNT)
-				motor_enqueue_idx = 0;
-
-				UsartPrintf(USART_DEBUG, "send sem,motor_enqueue_idx[%d]-------------\r\n", motor_enqueue_idx);
-				OSSemPost(SemOfMotor);
-			#else
+			if(motor_control.push_time >= TRACK_MAX_RUN_TIME)
+			motor_control.push_time = TRACK_MAX_RUN_TIME;
 			
-				if(motor_control.push_time >= TRACK_MAX_RUN_TIME)
-				motor_control.push_time = TRACK_MAX_RUN_TIME;
-				
-				if(test_request->info.test_status == 0)
-				{
-					SetTrackTestTime(motor_control.medicine_track_number, MOTOR_RUN_FORWARD, motor_control.push_time);
-					//Track_run_only(MOTOR_RUN_FORWARD);
-					//CleanTrackParam();
-				}
-				else
-				{
-					SetTrackTestTime(motor_control.medicine_track_number, MOTOR_RUN_BACKWARD, motor_control.push_time);
-					//Track_run_only(MOTOR_RUN_BACKWARD);
-					//CleanTrackParam();
-				}
-				OSSemPost(SemOfTrack);
-			#endif
+			if(test_request->info.test_status == 0)
+			{
+				SetTrackTestTime(motor_control.medicine_track_number, MOTOR_RUN_FORWARD, motor_control.push_time);
+				//Track_run_only(MOTOR_RUN_FORWARD);
+				//CleanTrackParam();
+			}
+			else
+			{
+				SetTrackTestTime(motor_control.medicine_track_number, MOTOR_RUN_BACKWARD, motor_control.push_time);
+				//Track_run_only(MOTOR_RUN_BACKWARD);
+				//CleanTrackParam();
+			}
+			OSSemPost(SemOfTrack);
 		}
 		else if(test_request->info.test_mode == PUSH_BELT_TEST)
 		{
@@ -425,7 +407,6 @@ void print_push_medicine_request(uint8_t *data)
 
 void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)  
 {  
-	uint8_t i = 0;
 	uint8_t check_sum = 0;
 	uint8_t try_cnt = 0;
 	uint8_t x = 0;
@@ -449,7 +430,12 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 	if(check_sum != push_medicine_request->checksum)
 	{
 		UsartPrintf(USART_DEBUG, "check sum fail : 0x%02x, 0x%02x\r\n", check_sum, push_medicine_request->checksum);  
+
+		if(g_src_board_id == 1)
 		send_command_ack(&cmd_ack_info, UART1_IDX);
+		else
+		send_command_ack(&cmd_ack_info, UART2_IDX);
+		
 		return;
 	}
 
@@ -461,7 +447,11 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 	
 	if(try_cnt == 5)
 	{
+		if(g_src_board_id == 1)
 		send_command_ack(&cmd_ack_info, UART1_IDX);
+		else
+		send_command_ack(&cmd_ack_info, UART2_IDX);
+		
 		return;
 	}
 	
@@ -529,7 +519,12 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 	
 	cmd_ack_info.board_id = g_src_board_id;
 	cmd_ack_info.rsp_cmd_type = push_medicine_request->cmd_type;
+
+
+	if(g_src_board_id == 1)
 	send_command_ack(&cmd_ack_info, UART1_IDX);
+	else
+	send_command_ack(&cmd_ack_info, UART2_IDX);
 	
 	return;
 }
@@ -554,7 +549,7 @@ void send_command_ack( void *input_data, uint8_t uart_idx)
 
 	send_cmd_ack_data[COMMAND_ACK_PACKET_SIZE - 1] = add_checksum(send_cmd_ack_data, COMMAND_ACK_PACKET_SIZE - 1);  
 
-	UsartPrintf(USART_DEBUG, "send_command_ack uart idx:%d", uart_idx);
+	UsartPrintf(USART_DEBUG, "send_command_ack uart idx:%d\r\n", uart_idx);
 
 	if(uart_idx == UART1_IDX)
 	{
@@ -562,7 +557,10 @@ void send_command_ack( void *input_data, uint8_t uart_idx)
 	} 
 	else if(uart_idx == UART2_IDX)
 	{
-		UART2_IO_Send(send_cmd_ack_data, COMMAND_ACK_PACKET_SIZE);	
+		if(g_src_board_id == 1)
+		RS485_Send_Data(send_cmd_ack_data, COMMAND_ACK_PACKET_SIZE);	
+		else
+		NotRetryMessageInsertQueue(send_cmd_ack_data, COMMAND_ACK_PACKET_SIZE, UART2_IDX);
 	}
 } 
 
@@ -619,7 +617,11 @@ void parse_replenish_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 	if(check_sum != replenish_medicine_request->checksum)
 	{	
 		UsartPrintf(USART_DEBUG, "check sum fail : 0x%02x, 0x%02x\r\n", check_sum, replenish_medicine_request->checksum);  
+		if(g_src_board_id == 1)
 		send_command_ack(&cmd_ack_info, UART1_IDX);
+		else
+		send_command_ack(&cmd_ack_info, UART2_IDX);
+		
 		return;
 	}
 		
@@ -672,7 +674,11 @@ void parse_replenish_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 	}
 	cmd_ack_info.board_id = g_src_board_id;
 	cmd_ack_info.rsp_cmd_type = replenish_medicine_request->cmd_type;
+	
+	if(g_src_board_id == 1)
 	send_command_ack(&cmd_ack_info, UART1_IDX);
+	else
+	send_command_ack(&cmd_ack_info, UART2_IDX);
 	
 	return;
 }
@@ -717,7 +723,10 @@ void parse_replenish_complete_request(uint8_t *outputdata, uint8_t *inputdata)
 	{
 		
 		UsartPrintf(USART_DEBUG, "check sum fail : 0x%02x, 0x%02x\r\n", check_sum, replenish_medicine_complete_request->checksum);  
-		send_command_ack(&cmd_ack_info, UART1_IDX);
+		if(g_src_board_id == 1)
+			send_command_ack(&cmd_ack_info, UART1_IDX);
+			else
+			send_command_ack(&cmd_ack_info, UART2_IDX);
 		return;
 	}
 	
@@ -739,8 +748,10 @@ void parse_replenish_complete_request(uint8_t *outputdata, uint8_t *inputdata)
 	cmd_ack_info.rsp_cmd_type = replenish_medicine_complete_request->cmd_type;
 	
 	cmd_ack_info.status = 1;
-	send_command_ack((void *)&cmd_ack_info, UART1_IDX);
-	
+	if(g_src_board_id == 1)
+		send_command_ack((void *)&cmd_ack_info, UART1_IDX);
+	else
+	send_command_ack(&cmd_ack_info, UART2_IDX);
 	//UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
 	
 	return;
@@ -784,7 +795,11 @@ void parse_track_runtime_calc_request(uint8_t *outputdata, uint8_t *inputdata)
 	cmd_ack_info.rsp_cmd_type = track_runtime_calc_request->cmd_type;
 	
 	cmd_ack_info.status = 1;
-	send_command_ack((void *)&cmd_ack_info, UART1_IDX);
+	
+	if(g_src_board_id == 1)
+		send_command_ack((void *)&cmd_ack_info, UART1_IDX);
+	else
+	send_command_ack(&cmd_ack_info, UART2_IDX);
 
 	OSSemPost(SemOfCalcTime);
 }  
@@ -832,4 +847,30 @@ void print_status_report_request(uint8_t *data)
 
 	UsartPrintf(USART_DEBUG, "\r\n    =========  状态上报包-打印结束=========\r\n");  
 }  
+
+
+
+
+
+
+
+
+
+void send_query_message(uint8_t id)  
+{  
+	struct query_struct query_struct;
+	
+	memset(&query_struct, 0x00, sizeof(struct query_struct));
+	query_struct.start_code = START_CODE;
+	query_struct.packet_len = QUERY_REQUEST_PACKET_SIZE - 1;
+	query_struct.cmd_type = CMD_QUERY_MSG;
+	query_struct.board_id = id;
+	
+	query_struct.checksum = add_checksum((unsigned char *)&query_struct, QUERY_REQUEST_PACKET_SIZE - 1);  
+	RS485_Send_Data((u8 *)(&query_struct), QUERY_REQUEST_PACKET_SIZE);
+} 
+
+
+
+
 

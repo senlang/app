@@ -328,10 +328,10 @@ void RS485_Init(u32 bound)
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA|RCC_APB2Periph_GPIOC, ENABLE);//使能GPIOA时钟
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2,ENABLE);//使能USART2时钟
 	
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;				 //PA7端口配置
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;				 //PB1端口配置
  	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP; 		 //推挽输出
  	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
- 	GPIO_Init(GPIOA, &GPIO_InitStructure);
+ 	GPIO_Init(GPIOB, &GPIO_InitStructure);
  
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;	//PA2
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;	//复用推挽
@@ -385,7 +385,8 @@ void RS485_Send_Data(u8 *buf,u8 len)
 		UsartPrintf(USART_DEBUG, "0x%02x,", *(buf + t));
 	}
 	UsartPrintf(USART_DEBUG, "\r\n\r\n");
-		
+	
+	
 	RS485_TX_EN=1;			//设置为发送模式
   	for(t=0;t<len;t++)		//循环发送数据
 	{		   

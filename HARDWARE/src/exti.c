@@ -19,7 +19,7 @@ void EXTIX_Init(void)
 //  //GPIOE.2 中断线以及中断初始化配置   下降沿触发
 //  	GPIO_EXTILineConfig(GPIO_PortSourceGPIOE,GPIO_PinSource2);
 
-//  	EXTI_InitStructure.EXTI_Line=EXTI_Line2;	//KEY2
+//  	EXTI_InitStructure.EXTI_Line=EXTI_Line2;	//CurrentDetectKey
 //  	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;	
 //  	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
 //  	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
@@ -49,7 +49,7 @@ void EXTIX_Init(void)
 void EXTI0_IRQHandler(void)
 {
 	delay_ms(10);//消抖
-	if(KEY1==1)	 	 //WK_UP按键
+	if(BackwardDetectKey==1)	 	 //WK_UP按键
 	{				 
 		LED=!LED;
 	}
@@ -60,7 +60,7 @@ void EXTI0_IRQHandler(void)
 ////void EXTI2_IRQHandler(void)
 ////{
 ////	delay_ms(10);//消抖
-////	if(EXTI_IO3==0)	  //按键KEY2
+////	if(EXTI_IO3==0)	  //按键CurrentDetectKey
 ////	{
 ////		LED=!LED;
 ////	}		 
@@ -70,7 +70,7 @@ void EXTI0_IRQHandler(void)
 ////void EXTI3_IRQHandler(void)
 ////{
 ////	delay_ms(10);//消抖
-////	if(EXTI_IO2==0)	 //按键KEY1
+////	if(EXTI_IO2==0)	 //按键BackwardDetectKey
 ////	{				 
 ////		LED=!LED;
 ////	}		 
@@ -80,7 +80,7 @@ void EXTI0_IRQHandler(void)
 ////void EXTI4_IRQHandler(void)
 ////{
 ////	delay_ms(10);//消抖
-////	if(EXTI_IO1==0)	 //按键KEY0
+////	if(EXTI_IO1==0)	 //按键ForwardDetectKey
 ////	{
 ////		LED=!LED;
 

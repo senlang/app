@@ -54,6 +54,7 @@ QueuePtr Queue_Create(uint32_t size);
 #define UART1_IDX	0	//由UART1 发送消息
 #define UART2_IDX  1	//由UART2 发送消息
 
+
 #define MAX_PAYLOAD_LEN 16 //byte
 
 //定义一个结构体节点
@@ -63,7 +64,7 @@ typedef struct msgqueue
     uint8_t times;
     uint8_t status;
     uint8_t uart_idx;
-    uint32_t create_time;
+    uint32_t create_time;//100MS单位
     uint8_t *payload;
 }MsgQueue, *MsgQueuePtr;
 
@@ -104,6 +105,7 @@ void MessageAckCheck(unsigned char *pdata, uint16_t size);
 
 void MessageInsertQueue(unsigned char *pdata, uint16_t size, uint8_t uart_idx);
 
+void NotRetryMessageInsertQueue(unsigned char *pdata, uint16_t size, uint8_t uart_idx);
 
 
 

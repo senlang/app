@@ -75,8 +75,8 @@
 
 /* FLASH Keys */
 #define RDP_Key                  ((uint16_t)0x00A5)
-#define FLASH_KEY1               ((uint32_t)0x45670123)
-#define FLASH_KEY2               ((uint32_t)0xCDEF89AB)
+#define FLASH_BackwardDetectKey               ((uint32_t)0x45670123)
+#define FLASH_CurrentDetectKey               ((uint32_t)0xCDEF89AB)
 
 /* FLASH BANK address */
 #define FLASH_BANK1_END_ADDRESS   ((uint32_t)0x807FFFF)
@@ -319,13 +319,13 @@ void FLASH_PrefetchBufferCmd(uint32_t FLASH_PrefetchBuffer)
 void FLASH_Unlock(void)
 {
   /* Authorize the FPEC of Bank1 Access */
-  FLASH->KEYR = FLASH_KEY1;
-  FLASH->KEYR = FLASH_KEY2;
+  FLASH->KEYR = FLASH_BackwardDetectKey;
+  FLASH->KEYR = FLASH_CurrentDetectKey;
 
 #ifdef STM32F10X_XL
   /* Authorize the FPEC of Bank2 Access */
-  FLASH->KEYR2 = FLASH_KEY1;
-  FLASH->KEYR2 = FLASH_KEY2;
+  FLASH->KEYR2 = FLASH_BackwardDetectKey;
+  FLASH->KEYR2 = FLASH_CurrentDetectKey;
 #endif /* STM32F10X_XL */
 }
 /**
@@ -340,8 +340,8 @@ void FLASH_Unlock(void)
 void FLASH_UnlockBank1(void)
 {
   /* Authorize the FPEC of Bank1 Access */
-  FLASH->KEYR = FLASH_KEY1;
-  FLASH->KEYR = FLASH_KEY2;
+  FLASH->KEYR = FLASH_BackwardDetectKey;
+  FLASH->KEYR = FLASH_CurrentDetectKey;
 }
 
 #ifdef STM32F10X_XL
@@ -354,8 +354,8 @@ void FLASH_UnlockBank1(void)
 void FLASH_UnlockBank2(void)
 {
   /* Authorize the FPEC of Bank2 Access */
-  FLASH->KEYR2 = FLASH_KEY1;
-  FLASH->KEYR2 = FLASH_KEY2;
+  FLASH->KEYR2 = FLASH_BackwardDetectKey;
+  FLASH->KEYR2 = FLASH_CurrentDetectKey;
 
 }
 #endif /* STM32F10X_XL */
@@ -630,8 +630,8 @@ FLASH_Status FLASH_EraseOptionBytes(void)
   if(status == FLASH_COMPLETE)
   {
     /* Authorize the small information block programming */
-    FLASH->OPTKEYR = FLASH_KEY1;
-    FLASH->OPTKEYR = FLASH_KEY2;
+    FLASH->OPTKEYR = FLASH_BackwardDetectKey;
+    FLASH->OPTKEYR = FLASH_CurrentDetectKey;
     
     /* if the previous operation is completed, proceed to erase the option bytes */
     FLASH->CR |= CR_OPTER_Set;
@@ -936,8 +936,8 @@ FLASH_Status FLASH_ProgramOptionByteData(uint32_t Address, uint8_t Data)
   if(status == FLASH_COMPLETE)
   {
     /* Authorize the small information block programming */
-    FLASH->OPTKEYR = FLASH_KEY1;
-    FLASH->OPTKEYR = FLASH_KEY2;
+    FLASH->OPTKEYR = FLASH_BackwardDetectKey;
+    FLASH->OPTKEYR = FLASH_CurrentDetectKey;
     /* Enables the Option Bytes Programming operation */
     FLASH->CR |= CR_OPTPG_Set; 
     *(__IO uint16_t*)Address = Data;
@@ -993,8 +993,8 @@ FLASH_Status FLASH_EnableWriteProtection(uint32_t FLASH_Pages)
   if(status == FLASH_COMPLETE)
   {
     /* Authorizes the small information block programming */
-    FLASH->OPTKEYR = FLASH_KEY1;
-    FLASH->OPTKEYR = FLASH_KEY2;
+    FLASH->OPTKEYR = FLASH_BackwardDetectKey;
+    FLASH->OPTKEYR = FLASH_CurrentDetectKey;
     FLASH->CR |= CR_OPTPG_Set;
     if(WRP0_Data != 0xFF)
     {
@@ -1055,8 +1055,8 @@ FLASH_Status FLASH_ReadOutProtection(FunctionalState NewState)
   if(status == FLASH_COMPLETE)
   {
     /* Authorizes the small information block programming */
-    FLASH->OPTKEYR = FLASH_KEY1;
-    FLASH->OPTKEYR = FLASH_KEY2;
+    FLASH->OPTKEYR = FLASH_BackwardDetectKey;
+    FLASH->OPTKEYR = FLASH_CurrentDetectKey;
     FLASH->CR |= CR_OPTER_Set;
     FLASH->CR |= CR_STRT_Set;
     /* Wait for last operation to be completed */
@@ -1125,8 +1125,8 @@ FLASH_Status FLASH_UserOptionByteConfig(uint16_t OB_IWDG, uint16_t OB_STOP, uint
   assert_param(IS_OB_STDBY_SOURCE(OB_STDBY));
 
   /* Authorize the small information block programming */
-  FLASH->OPTKEYR = FLASH_KEY1;
-  FLASH->OPTKEYR = FLASH_KEY2;
+  FLASH->OPTKEYR = FLASH_BackwardDetectKey;
+  FLASH->OPTKEYR = FLASH_CurrentDetectKey;
   
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(ProgramTimeout);
@@ -1174,8 +1174,8 @@ FLASH_Status FLASH_BootConfig(uint16_t FLASH_BOOT)
   FLASH_Status status = FLASH_COMPLETE; 
   assert_param(IS_FLASH_BOOT(FLASH_BOOT));
   /* Authorize the small information block programming */
-  FLASH->OPTKEYR = FLASH_KEY1;
-  FLASH->OPTKEYR = FLASH_KEY2;
+  FLASH->OPTKEYR = FLASH_BackwardDetectKey;
+  FLASH->OPTKEYR = FLASH_CurrentDetectKey;
   
   /* Wait for last operation to be completed */
   status = FLASH_WaitForLastOperation(ProgramTimeout);

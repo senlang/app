@@ -29,6 +29,11 @@
 
 
 #define TRACK_MAX_RUN_TIME 600
+#define MSG_RESEND_TIME_500MS 500	//500s
+#define MSG_RESEND_TIME_SLEEP_100MS 100	//100ms
+
+
+#define RS485_ENABLE
 
 //定义药柜相关的结构体
 typedef struct

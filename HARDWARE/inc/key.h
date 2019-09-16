@@ -7,9 +7,13 @@
 
 
 
-#define KEY0			GPIO_Pin_8	//前进到位
-#define KEY1			GPIO_Pin_9	//后退到位
-#define KEY2			GPIO_Pin_4	//过流检查
+//#define KEY0			GPIO_Pin_8	//前进到位
+//#define KEY1			GPIO_Pin_9	//后退到位
+//#define KEY2			GPIO_Pin_4	//过流检查
+
+#define ForwardDetectKey			GPIO_Pin_8	//前进到位
+#define BackwardDetectKey			GPIO_Pin_9	//后退到位
+#define CurrentDetectKey			GPIO_Pin_4	//过流检查
 
 
 
@@ -46,12 +50,12 @@ extern unsigned char Keyboard(void);
 
 typedef struct
 {
-	_Bool Key0Stat;
-	_Bool Key0OldStat;
-	_Bool Key1Stat;
-	_Bool Key1OldStat;
-	unsigned char Key0StatChange;
-	unsigned char Key1StatChange;
+	_Bool ForwardDetectKeyStat;
+	_Bool ForwardDetectKeyOldStat;
+	_Bool BackwardDetectKeyStat;
+	_Bool BackwardDetectKeyOldStat;
+	unsigned char ForwardDetectKeyStatChange;
+	unsigned char BackwardDetectKeyStatChange;
 } KEY_STATUS;
 
 

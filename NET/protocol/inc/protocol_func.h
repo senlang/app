@@ -33,4 +33,6 @@ void print_status_report_request(uint8_t *data);
 
 void FactoryFuncTest(void);
 
+void send_query_message(uint8_t id); 
+
 #endif

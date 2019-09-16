@@ -36,7 +36,7 @@ void Sensor_Init(void)
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 	
 	gpioInitStructure.GPIO_Mode = GPIO_Mode_IPU;
-	gpioInitStructure.GPIO_Pin = GPIO_Pin_1;
+	gpioInitStructure.GPIO_Pin = GPIO_Pin_4;
 	gpioInitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOB, &gpioInitStructure);
 }

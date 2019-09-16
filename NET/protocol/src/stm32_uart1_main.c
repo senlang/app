@@ -25,6 +25,7 @@
 #include "stm32_uart1.h"
 #include "stm32_uart2.h"
 #include "usart.h"
+#include "queue.h"
 
 //硬件驱动
 #include "delay.h"
@@ -103,8 +104,9 @@ int parse_protocol(void)
 		if(uart1_dequeue_idx >= UART_MAX_IDX)
 		uart1_dequeue_idx = 0;
 		memset(uart1_recv_data[uart1_dequeue_idx].buf, 0x00, UART_BUF_MAX_LEN);
-		
-		packet_parser(src, len);
+
+		/*只有uart1 能收到*/		
+		packet_parser(src, len, UART1_IDX);
 		
 		count--;
 	};	

@@ -171,14 +171,12 @@ void Debug_USART_Config(void)
 void USART3_IRQHandler(void) 
 {
 	RTOS_EnterInt();
-
-	if(USART_GetITStatus(DEBUG_USARTx,USART_IT_RXNE)!=RESET)
-	{		
-		USART_ClearFlag(DEBUG_USARTx, USART_FLAG_RXNE);
-	}	 
+	if(USART_GetITStatus(USART3, USART_IT_RXNE) != RESET) //Ω” ’÷–∂œ
+	{
+		USART_ClearFlag(USART3, USART_FLAG_RXNE);
+	}
 	RTOS_ExitInt();
 }
-
 
 void UsartPrintf(USART_TypeDef *USARTx, char *fmt,...)
 {

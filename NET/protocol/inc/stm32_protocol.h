@@ -78,16 +78,12 @@
 #define COMMAND_ACK_PACKET_SIZE (IPUC + COMMAND_ACK_INFO_SIZE + CHECKSUM_SIZE)  
 
 
-/*查询指令*/
-#define QUERY_REQUEST_INFO_SIZE 1 //即(2字节	2字节	2字节)   
-#define QUERY_REQUEST_PACKET_SIZE (IPUC + QUERY_REQUEST_INFO_SIZE + CHECKSUM_SIZE)  
-
 /*单片机内部补货完成*/
 #define ADD_MEDICINE_CONPLETE_REQUEST_INFO_SIZE 3 //即(1字节	字节)   
 #define ADD_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE (IPUC + ADD_MEDICINE_CONPLETE_REQUEST_INFO_SIZE + CHECKSUM_SIZE)  
 
 
-#define LOOP_REQUEST_PACKET_SIZE (IPUC + 1 + 1)
+#define QUERY_REQUEST_PACKET_SIZE (IPUC + 1 + CHECKSUM_SIZE)
 
 
 enum {  
@@ -202,7 +198,7 @@ typedef enum{
 
 #define CMD_MSG_ACK 0xF0	//指令应答
 
-#define CMD_LOOP 0xF1	//主机轮询指令
+#define CMD_QUERY_MSG 0xF1	//主机轮询指令
 
 
 typedef struct _uart_msg_struct
@@ -401,44 +397,6 @@ struct replenish_medicine_complete_struct
 }; 
 
 
-
-/*查询请求信息 */
-
-struct request_query_info_struct  
-{  
-    uint8_t board_id;  	
-}; 
-
-
-
-struct request_query_ack_info_struct  
-{  
-    uint8_t board_id;  
-    uint8_t board_status;  
-    uint8_t board_error_code;  
-    uint16_t tempreture; 
-    uint8_t medicine_track_number; 
-}; 
-
-
-struct request_query_struct  
-{  
-	uint8_t start_code; 
-	uint8_t packet_len;
-	uint8_t cmd_type;
-	struct request_query_info_struct info;
-	uint8_t checksum; 
-}; 
-
-struct request_query_ack_struct  
-{  
-	uint8_t start_code; 
-	uint8_t packet_len;
-	uint8_t cmd_type;
-	struct request_query_ack_info_struct ack;
-	uint8_t checksum; 		
-};
-
 /*货道运行时长统计指令*/
 
 struct track_cale_request_info_struct  
@@ -495,6 +453,22 @@ struct msg_ack_struct
 	struct msg_ack_info_struct ack;
 	uint8_t checksum; 		
 };
+
+
+
+struct query_struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	uint8_t board_id;
+	uint8_t checksum; 		
+};
+
+
+
+
+
 
 
 
@@ -561,7 +535,7 @@ void replenish_complete_test(void);
 
 
 void BoardId_Init(void);
-void packet_parser(unsigned char *src, int len);
+void packet_parser(unsigned char *src, int len, int uart_idx);
 void up_packet_parser(unsigned char *src, int len);
 uint8_t up_packet_preparser(unsigned char *src, int len);
 

@@ -27,9 +27,7 @@ typedef enum
 void Motor_Init(void);
 
 /*µç»ú¿ØÖÆ*/
-void  Motor_Set(MOTOR_ENUM status);
-
-void Motor_Start(void);
+void  Motor_Set(uint8_t status);
 
 void track_calibrate(void);
 

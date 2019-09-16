@@ -59,10 +59,13 @@ void Belt_Init(void)
 	
 	//IO配置
 	gpioInitStrcut.GPIO_Mode = GPIO_Mode_Out_PP;
-	gpioInitStrcut.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1;
+	gpioInitStrcut.GPIO_Pin = GPIO_Pin_0;
 	gpioInitStrcut.GPIO_Speed = GPIO_Speed_50MHz;
 	//IO初始化
 	GPIO_Init(GPIOA, &gpioInitStrcut);
+
+	//IO初始化
+	GPIO_Init(GPIOB, &gpioInitStrcut);
 	
 	Belt_Set(PUSH_BELT, BELT_STOP);
 	Belt_Set(COLLECT_BELT, BELT_STOP);
@@ -78,7 +81,7 @@ void Belt_Set(BELT_ENUM belt,BELT_WORK_ENUM status)
 		if(PUSH_BELT == belt)
 		GPIO_WriteBit(GPIOA, GPIO_Pin_0, Bit_RESET);
 		else if(COLLECT_BELT == belt)
-		GPIO_WriteBit(GPIOA, GPIO_Pin_1, Bit_RESET);
+		GPIO_WriteBit(GPIOB, GPIO_Pin_0, Bit_RESET);
 	}
 	else if(BELT_RUN == status)
 	{	
@@ -86,7 +89,7 @@ void Belt_Set(BELT_ENUM belt,BELT_WORK_ENUM status)
 		GPIO_WriteBit(GPIOA, GPIO_Pin_0, Bit_SET);
 	
 		else if(COLLECT_BELT == belt)
-		GPIO_WriteBit(GPIOA, GPIO_Pin_1, Bit_SET);
+		GPIO_WriteBit(GPIOB, GPIO_Pin_0, Bit_SET);
 	}
 	MotorStatus.ConveyoeSta = status;
 }
@@ -113,11 +116,11 @@ void Collect_Belt_Set(BELT_WORK_ENUM status)
 
 	if(BELT_STOP == status)
 	{	
-		GPIO_WriteBit(GPIOA, GPIO_Pin_1, Bit_RESET);
+		GPIO_WriteBit(GPIOB, GPIO_Pin_0, Bit_RESET);
 	}
 	else if(BELT_RUN == status)
 	{	
-		GPIO_WriteBit(GPIOA, GPIO_Pin_1, Bit_SET);
+		GPIO_WriteBit(GPIOB, GPIO_Pin_0, Bit_SET);
 	}
 	MotorStatus.ConveyoeSta = status;
 }

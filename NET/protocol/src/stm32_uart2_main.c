@@ -26,6 +26,7 @@
 #include "stm32_uart2.h"
 #include "stm32_protocol.h"
 #include "usart.h"
+#include "queue.h"
 
 //硬件驱动
 #include "delay.h"
@@ -37,6 +38,8 @@
 #include <stdio.h>
 
 #include "ucos_ii.h"
+
+extern OS_EVENT *SemOf485DataParse;	//数据解析线程信号量
 
 
 int down_data_parse(void)
@@ -53,11 +56,6 @@ int uart2_receive_data(void)
 {
 	int retval = -1;
 	
-	
-	//UsartPrintf(USART_DEBUG, "UART2 Data[%d]=0x%02x\r\n", 
-	//				uasrt2_recv_data[uart2_enqueue_idx].dataLen, 
-	//				uasrt2_recv_data[uart2_dequeue_idx].buf[uasrt2_recv_data[uart2_enqueue_idx].dataLen]);
-
 	if(UART2_IO_Receive() == 0)
 	return retval;
 
@@ -65,9 +63,11 @@ int uart2_receive_data(void)
 	if(uart2_enqueue_idx >= UART_MAX_IDX)
 	uart2_enqueue_idx = 0;
 	
-	uart2_parse_protocol();
 	
 	UART2_IO_ClearRecive();
+	
+	OSSemPost(SemOf485DataParse);
+	uart2_parse_protocol();
 	
 	return 0;
 }
@@ -112,17 +112,12 @@ int uart2_parse_protocol(void)
 		uart2_dequeue_idx++;
 		if(uart2_dequeue_idx >= UART_MAX_IDX)
 		uart2_dequeue_idx = 0;
-
-
-
-		#if 1
-		//if(IsACKMsg(src, len))
-		UART1_IO_Send(src, len);
-		up_packet_parser(src, len);
-		#else
+		
 		/*rs485接口*/
-		packet_parser(src, len);
-		#endif
+		if(g_src_board_id == 1)
+		up_packet_parser(src, len);
+		else
+		packet_parser(src, len, UART2_IDX);
 		
 		count--;
 	};	

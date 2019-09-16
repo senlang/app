@@ -22,13 +22,14 @@ typedef struct
 } track_addr;
 
 #define KEY_DELAY_MS 5	//5 * 100ms,delay时间不能太短，否则电机启动电流过大会误判
-#define TRACK_MAX_TIME_MS 800
+#define TRACK_MAX_TIME_MS 800	//货道最大运行时间
 
 uint8_t set_track(uint16_t track_num, uint8_t status);
 void Track_Init(void);
 int Track_run(MOTOR_ENUM run_mode);
 int Track_trigger_calc_runtime(uint8_t is_init, MOTOR_ENUM run_mode);
 int Track_trigger_calc_runtime_error(int is_block, int step, MOTOR_ENUM run_mode);
+int Track_Runtime(uint8_t is_init, MOTOR_ENUM run_mode, MOTOR_ENUM cur_run_mode);
 
 int Track_trigger(uint8_t track_num, MOTOR_ENUM run_mode);//货道控制
 
