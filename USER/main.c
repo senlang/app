@@ -944,17 +944,16 @@ void Message_Send_Task(void *pdata)
 			{
 				if(NewMsgNode->data.times == 0xff)
 				{
-					if(cur_time >= NewMsgNode->data.create_time + 20)//超时20*100ms,重传
-					{
-						RS485_Send_Data(NewMsgNode->data.payload, NewMsgNode->data.size); 
-						UsartPrintf(USART_DEBUG, "NewMsgNode data.size[%d]time[%d]times[%d]!!!\r\n", 
-						NewMsgNode->data.size, NewMsgNode->data.create_time,NewMsgNode->data.times);
-						NewMsgNode->data.times = 5;
-					}
+					/*立即发送*/
+					RS485_Send_Data(NewMsgNode->data.payload, NewMsgNode->data.size); 
+					UsartPrintf(USART_DEBUG, "NewMsgNode data.size[%d]time[%d]times[%d]!!!\r\n", 
+					NewMsgNode->data.size, NewMsgNode->data.create_time,NewMsgNode->data.times);
+					NewMsgNode->data.times = 5;
 				}
 				else 
 				{
-					if(cur_time >= NewMsgNode->data.create_time + (NewMsgNode->data.times + 1) * 20)//超时20*100ms,重传
+					if((NewMsgNode->data.times == 0) || 
+						(cur_time >= NewMsgNode->data.create_time + (NewMsgNode->data.times + 1) * 20))//超时20*100ms,重传
 					{
 						RS485_Send_Data(NewMsgNode->data.payload, NewMsgNode->data.size); 
 						UsartPrintf(USART_DEBUG, "NewMsgNode data.size[%d]time[%d]times[%d]!!!\r\n", 
@@ -1025,7 +1024,8 @@ void Message_Send_Task_HostBoard(void *pdata)
 				UsartPrintf(USART_DEBUG, "NewMsgNode data.size[%d]time[%d]times[%d]!!!\r\n", 
 					NewMsgNode->data.size, NewMsgNode->data.create_time,NewMsgNode->data.times);
 
-				if(cur_time >= NewMsgNode->data.create_time + (NewMsgNode->data.times + 1) * 20)//超时20*100ms,重传
+				if((NewMsgNode->data.times == 0) || 
+					(cur_time >= NewMsgNode->data.create_time + (NewMsgNode->data.times + 1) * 20))//超时20*100ms,重传
 				{
 					for(j = 0; j < NewMsgNode->data.size; j++)
 					{
