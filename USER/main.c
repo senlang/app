@@ -120,8 +120,8 @@ void Factory_Test_Task(void *pdata);
 
 
 
-//产测任务
-#define SENSOR_TASK_PRIO	14
+//传感器
+#define SENSOR_TASK_PRIO	18
 #define SENSOR_STK_SIZE		128
 OS_STK SENSOR_TASK_STK[SENSOR_STK_SIZE]; 
 void SENSOR_Task(void *pdata);
@@ -175,6 +175,8 @@ uint16_t board_add_ackmsg = 0;/*1111 1111每一个bit表示1个单板*/
 uint8_t key_init = 0;
 
 uint8_t  g_src_board_id = 0;
+uint8_t g_track_state = 0;
+
 
 extern struct status_report_request_info_struct  heart_info;
 extern uint8_t track_work;
@@ -251,6 +253,8 @@ void Hardware_Init(void)
 	TIM3_Int_Init(999,7199);//10Khz的计数频率，计数到5000为500ms
 
 	BoardId_Init();
+
+	Adc_Init();
 	
 	UsartPrintf(USART_DEBUG, " Current Board ID:0x%x\r\n", g_src_board_id); 
 	
@@ -336,6 +340,8 @@ void start_task(void *pdata)
 	OSTaskCreate(Track_Run_Task, (void *)0, (OS_STK*)&TRACK_TASK_STK[TRACK_STK_SIZE- 1], TRACK_TASK_PRIO);
 
 	OSTaskCreate(Track_OverCurrent_Task, (void *)0, (OS_STK*)&OVERCURRENT_TASK_STK[OVERCURRENT_STK_SIZE- 1], OVERCURRENT_TASK_PRIO);
+
+	OSTaskCreate(SENSOR_Task, (void *)0, (OS_STK*)&SENSOR_TASK_STK[SENSOR_STK_SIZE- 1], SENSOR_TASK_PRIO);
 
 	//OSTaskCreate(Factory_Test_Task, (void *)0, (OS_STK*)&FACTORY_TEST_TASK_STK[FACTORY_TEST_STK_SIZE- 1], FACTORY_TEST_TASK_PRIO);
 
@@ -655,10 +661,18 @@ extern void iap_load_app(u32 appxaddr);
 
 void SENSOR_Task(void *pdata)
 {
+	float value = 0;
+	u16 adcx;
+	UsartPrintf(USART_DEBUG, "SENSOR_Task run!!!!!!!!!!!!\r\n");
+
 	while(1)
 	{	
-		UsartPrintf(USART_DEBUG, "SENSOR_Task run!!!!!!!!!!!!\r\n");
-		RTOS_TimeDlyHMSM(0, 0, 15, 0);	//
+		adcx = Get_Adc_Average();
+		value = (float)adcx*(3.3/4096);
+		
+		UsartPrintf(USART_DEBUG, "Sensor value = %f!!!!!!!!!!!!\r\n", value);
+		
+		RTOS_TimeDlyHMSM(0, 0, 3, 0);	//
 		//UsartPrintf(USART_DEBUG, "will jump\r\n");
 		//iap_load_app(0x08010000);
 	}
@@ -931,7 +945,7 @@ void Message_Send_Task(void *pdata)
 		cur_time = time_passes;
 		/*消息队列取消息*/
 		node_num = GetNodeNum(UartMsgNode);
-		UsartPrintf(USART_DEBUG, "node_num[%d]cur_time[%d]!!!\r\n", node_num, cur_time);
+		//UsartPrintf(USART_DEBUG, "node_num[%d]cur_time[%d]!!!\r\n", node_num, cur_time);
 
 		MsgNode = UartMsgNode;
 		for(i = 1, node_i = 1; i <= node_num; i++)
@@ -1010,7 +1024,7 @@ void Message_Send_Task_HostBoard(void *pdata)
 		cur_time = time_passes;
 		/*消息队列取消息*/
 		node_num = GetNodeNum(UartMsgNode);
-		UsartPrintf(USART_DEBUG, "node_num[%d]cur_time[%d]!!!\r\n", node_num, cur_time);
+		//UsartPrintf(USART_DEBUG, "node_num[%d]cur_time[%d]!!!\r\n", node_num, cur_time);
 
 		MsgNode = UartMsgNode;
 		for(i = 1, node_i = 1; i <= node_num; i++)

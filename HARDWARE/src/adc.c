@@ -30,7 +30,6 @@ void  Adc_Init(void)
 	ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;	//ADC数据右对齐
 	ADC_InitStructure.ADC_NbrOfChannel = 1;	//顺序进行规则转换的ADC通道的数目
 	ADC_Init(ADC1, &ADC_InitStructure);	//根据ADC_InitStruct中指定的参数初始化外设ADCx的寄存器   
-
   
 	ADC_Cmd(ADC1, ENABLE);	//使能指定的ADC1
 	
@@ -59,7 +58,7 @@ u16 Get_Adc(u8 ch)
 	return ADC_GetConversionValue(ADC1);	//返回最近一次ADC1规则组的转换结果
 }
 
-u16 Get_Adc_Average(u8 ch,u8 times)
+u16 Get_Adc_Average_1(u8 ch,u8 times)
 {
 	u32 temp_val=0;
 	u8 t;
@@ -71,29 +70,17 @@ u16 Get_Adc_Average(u8 ch,u8 times)
 	return temp_val/times;
 } 	 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+//得到ADC采样内部温度传感器的值
+//取10次,然后平均
+u16 Get_Adc_Average(void)
+{
+	u16 temp_val=0;
+	u8 t;
+	for(t=0;t<10;t++)
+	{
+		temp_val+=Get_Adc(ADC_Channel_1);	  //voltage
+		delay_ms(5);
+	}
+	return temp_val/10;
+}
 

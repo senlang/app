@@ -384,7 +384,7 @@ void RS485_Send_Data(u8 *buf,u8 len)
 	{
 		UsartPrintf(USART_DEBUG, "0x%02x,", *(buf + t));
 	}
-	UsartPrintf(USART_DEBUG, "\r\n\r\n");
+	UsartPrintf(USART_DEBUG, "\r\n");
 	
 	
 	RS485_TX_EN=1;			//设置为发送模式
@@ -397,5 +397,29 @@ void RS485_Send_Data(u8 *buf,u8 len)
 	
 	RS485_TX_EN=0;				//设置为接收模式	
 }
+
+void RS485_Send_QueryData(u8 *buf,u8 len)
+{
+	u8 t;
+	
+	//UsartPrintf(USART_DEBUG, "RS485 Send Query[%d] : ", len);
+	//for(t=0;t<len;t++)	
+	//{
+	//	UsartPrintf(USART_DEBUG, "0x%02x,", *(buf + t));
+	//}
+	//UsartPrintf(USART_DEBUG, "\r\n");
+	
+	RS485_TX_EN=1;			//设置为发送模式
+  	for(t=0;t<len;t++)		//循环发送数据
+	{		   
+		while(USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET);	  
+		USART_SendData(USART2,buf[t]);
+	}	 
+	while(USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET);	
+	
+	RS485_TX_EN=0;				//设置为接收模式	
+}
+
+
 
 

@@ -19,7 +19,7 @@
 #include "light.h"
 #include "sensor.h"
 #include "lifter.h"
- 
+#include "adc.h"
 
 #include "queue.h"
 
@@ -68,6 +68,20 @@ typedef struct
 	ligth_status light;
 	temp_hum th;
 } drug_box, *pdrug_box;
+
+typedef enum
+{
+	NO_RUNNING = 0,
+	NORMAL_RUNNING,
+	SHORTCIRCUIT_BLOCK,
+	BROKENCIRCUIT,
+}MOTOR_STATUS_ENUM;
+
+typedef enum
+{
+	STOP_RUNNING = 0,
+	NORMAL_WORKING,
+}TRACK_STATUS_ENUM;
 
 
 extern uint8_t key_init;

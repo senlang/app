@@ -867,7 +867,7 @@ void send_query_message(uint8_t id)
 	query_struct.board_id = id;
 	
 	query_struct.checksum = add_checksum((unsigned char *)&query_struct, QUERY_REQUEST_PACKET_SIZE - 1);  
-	RS485_Send_Data((u8 *)(&query_struct), QUERY_REQUEST_PACKET_SIZE);
+	RS485_Send_QueryData((u8 *)(&query_struct), QUERY_REQUEST_PACKET_SIZE);
 } 
 
 

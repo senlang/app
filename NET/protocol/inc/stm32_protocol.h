@@ -467,6 +467,16 @@ struct query_struct
 
 
 
+struct motor_status_struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	uint8_t board_id;
+	uint8_t track_id;
+	uint8_t motor_status;
+	uint8_t checksum; 		
+};
 
 
 
