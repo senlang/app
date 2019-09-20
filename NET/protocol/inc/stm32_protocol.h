@@ -85,6 +85,7 @@
 
 #define QUERY_REQUEST_PACKET_SIZE (IPUC + 1 + CHECKSUM_SIZE)
 
+#define TRACK_STATUS_REPORT_PACKET_SIZE (IPUC + 3 + CHECKSUM_SIZE)
 
 enum {  
     STATUS_REPORT_REQUEST = 0,  
@@ -97,6 +98,7 @@ enum {
 	REPLENISH_MEDICINE_COMPLETE_REQUEST,
 	MCU_REPLENISH_MEDICINE_COMPLETE_REQUEST,
 	CMD_ACK,
+	TRACK_STATUS_REPORT,
 };  
 
 
@@ -194,11 +196,14 @@ typedef enum{
 
 #define CMD_TRACK_RUNTIME_REPORT 0xB0	//货道运行时长上报
 
+#define CMD_TRACK_STATUS_REPORT 0xB1	//货道状态上报
+
 #define CMD_MCU_ADD_MEDICINE_COMPLETE 0xC0	//单板补货完成
 
 #define CMD_MSG_ACK 0xF0	//指令应答
 
 #define CMD_QUERY_MSG 0xF1	//主机轮询指令
+
 
 
 typedef struct _uart_msg_struct
@@ -467,14 +472,14 @@ struct query_struct
 
 
 
-struct motor_status_struct  
+struct track_status_struct  
 {  
 	uint8_t start_code; 
 	uint8_t packet_len;
 	uint8_t cmd_type;
 	uint8_t board_id;
 	uint8_t track_id;
-	uint8_t motor_status;
+	uint8_t status;
 	uint8_t checksum; 		
 };
 

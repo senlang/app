@@ -41,6 +41,7 @@ extern uint16_t board_push_finish;
 extern uint16_t board_add_finish;
 extern uint8_t OverCurrentDetected;	//货道开关状态1为检测到
 
+extern uint8_t g_track_state;
 
 //static  uint16_t forward_running_time;  
 //static  uint16_t backward_running_time; 

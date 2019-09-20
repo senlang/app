@@ -121,10 +121,10 @@ void Factory_Test_Task(void *pdata);
 
 
 //传感器
-#define SENSOR_TASK_PRIO	18
-#define SENSOR_STK_SIZE		128
-OS_STK SENSOR_TASK_STK[SENSOR_STK_SIZE]; 
-void SENSOR_Task(void *pdata);
+#define TrackMonitor_TASK_PRIO	18
+#define TrackMonitor_STK_SIZE		128
+OS_STK TrackMonitor_TASK_STK[TrackMonitor_STK_SIZE]; 
+void TrackMonitor_Task(void *pdata);
 
 
 
@@ -341,7 +341,7 @@ void start_task(void *pdata)
 
 	OSTaskCreate(Track_OverCurrent_Task, (void *)0, (OS_STK*)&OVERCURRENT_TASK_STK[OVERCURRENT_STK_SIZE- 1], OVERCURRENT_TASK_PRIO);
 
-	OSTaskCreate(SENSOR_Task, (void *)0, (OS_STK*)&SENSOR_TASK_STK[SENSOR_STK_SIZE- 1], SENSOR_TASK_PRIO);
+	OSTaskCreate(TrackMonitor_Task, (void *)0, (OS_STK*)&TrackMonitor_TASK_STK[TrackMonitor_STK_SIZE- 1], TrackMonitor_TASK_PRIO);
 
 	//OSTaskCreate(Factory_Test_Task, (void *)0, (OS_STK*)&FACTORY_TEST_TASK_STK[FACTORY_TEST_STK_SIZE- 1], FACTORY_TEST_TASK_PRIO);
 
@@ -656,27 +656,6 @@ void DrugPush_Task(void *pdata)
 }
 
 
-extern void iap_load_app(u32 appxaddr);
-
-
-void SENSOR_Task(void *pdata)
-{
-	float value = 0;
-	u16 adcx;
-	UsartPrintf(USART_DEBUG, "SENSOR_Task run!!!!!!!!!!!!\r\n");
-
-	while(1)
-	{	
-		adcx = Get_Adc_Average();
-		value = (float)adcx*(3.3/4096);
-		
-		UsartPrintf(USART_DEBUG, "Sensor value = %f!!!!!!!!!!!!\r\n", value);
-		
-		RTOS_TimeDlyHMSM(0, 0, 3, 0);	//
-		//UsartPrintf(USART_DEBUG, "will jump\r\n");
-		//iap_load_app(0x08010000);
-	}
-}
 
 /*
 产测任务
@@ -1124,6 +1103,62 @@ void QueryMain_Task(void *pdata)
 			send_query_message(id);
 			RTOS_TimeDlyHMSM(0, 0, 0, 500); //挂起任务250ms
 		}
+	}
+}
+
+extern void iap_load_app(u32 appxaddr);
+void TrackMonitor_Task(void *pdata)
+{
+	float voltage = 0;
+	u16 adcx;
+	uint8_t status = 0;
+	uint8_t track_id = 0;
+	uint8_t is_report = 0;
+		
+	UsartPrintf(USART_DEBUG, "SENSOR_Task run!!!!!!!!!!!!\r\n");
+
+	while(1)
+	{	
+		is_report = 0;
+		if (g_track_state == TRACK_STANDBY) 
+		{
+			adcx = Get_Adc_Average();
+			voltage = (float)adcx*(3.3/4096);
+			UsartPrintf(USART_DEBUG, "TRACK_STANDBY voltage: %f!!!!!!!!!!!!\r\n", voltage);
+
+			if(voltage >= SHORTCIRCUIT_BLOCK_VOLTAGE)
+			{
+				is_report = 0;
+				track_id = 0xff;
+				status = SHORTCIRCUIT_BLOCK;
+			}
+		}
+		else if(g_track_state == TRACK_WORKING)
+		{
+			adcx = Get_Adc_Average();
+			voltage = (float)adcx*(3.3/4096);
+			UsartPrintf(USART_DEBUG, "TRACK_WORKING voltage: %f!!!!!!!!!!!!\r\n", voltage);
+			
+			if(voltage < NORMAL_RUNNING_VOLTAGE)
+			{
+				status = SHORTCIRCUIT_BLOCK;
+				is_report = 0;
+				track_id = motor_run_detect_track_num;
+			}	
+			
+			if(voltage > SHORTCIRCUIT_BLOCK_VOLTAGE)
+			{
+				status = BROKENCIRCUIT;
+				is_report = 0;
+				track_id = motor_run_detect_track_num;
+			}
+				
+		}
+
+		if(is_report)
+		send_track_status_report(track_id, status);
+
+		RTOS_TimeDlyHMSM(0, 0, 0, 500);
 	}
 }
 

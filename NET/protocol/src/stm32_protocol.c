@@ -442,6 +442,7 @@ void send_track_runtime_report( void *input_data)
 		MessageInsertQueue(send_track_runtime, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE, UART2_IDX);
 	}
 } 
+ 
 
 
 int board_send_message(int msg_type, void *input_data)
@@ -464,9 +465,10 @@ int board_send_message(int msg_type, void *input_data)
 		case CMD_ACK:
 			send_command_ack(input_data, UART1_IDX);
 		break;
+
 		
-		//defualt:
-		//break;
+		defualt:
+		return 0;
 	}
 
 	return 0;

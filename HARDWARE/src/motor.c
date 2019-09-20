@@ -42,6 +42,7 @@ extern uint16_t drag_push_time_calc;
 extern uint8_t motor_run_detect_flag;
 extern uint8_t motor_run_detect_track_num;
 
+extern uint8_t g_track_state;
 
 /*
 ************************************************************
@@ -101,18 +102,23 @@ void Motor_Set(uint8_t status)
 		GPIO_WriteBit(GPIOC, GPIO_Pin_4, Bit_RESET);
 		GPIO_WriteBit(GPIOC, GPIO_Pin_5, Bit_RESET);
 		motor_run_direction = status;
+		g_track_state = TRACK_STANDBY;
 	}
 	else if(MOTOR_RUN_FORWARD== status)
 	{	
 		GPIO_WriteBit(GPIOC, GPIO_Pin_4, Bit_SET);
 		GPIO_WriteBit(GPIOC, GPIO_Pin_5, Bit_RESET);
 		motor_run_direction = status;
+		
+		g_track_state = TRACK_WORKING;
 	}
 	else if(MOTOR_RUN_BACKWARD== status)
 	{	
 		GPIO_WriteBit(GPIOC, GPIO_Pin_4, Bit_RESET);
 		GPIO_WriteBit(GPIOC, GPIO_Pin_5, Bit_SET);
 		motor_run_direction = status;
+		
+		g_track_state = TRACK_WORKING;
 	}
 	MotorStatus.MotorSta = status;
 }

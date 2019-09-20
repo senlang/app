@@ -874,3 +874,33 @@ void send_query_message(uint8_t id)
 
 
 
+
+
+
+void send_track_status_report(uint8_t track_id, uint8_t status)  
+{  
+	struct track_status_struct track_status;
+	
+	memset(&track_status, 0x00, sizeof(struct track_status_struct));
+	track_status.start_code = START_CODE;
+	track_status.packet_len = TRACK_STATUS_REPORT_PACKET_SIZE - 1;
+	track_status.cmd_type = CMD_TRACK_STATUS_REPORT;
+	
+
+	track_status.board_id = g_src_board_id;
+	track_status.track_id = track_id;
+	track_status.status = status;
+	
+	track_status.checksum = add_checksum((unsigned char *)&track_status, TRACK_STATUS_REPORT_PACKET_SIZE - 1);  
+
+	if(g_src_board_id == 1)
+	{
+		UART1_IO_Send((u8 *)(&track_status), TRACK_STATUS_REPORT_PACKET_SIZE);  
+	}
+	else
+	{
+		MessageInsertQueue((u8 *)(&track_status), TRACK_STATUS_REPORT_PACKET_SIZE, UART2_IDX);
+	}
+} 
+
+

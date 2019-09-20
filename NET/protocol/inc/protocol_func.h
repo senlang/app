@@ -35,4 +35,6 @@ void FactoryFuncTest(void);
 
 void send_query_message(uint8_t id); 
 
+void send_track_status_report(uint8_t track_id, uint8_t status);
+
 #endif
