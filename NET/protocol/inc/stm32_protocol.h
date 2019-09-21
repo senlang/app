@@ -16,7 +16,7 @@
 #define TOTAL_PUSH_CNT	(100)
 
 #define TRACK_MAX	96
-#define BOARD_ID_MAX 8
+#define BOARD_ID_MAX 9
 #define PUSH_TIME_MAX 200
 
 

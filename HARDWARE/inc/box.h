@@ -70,10 +70,10 @@ typedef struct
 } drug_box, *pdrug_box;
 
 
-#define MOTOR_STANDBY_VOLTAGE (2.51)
-#define NORMAL_RUNNING_VOLTAGE (2.53)
-#define SHORTCIRCUIT_BLOCK_VOLTAGE (2.6)
-#define BROKENCIRCUIT_VOLTAGE (2.51)
+#define MOTOR_STANDBY_VOLTAGE ((float)2.51 / 3.3 * 4096)
+#define NORMAL_RUNNING_VOLTAGE ((float)2.53 / 3.3 * 4096)
+#define SHORTCIRCUIT_BLOCK_VOLTAGE ((float)2.6 / 3.3 * 4096)
+#define BROKENCIRCUIT_VOLTAGE ((float)2.51 / 3.3 * 4096)
 
 typedef enum
 {

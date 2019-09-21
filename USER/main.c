@@ -122,7 +122,7 @@ void Factory_Test_Task(void *pdata);
 
 //传感器
 #define TrackMonitor_TASK_PRIO	18
-#define TrackMonitor_STK_SIZE		128
+#define TrackMonitor_STK_SIZE		256
 OS_STK TrackMonitor_TASK_STK[TrackMonitor_STK_SIZE]; 
 void TrackMonitor_Task(void *pdata);
 
@@ -1097,69 +1097,77 @@ void QueryMain_Task(void *pdata)
 
 	while(1)
 	{	
-		//for(id = 2; id <= BOARD_ID_MAX; id++)
-		for(id = 2; id <= 3; id++)
+		//for(id = 2; id <= 3; id++)
+		for(id = 2; id <= BOARD_ID_MAX; id++)
 		{
 			send_query_message(id);
-			RTOS_TimeDlyHMSM(0, 0, 0, 500); //挂起任务250ms
+			RTOS_TimeDlyHMSM(0, 0, 0, 200); //挂起任务200ms
 		}
 	}
 }
 
-extern void iap_load_app(u32 appxaddr);
+
 void TrackMonitor_Task(void *pdata)
 {
-	float voltage = 0;
-	u16 adcx;
+	__IO uint16_t adcx;
+	float voltage;
+	
 	uint8_t status = 0;
 	uint8_t track_id = 0;
 	uint8_t is_report = 0;
 		
 	UsartPrintf(USART_DEBUG, "SENSOR_Task run!!!!!!!!!!!!\r\n");
+	
 
 	while(1)
 	{	
+
 		is_report = 0;
 		if (g_track_state == TRACK_STANDBY) 
 		{
-			adcx = Get_Adc_Average();
-			voltage = (float)adcx*(3.3/4096);
-			UsartPrintf(USART_DEBUG, "TRACK_STANDBY voltage: %f!!!!!!!!!!!!\r\n", voltage);
+			adcx = Get_Adc_Average();			
+			//voltage = (float) adcx/4096*3.3;
 
-			if(voltage >= SHORTCIRCUIT_BLOCK_VOLTAGE)
+			//UsartPrintf(USART_DEBUG, "TRACK_STANDBY adcx:%d, %d,%d,%d\r\n", adcx, (uint16_t)MOTOR_STANDBY_VOLTAGE,(uint16_t)NORMAL_RUNNING_VOLTAGE, (uint16_t)SHORTCIRCUIT_BLOCK_VOLTAGE);
+			
+			if(adcx > (uint16_t)MOTOR_STANDBY_VOLTAGE)
 			{
-				is_report = 0;
+				is_report = 1;
 				track_id = 0xff;
 				status = SHORTCIRCUIT_BLOCK;
+				UsartPrintf(USART_DEBUG, "TRACK_STANDBY adcx[%d] > STANDBY_VOLTAGE[%d]\r\n", adcx, (uint16_t)MOTOR_STANDBY_VOLTAGE);
 			}
 		}
 		else if(g_track_state == TRACK_WORKING)
 		{
+			RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
 			adcx = Get_Adc_Average();
-			voltage = (float)adcx*(3.3/4096);
-			UsartPrintf(USART_DEBUG, "TRACK_WORKING voltage: %f!!!!!!!!!!!!\r\n", voltage);
+			//voltage = (float)adcx*(3.3/4096);
 			
-			if(voltage < NORMAL_RUNNING_VOLTAGE)
+			//UsartPrintf(USART_DEBUG, "TRACK_WORKING adcx:%d, %d, %d\n", adcx, (uint16_t)NORMAL_RUNNING_VOLTAGE, (uint16_t)SHORTCIRCUIT_BLOCK_VOLTAGE);
+			
+			if(adcx < (uint16_t)NORMAL_RUNNING_VOLTAGE)
 			{
 				status = SHORTCIRCUIT_BLOCK;
-				is_report = 0;
+				is_report = 1;
 				track_id = motor_run_detect_track_num;
+				UsartPrintf(USART_DEBUG, "TRACK_WORKING adcx[%d] < RUNNING_VOLTAGE[%d]\n", adcx, (uint16_t)NORMAL_RUNNING_VOLTAGE);
 			}	
 			
-			if(voltage > SHORTCIRCUIT_BLOCK_VOLTAGE)
+			if(adcx > (uint16_t)SHORTCIRCUIT_BLOCK_VOLTAGE)
 			{
 				status = BROKENCIRCUIT;
-				is_report = 0;
+				is_report = 1;
 				track_id = motor_run_detect_track_num;
+				UsartPrintf(USART_DEBUG, "TRACK_WORKING adcx[%d] > SHORTCIRCUIT_BLOCK_VOLTAGE[%d]\n", adcx, (uint16_t)SHORTCIRCUIT_BLOCK_VOLTAGE);
 			}
 				
 		}
 
 		if(is_report)
 		send_track_status_report(track_id, status);
-
+		
 		RTOS_TimeDlyHMSM(0, 0, 0, 500);
 	}
 }
-
 
