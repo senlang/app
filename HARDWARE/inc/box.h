@@ -87,6 +87,7 @@ typedef enum
 {
 	TRACK_STANDBY = 0,
 	TRACK_WORKING,
+	TRACK_IDLE,
 }TRACK_STATUS_ENUM;
 
 

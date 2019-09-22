@@ -55,14 +55,16 @@ void Door_Init(void)
 */
 
 void FrontDoor_Set(_Bool status)
-{
+{	
+	return;
 	GPIO_WriteBit(GPIOA, GPIO_Pin_7, status == BOX_DOOR_OPEN ? Bit_SET : Bit_RESET);		//如果status等于DOOR_OPEN，则返回Bit_SET，否则返回Bit_RESET
 	delay_ms(500);
 	GPIO_WriteBit(GPIOA, GPIO_Pin_7, Bit_RESET);
 }
 
 void BackDoor_Set(_Bool status)
-{
+{	
+	return;
 	GPIO_WriteBit(GPIOA, GPIO_Pin_6, status == BOX_DOOR_OPEN ? Bit_SET : Bit_RESET);		//如果status等于DOOR_OPEN，则返回Bit_SET，否则返回Bit_RESET
 	delay_ms(500);
 	GPIO_WriteBit(GPIOA, GPIO_Pin_6, Bit_RESET);

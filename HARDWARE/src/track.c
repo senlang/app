@@ -42,6 +42,7 @@ extern uint16_t board_add_finish;
 extern uint8_t OverCurrentDetected;	//货道开关状态1为检测到
 
 extern uint8_t g_track_state;
+extern uint8_t g_track_id;
 
 //static  uint16_t forward_running_time;  
 //static  uint16_t backward_running_time; 
@@ -169,11 +170,13 @@ uint8_t set_track(uint16_t track_num, uint8_t status)
 	{
 		GPIO_WriteBit(x.GPIOx, x.GPIO_Pin, Bit_RESET);
 		GPIO_WriteBit(y.GPIOx, y.GPIO_Pin, Bit_RESET);
+		g_track_id = 0;
 	}
 	else if((1 == status) || (2== status))
 	{
 		GPIO_WriteBit(x.GPIOx, x.GPIO_Pin, Bit_SET);
 		GPIO_WriteBit(y.GPIOx, y.GPIO_Pin, Bit_SET);
+		g_track_id = track_num;
 	}
 
 	return 1;

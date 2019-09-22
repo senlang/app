@@ -176,6 +176,7 @@ uint8_t key_init = 0;
 
 uint8_t  g_src_board_id = 0;
 uint8_t g_track_state = 0;
+uint8_t g_track_id = 0;
 
 
 extern struct status_report_request_info_struct  heart_info;
@@ -266,13 +267,14 @@ void Hardware_Init(void)
 
 		Belt_Init();		//传送带初始化
 
-		Door_Init();		//前后大门控制初始化
-
 		Lifter_Init();		//取药升降机初始化
 	}
-	else if(g_src_board_id == 2)
+	else if(g_src_board_id == 5)
 	{
 		Light_Init();	//灯箱初始化
+		
+		//Door_Init();	//前后大门控制初始化
+		
 		Cooling_Init();	//制冷设备初始化
 	}
 
@@ -433,7 +435,7 @@ void UART2_RECEIVE_Task(void *pdata)
 	while(1)
 	{
 		OSSemPend(SemOfUart2RecvData, 0u, &err);
-		UsartPrintf(USART_DEBUG, "UART2_RECEIVE_Task--------\r\n");
+		//UsartPrintf(USART_DEBUG, "UART2_RECEIVE_Task--------\r\n");
 		
 		do{
 			if(uart2_receive_data() == 0)
@@ -1101,7 +1103,7 @@ void QueryMain_Task(void *pdata)
 		for(id = 2; id <= BOARD_ID_MAX; id++)
 		{
 			send_query_message(id);
-			RTOS_TimeDlyHMSM(0, 0, 0, 200); //挂起任务200ms
+			RTOS_TimeDlyHMSM(0, 0, 0, 250); //挂起任务250ms
 		}
 	}
 }
@@ -1115,13 +1117,13 @@ void TrackMonitor_Task(void *pdata)
 	uint8_t status = 0;
 	uint8_t track_id = 0;
 	uint8_t is_report = 0;
-		
+	static LED_STATUS_ENUM led_st = LED_ON;
+	
 	UsartPrintf(USART_DEBUG, "SENSOR_Task run!!!!!!!!!!!!\r\n");
 	
 
 	while(1)
 	{	
-
 		is_report = 0;
 		if (g_track_state == TRACK_STANDBY) 
 		{
@@ -1137,6 +1139,8 @@ void TrackMonitor_Task(void *pdata)
 				status = SHORTCIRCUIT_BLOCK;
 				UsartPrintf(USART_DEBUG, "TRACK_STANDBY adcx[%d] > STANDBY_VOLTAGE[%d]\r\n", adcx, (uint16_t)MOTOR_STANDBY_VOLTAGE);
 			}
+			
+			Led_Set(LED_2, LED_OFF);
 		}
 		else if(g_track_state == TRACK_WORKING)
 		{
@@ -1150,7 +1154,7 @@ void TrackMonitor_Task(void *pdata)
 			{
 				status = SHORTCIRCUIT_BLOCK;
 				is_report = 1;
-				track_id = motor_run_detect_track_num;
+				track_id = g_track_id;
 				UsartPrintf(USART_DEBUG, "TRACK_WORKING adcx[%d] < RUNNING_VOLTAGE[%d]\n", adcx, (uint16_t)NORMAL_RUNNING_VOLTAGE);
 			}	
 			
@@ -1158,14 +1162,16 @@ void TrackMonitor_Task(void *pdata)
 			{
 				status = BROKENCIRCUIT;
 				is_report = 1;
-				track_id = motor_run_detect_track_num;
+				track_id = g_track_id;
 				UsartPrintf(USART_DEBUG, "TRACK_WORKING adcx[%d] > SHORTCIRCUIT_BLOCK_VOLTAGE[%d]\n", adcx, (uint16_t)SHORTCIRCUIT_BLOCK_VOLTAGE);
 			}
-				
+			
+			Led_Set(LED_2, led_st);
+			led_st = !led_st;		
 		}
 
-		if(is_report)
-		send_track_status_report(track_id, status);
+		//if(is_report)
+		//send_track_status_report(track_id, status);
 		
 		RTOS_TimeDlyHMSM(0, 0, 0, 500);
 	}

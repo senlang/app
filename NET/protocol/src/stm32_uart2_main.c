@@ -85,7 +85,7 @@ int uart2_parse_protocol(void)
 	int len;
 	int count = 0;
 
-	UsartPrintf(USART_DEBUG, "uart2:en idx = %d, de idx = %d\r\n", uart2_enqueue_idx, uart2_dequeue_idx);
+	//UsartPrintf(USART_DEBUG, "uart2:en idx = %d, de idx = %d\r\n", uart2_enqueue_idx, uart2_dequeue_idx);
 
 	if (uart2_enqueue_idx != uart2_dequeue_idx)
 	{
@@ -101,7 +101,7 @@ int uart2_parse_protocol(void)
 		return 0;
 	}
 	
-	UsartPrintf(USART_DEBUG, "count = %d\r\n", count);
+	//UsartPrintf(USART_DEBUG, "count = %d\r\n", count);
 
 	while(count > 0)
 	{

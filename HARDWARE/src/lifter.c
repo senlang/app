@@ -81,13 +81,13 @@ void Lifter_Init(void)
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);		//打开GPIOA的时钟
 	
 	gpioInitStruct.GPIO_Mode = GPIO_Mode_Out_PP;				//设置为输出
-	gpioInitStruct.GPIO_Pin = GPIO_Pin_4|GPIO_Pin_5;						//将初始化的Pin脚
+	gpioInitStruct.GPIO_Pin = GPIO_Pin_6|GPIO_Pin_7;						//将初始化的Pin脚
 	gpioInitStruct.GPIO_Speed = GPIO_Speed_50MHz;				//可承载的最大频率
 	
 	GPIO_Init(GPIOA, &gpioInitStruct);							//初始化GPIO
 	
-	GPIO_WriteBit(GPIOA, GPIO_Pin_4, Bit_RESET);
-	GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_RESET);
+	GPIO_WriteBit(GPIOA, GPIO_Pin_6, Bit_RESET);
+	GPIO_WriteBit(GPIOA, GPIO_Pin_7, Bit_RESET);
 
 	Lifter_Key_Init();
 }
@@ -100,36 +100,36 @@ void Lifter_Set(uint8_t status)
 	UsartPrintf(USART_DEBUG, "Lifter run, status[%d]!!!\r\n", status);
 	if(status == LIFTER_UP)
 	{
-		GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_RESET);	
-		GPIO_WriteBit(GPIOA, GPIO_Pin_4, Bit_SET);	
+		GPIO_WriteBit(GPIOA, GPIO_Pin_7, Bit_RESET);	
+		GPIO_WriteBit(GPIOA, GPIO_Pin_6, Bit_SET);	
 
 		while(Lifter_Key_Detect(LIFTER_UP) == LIFTER_KEY_NOT_DETECT){
 			RTOS_TimeDlyHMSM(0, 0, 0, 100);
 			time++;
 			
-			if(time >= 160)
+			if(time >= 180)
 			break;
 		};
 
-		GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_RESET);	
-		GPIO_WriteBit(GPIOA, GPIO_Pin_4, Bit_RESET);	
+		GPIO_WriteBit(GPIOA, GPIO_Pin_7, Bit_RESET);	
+		GPIO_WriteBit(GPIOA, GPIO_Pin_6, Bit_RESET);	
 	}
 
 	else if(status == LIFTER_FALL)
 	{
-		GPIO_WriteBit(GPIOA, GPIO_Pin_4, Bit_RESET);	
-		GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_SET);	
+		GPIO_WriteBit(GPIOA, GPIO_Pin_6, Bit_RESET);	
+		GPIO_WriteBit(GPIOA, GPIO_Pin_7, Bit_SET);	
 
 		while(Lifter_Key_Detect(LIFTER_FALL) == LIFTER_KEY_NOT_DETECT){
 			RTOS_TimeDlyHMSM(0, 0, 0, 100);
 			time++;
 			
-			if(time >= 160)
+			if(time >= 180)
 			break;
 		};
 		
-		GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_RESET);	
-		GPIO_WriteBit(GPIOA, GPIO_Pin_4, Bit_RESET);	
+		GPIO_WriteBit(GPIOA, GPIO_Pin_7, Bit_RESET);	
+		GPIO_WriteBit(GPIOA, GPIO_Pin_6, Bit_RESET);	
 	}
 	
 	UsartPrintf(USART_DEBUG, "Lifter stop, status[%d]!!!\r\n", status);

@@ -223,7 +223,6 @@ void EXTI4_IRQHandler(void)
 			/*³ö»õ¡¢²¹»õ*/
 			if(motor_run_detect_flag == 1)
 			{
-				
 				UsartPrintf(USART_DEBUG, "Track[%d] over current!!!!!!\r\n", motor_run_detect_track_num);
 				
 				set_track(motor_run_detect_track_num, MOTOR_STOP);

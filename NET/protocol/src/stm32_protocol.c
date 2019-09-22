@@ -926,7 +926,7 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 		START_PARSER:
 		if((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_QUERY_MSG))//收到tx 轮询报文
 		{
-			UsartPrintf(USART_DEBUG, "Recevied Query packet !!\r\n");
+			//UsartPrintf(USART_DEBUG, "Recevied Query packet !!\r\n");
 			OSSemPost(SemOf485MsgSend);
 		}
 		else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_MSG_ACK)) //收到消息应答报文
