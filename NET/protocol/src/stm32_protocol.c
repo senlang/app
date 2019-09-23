@@ -702,8 +702,7 @@ void up_packet_parser(unsigned char *src, int len)
 			}
 			else
 			{
-				UsartPrintf(USART_DEBUG, "Received Data, transfor!!\r\n");
-				break;
+				UsartPrintf(USART_DEBUG, "[up]Other Message [0x%02x]!!\r\n", *(uart2_shared_rx_buf + 2));
 			}
 		}
 
@@ -970,8 +969,7 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 		} 			
 		else 
 		{
-			UsartPrintf(USART_DEBUG, "Received Data is Error, drop!!\r\n");
-			break;
+			UsartPrintf(USART_DEBUG, "Other Message [0x%02x]!!\r\n", *(uart2_shared_rx_buf + 2));
 		}
 
 		
