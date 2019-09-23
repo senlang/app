@@ -502,12 +502,17 @@ void MessageDealQueueCreate(void)
 	
 }
 
-
-void MessageAckCheck(unsigned char *pdata, uint16_t size)
+/*
+返回值:
+0.未找到匹配的缓存消息
+1.找到匹配的消息
+*/
+int MessageAckCheck(unsigned char *pdata, uint16_t size)
 {		
 	uint16_t node_num = 0;
 	uint8_t err = 0;
 	uint8_t i = 0, j = 0, node_i = 0;
+	int ret_val = 0;
 
 	ack_struct  ack_msg;
 	uart_msg_struct cmd_msg;
@@ -525,7 +530,7 @@ void MessageAckCheck(unsigned char *pdata, uint16_t size)
 		(ack_msg.pl_cmd_type !=CMD_REPLENISH_MEDICINE_REQUEST) &&
 		(ack_msg.pl_cmd_type !=CMD_TRACK_RUNTIME_REPORT))
 		
-	return;
+	return 0;
 
 	//请求信号量
 	OSMutexPend(MsgMutex,0,&err);
@@ -536,6 +541,7 @@ void MessageAckCheck(unsigned char *pdata, uint16_t size)
 	if(node_num == 0)
 	{
 		UsartPrintf(USART_DEBUG, "MessageAckQueue is empty!!!\r\n", node_num);
+		ret_val = 0;
 		goto FINISH_MSGCHK;
 	}
 	
@@ -568,6 +574,7 @@ void MessageAckCheck(unsigned char *pdata, uint16_t size)
 				else
 				DeleNode(MsgNode, i);
 				
+				ret_val = 1;
 				UsartPrintf(USART_DEBUG, "Remain Node:%d!!!\r\n", GetNodeNum(UartMsgNode));
 				break;
 			}
@@ -581,6 +588,8 @@ void MessageAckCheck(unsigned char *pdata, uint16_t size)
 				DeleNode(MsgNode, TAIL);
 				else
 				DeleNode(MsgNode, i);
+
+				ret_val = 1;
 				UsartPrintf(USART_DEBUG, "Remain Node:%d!!!\r\n", GetNodeNum(UartMsgNode));
 				break;
 			}
@@ -588,6 +597,8 @@ void MessageAckCheck(unsigned char *pdata, uint16_t size)
 			{
 				node_i++;
 				MsgNode = NewMsgNode;
+				
+				ret_val = 0;
 			}
 		}
 	}
@@ -595,6 +606,7 @@ void MessageAckCheck(unsigned char *pdata, uint16_t size)
 	FINISH_MSGCHK:
 	//释放信号量
 	OSMutexPost(MsgMutex);
+	return ret_val;
 }
 
 void MessageInsertQueue(unsigned char *pdata, uint16_t size, uint8_t uart_idx)

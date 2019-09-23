@@ -174,6 +174,8 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 	UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
 
 	UsartPrintf(USART_DEBUG, "board_id: 0x%02x\r\n", test_request->info.board_id);  
+
+	print_board_test_request((uint8_t *)test_request);
 	
 	if(test_request->info.board_id == g_src_board_id)
 	{

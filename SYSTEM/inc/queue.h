@@ -101,7 +101,7 @@ struct node* GetMsgNode(struct node *pHeader);
 
 void MessageDealQueueCreate(void);
 
-void MessageAckCheck(unsigned char *pdata, uint16_t size);
+int MessageAckCheck(unsigned char *pdata, uint16_t size);
 
 void MessageInsertQueue(unsigned char *pdata, uint16_t size, uint8_t uart_idx);
 

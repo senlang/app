@@ -654,59 +654,52 @@ void up_packet_parser(unsigned char *src, int len)
 			goto	UPDATA_CONTINUE;
 		}
 
-		if((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_MSG_ACK))
-		{
-			MessageAckCheck(src, len);
+		if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_COMPLETE)) //收到出货完成状态上报响应
+		{	 
+			/*0x02,0x06,0xa0,0x03,0xff,0x00,0xaa*/
+			board_id = *(uart2_shared_rx_buf + 3);
+			memcpy(&push_medicine_complete_request, uart2_shared_rx_buf, pkt_len);
+			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_PUSH_MEDICINE_COMPLETE, Board[%d], Track[%d]!!\r\n", push_medicine_complete_request.info.board_id, push_medicine_complete_request.info.medicine_track_number);
+
+			//TODO:统一由1号单板处理，在收集齐所有单板状态后统一上报安卓板
+			if(push_medicine_complete_request.info.medicine_track_number == 0xFF)
+			board_push_finish &= ~(1<<(board_id - 1));
+
+			cmd_ack_info.board_id = board_id;
+			cmd_ack_info.rsp_cmd_type = CMD_PUSH_MEDICINE_COMPLETE;
+			cmd_ack_info.status = 1;
+			send_command_ack(&cmd_ack_info, UART2_IDX);
+		}  
+		else if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_MCU_ADD_MEDICINE_COMPLETE)) //收到补货完成状态上报响应
+		{  
+			board_id = *(uart2_shared_rx_buf + 3);
+			memcpy(&add_medicine_complete_request, uart2_shared_rx_buf, pkt_len);
+			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MCU_ADD_MEDICINE_COMPLETE, Board[%d], Track[%d]!!\r\n", add_medicine_complete_request.info.board_id, add_medicine_complete_request.info.medicine_track_number);
+
+			if(add_medicine_complete_request.info.medicine_track_number == 0xFF)
+			board_add_finish &= ~(1<<(board_id - 1));
+			
+			cmd_ack_info.board_id = board_id;
+			cmd_ack_info.rsp_cmd_type = CMD_MCU_ADD_MEDICINE_COMPLETE;
+			cmd_ack_info.status = 1;
+			send_command_ack(&cmd_ack_info, UART2_IDX);
 		}
-		
-		if(1 == g_src_board_id)
+		else if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_MSG_ACK))
 		{
-			if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_COMPLETE)) //收到出货完成状态上报响应
-			{	 
-				/*0x02,0x06,0xa0,0x03,0xff,0x00,0xaa*/
-				board_id = *(uart2_shared_rx_buf + 3);
-				memcpy(&push_medicine_complete_request, uart2_shared_rx_buf, pkt_len);
-				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_PUSH_MEDICINE_COMPLETE, Board[%d], Track[%d]!!\r\n", push_medicine_complete_request.info.board_id, push_medicine_complete_request.info.medicine_track_number);
+			/*0x02,0x06,0xf0,0xa0,0x03,0x01,0x9c*/
+			board_id = *(uart2_shared_rx_buf + 4);
+			if(*(uart2_shared_rx_buf + 3) == CMD_PUSH_MEDICINE_REQUEST)
+			board_push_ackmsg &= ~(1<<(board_id - 1));
+			if(*(uart2_shared_rx_buf + 3) == CMD_REPLENISH_MEDICINE_REQUEST)
+			board_add_ackmsg &= ~(1<<(board_id - 1));
 
-				//TODO:统一由1号单板处理，在收集齐所有单板状态后统一上报安卓板
-				if(push_medicine_complete_request.info.medicine_track_number == 0xFF)
-				board_push_finish &= ~(1<<(board_id - 1));
-
-				cmd_ack_info.board_id = board_id;
-				cmd_ack_info.rsp_cmd_type = CMD_PUSH_MEDICINE_COMPLETE;
-				cmd_ack_info.status = 1;
-				send_command_ack(&cmd_ack_info, UART2_IDX);
-			}  
-			else if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_MCU_ADD_MEDICINE_COMPLETE)) //收到补货完成状态上报响应
-			{  
-				board_id = *(uart2_shared_rx_buf + 3);
-				memcpy(&add_medicine_complete_request, uart2_shared_rx_buf, pkt_len);
-				UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MCU_ADD_MEDICINE_COMPLETE, Board[%d], Track[%d]!!\r\n", add_medicine_complete_request.info.board_id, add_medicine_complete_request.info.medicine_track_number);
-
-				if(add_medicine_complete_request.info.medicine_track_number == 0xFF)
-				board_add_finish &= ~(1<<(board_id - 1));
-				
-				cmd_ack_info.board_id = board_id;
-				cmd_ack_info.rsp_cmd_type = CMD_MCU_ADD_MEDICINE_COMPLETE;
-				cmd_ack_info.status = 1;
-				send_command_ack(&cmd_ack_info, UART2_IDX);
-			}
-			else if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_MSG_ACK))
-			{
-				/*0x02,0x06,0xf0,0xa0,0x03,0x01,0x9c*/
-				board_id = *(uart2_shared_rx_buf + 4);
-				if(*(uart2_shared_rx_buf + 3) == CMD_PUSH_MEDICINE_REQUEST)
-				board_push_ackmsg &= ~(1<<(board_id - 1));
-				if(*(uart2_shared_rx_buf + 3) == CMD_REPLENISH_MEDICINE_REQUEST)
-				board_add_ackmsg &= ~(1<<(board_id - 1));
-
-				UART1_IO_Send(uart2_shared_rx_buf, pkt_len);
-			}
-			else
-			{
-				UsartPrintf(USART_DEBUG, "[up]Other Message [0x%02x]!!\r\n", *(uart2_shared_rx_buf + 2));
-				UART1_IO_Send(uart2_shared_rx_buf, pkt_len);
-			}
+			MessageAckCheck(uart2_shared_rx_buf, pkt_len);
+			UART1_IO_Send(uart2_shared_rx_buf, pkt_len);
+		}
+		else
+		{
+			UsartPrintf(USART_DEBUG, "[up]Other Message [0x%02x]!!\r\n", *(uart2_shared_rx_buf + 2));
+			UART1_IO_Send(uart2_shared_rx_buf, pkt_len);
 		}
 
 		UsartPrintf(USART_DEBUG, "uart2 pkt_len = %d, chk_offset = %d, len = %d!!\r\n", pkt_len, chk_offset, len);
@@ -961,7 +954,7 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 		else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_TEST_REQUEST)) //收到接口测试报文
 		{  
 			parse_board_test_request(protocol_data, uart1_shared_rx_buf);  
-			print_board_test_request(protocol_data);  
+			//print_board_test_request(protocol_data);  
 			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_TEST_REQUEST!!\r\n");
 		} 
 		else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_TRACK_RUNTIME_CALC)) //收到货道时间计算
@@ -972,7 +965,7 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 		} 			
 		else 
 		{
-			UsartPrintf(USART_DEBUG, "Other Message [0x%02x]!!\r\n", *(uart2_shared_rx_buf + 2));
+			UsartPrintf(USART_DEBUG, "Other Message [0x%02x]!!\r\n", *(uart1_shared_rx_buf + 2));
 		}
 
 		
