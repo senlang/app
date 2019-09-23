@@ -166,6 +166,8 @@ uint8_t set_track(uint16_t track_num, uint8_t status)
 	y = Y_value[addr.y];
 
 	//UsartPrintf(USART_DEBUG, "x.GPIO_Pin[0x%04x]y.GPIO_Pin[0x%04x]\r\n", x.GPIO_Pin, y.GPIO_Pin);
+	
+	UsartPrintf(USART_DEBUG, "set_track[%d]:%d\r\n", track_num, status);
 	if(0 == status)
 	{
 		GPIO_WriteBit(x.GPIOx, x.GPIO_Pin, Bit_RESET);

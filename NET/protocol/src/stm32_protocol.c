@@ -699,10 +699,13 @@ void up_packet_parser(unsigned char *src, int len)
 				board_push_ackmsg &= ~(1<<(board_id - 1));
 				if(*(uart2_shared_rx_buf + 3) == CMD_REPLENISH_MEDICINE_REQUEST)
 				board_add_ackmsg &= ~(1<<(board_id - 1));
+
+				UART1_IO_Send(uart2_shared_rx_buf, pkt_len);
 			}
 			else
 			{
 				UsartPrintf(USART_DEBUG, "[up]Other Message [0x%02x]!!\r\n", *(uart2_shared_rx_buf + 2));
+				UART1_IO_Send(uart2_shared_rx_buf, pkt_len);
 			}
 		}
 

@@ -116,8 +116,8 @@ int uart2_parse_protocol(void)
 		/*rs485½Ó¿Ú*/
 		if(g_src_board_id == 1)
 		{
-			UART1_IO_Send(src, len);
 			up_packet_parser(src, len);
+			//UART1_IO_Send(src, len);
 		}
 		else
 		{
