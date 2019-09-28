@@ -96,6 +96,7 @@ void Motor_Init(void)
 */
 void Motor_Set(uint8_t status)
 {
+	
 	UsartPrintf(USART_DEBUG, "Motor_Set:%d\r\n", status);
 	
 	if(MOTOR_STOP == status)

@@ -926,42 +926,42 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 		}
 		else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_MSG_ACK)) //收到消息应答报文
 		{  
+			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MSG_ACK!!\r\n");
 			parse_message_ack(protocol_data, uart1_shared_rx_buf);
 			MessageAckCheck(uart1_shared_rx_buf, pkt_len);
 			//print_message_ack(protocol_data);  
-			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MSG_ACK!!\r\n");
 		} 
 		else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_REQUEST)) //收到出药请求
 		{  
+			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_PUSH_MEDICINE_REQUEST!!\r\n");
 			parse_push_medicine_request(protocol_data, uart1_shared_rx_buf);  
 			print_push_medicine_request(protocol_data);  
 
-			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_PUSH_MEDICINE_REQUEST!!\r\n");
 		}  
 		else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_REPLENISH_MEDICINE_REQUEST)) //收到补货请求
 		{  
+			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_REPLENISH_MEDICINE_REQUEST!!\r\n");
 			parse_replenish_medicine_request(protocol_data, uart1_shared_rx_buf);	
 			print_replenish_medicine_request(protocol_data);	
 			
-			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_REPLENISH_MEDICINE_REQUEST!!\r\n");
 		}   	
 		else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_ADD_MEDICINE_COMPLETE)) //收到收到补货完成
 		{  
+			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_ADD_MEDICINE_COMPLETE!!\r\n");
 			parse_replenish_complete_request(protocol_data, uart1_shared_rx_buf);
 			print_replenish_complete_request(protocol_data);  
-			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_ADD_MEDICINE_COMPLETE!!\r\n");
 		} 
 		else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_TEST_REQUEST)) //收到接口测试报文
 		{  
+			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_TEST_REQUEST!!\r\n");
 			parse_board_test_request(protocol_data, uart1_shared_rx_buf);  
 			//print_board_test_request(protocol_data);  
-			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_TEST_REQUEST!!\r\n");
 		} 
 		else if ((*(uart1_shared_rx_buf + 0) == START_CODE)&&(*(uart1_shared_rx_buf + 2) == CMD_TRACK_RUNTIME_CALC)) //收到货道时间计算
 		{  
+			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_STATUS_REPORT_REQUEST!!\r\n");
 			parse_track_runtime_calc_request(protocol_data, uart1_shared_rx_buf);
 			print_track_runtime_calc_request(protocol_data);  
-			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_STATUS_REPORT_REQUEST!!\r\n");
 		} 			
 		else 
 		{

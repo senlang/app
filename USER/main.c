@@ -631,10 +631,10 @@ void DrugPush_Task(void *pdata)
 						Door_Control_Set(MOTOR_STOP);
 						RTOS_TimeDlyHMSM(0, 0, 10, 0);
 						try_times++;
+						Door_Control_Set(MOTOR_RUN_FORWARD);
 					}
 					else
 					{
-						Door_Control_Set(MOTOR_RUN_FORWARD);
 						run_time += 1;
 					}
 					RTOS_TimeDlyHMSM(0, 0, 0, 100);
