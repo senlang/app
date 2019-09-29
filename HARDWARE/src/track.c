@@ -492,7 +492,7 @@ int Track_run_only(MOTOR_ENUM run_mode)
 				{
 					UsartPrintf(USART_DEBUG, "Backword detect keep down\r\n");
 					Motor_Set(MOTOR_RUN_FORWARD);//电机方向使能
-					set_track(motor_run_detect_track_num, MOTOR_RUN_BACKWARD);//货道使能
+					set_track(motor_run_detect_track_num, MOTOR_RUN_FORWARD);//货道使能
 					
 					RTOS_TimeDlyHMSM(0, 0, 1, 0);
 					
@@ -592,16 +592,29 @@ int Track_trigger_calc_runtime_error(int is_block, int step, MOTOR_ENUM run_mode
 {
 	Motor_Set(run_mode);
 	set_track(cur_calc_track, run_mode);
-	if(!is_block || (2 == step))
+	if(!is_block)
 	{
-		if(!is_block)
+		if(0 == step)
+		{
+			track_time.track_backward_time = 999;
+			track_time.track_forward_time = 999;
+			
+			Motor_Set(MOTOR_RUN_BACKWARD);//电机方向使能
+			set_track(cur_calc_track, MOTOR_RUN_BACKWARD);//货道使能
+			
+			RTOS_TimeDlyHMSM(0, 0, 5, 0);
+			
+			set_track(cur_calc_track, MOTOR_STOP);//货道停止
+			Motor_Set(MOTOR_STOP);	//电机停止
+		}
+		else
 		{
 			track_time.track_backward_time = 888;
 			track_time.track_forward_time = 888;
 		}
-		
 		send_track_runtime_report(&track_time);
 	}
+	
 	return 0;
 }
 

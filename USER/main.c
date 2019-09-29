@@ -768,7 +768,8 @@ void Trigger_CalcRuntime_Task(void *pdata)
 					trigger_calc_runtime = 0;	//清计时
 					trigger_calc_flag = 0;		//关中断
 					UsartPrintf(USART_DEBUG, "Track[%d], do prepare\r\n", cur_calc_track);
-					
+
+					trigger_calc_runtime = 1;
 					Track_trigger_calc_runtime(1, MOTOR_RUN_FORWARD);
 					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
 					trigger_calc_flag = 1;//开中断，进循环
@@ -825,6 +826,13 @@ void Trigger_CalcRuntime_Task(void *pdata)
 						UsartPrintf(USART_DEBUG, "Forward Key Block!!!!\r\n");
 						break;
 					}	
+					else if((i == 0)&&Key_Check(BackwardDetectKey))
+					{
+						trigger_calc_flag = 0;
+						running_time = TRACK_MAX_TIME_MS;
+						UsartPrintf(USART_DEBUG, "Motor Reverse!!!!\r\n");
+						break;
+					}	
 					else if((i == 1)&&(Key_Check(BackwardDetectKey)||Key_Check(CurrentDetectKey)))
 					{
 						Track_Runtime(0, MOTOR_STOP, MOTOR_RUN_BACKWARD);
@@ -841,6 +849,7 @@ void Trigger_CalcRuntime_Task(void *pdata)
 					}
 					else if(i == 3)
 					{
+					
 					}
 					
 					if(running_time >= TRACK_MAX_TIME_MS)
@@ -1155,7 +1164,7 @@ void TrackMonitor_Task(void *pdata)
 				status = SHORTCIRCUIT_BLOCK;
 				is_report = 1;
 				track_id = g_track_id;
-				UsartPrintf(USART_DEBUG, "TRACK_WORKING adcx[%d] < RUNNING_VOLTAGE[%d]\n", adcx, (uint16_t)NORMAL_RUNNING_VOLTAGE);
+				UsartPrintf(USART_DEBUG, "TRACK_WORKING adcx[%d] < RUNNING_VOLTAGE[%d]\r\n", adcx, (uint16_t)NORMAL_RUNNING_VOLTAGE);
 			}	
 			
 			if(adcx > (uint16_t)SHORTCIRCUIT_BLOCK_VOLTAGE)
@@ -1163,7 +1172,7 @@ void TrackMonitor_Task(void *pdata)
 				status = BROKENCIRCUIT;
 				is_report = 1;
 				track_id = g_track_id;
-				UsartPrintf(USART_DEBUG, "TRACK_WORKING adcx[%d] > SHORTCIRCUIT_BLOCK_VOLTAGE[%d]\n", adcx, (uint16_t)SHORTCIRCUIT_BLOCK_VOLTAGE);
+				UsartPrintf(USART_DEBUG, "TRACK_WORKING adcx[%d] > SHORTCIRCUIT_BLOCK_VOLTAGE[%d]\r\n", adcx, (uint16_t)SHORTCIRCUIT_BLOCK_VOLTAGE);
 			}
 			
 			Led_Set(LED_2, led_st);
