@@ -213,7 +213,7 @@ void EXTI4_IRQHandler(void)
 #ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.
 	OSIntEnter();	  
 #endif  	
-	if(0)//(EXTI_GetITStatus(EXTI_Line4)==SET)//是8线的中断
+	if(EXTI_GetITStatus(EXTI_Line4)==SET)//是8线的中断
 	{
 		delay_ms(10);
 		if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN) 					//消抖后检查是否有过流
