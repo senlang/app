@@ -23,7 +23,7 @@
 
 #include "stm32_protocol.h"
 #include "protocol_func.h"
-
+#include "stm32_uart2.h"
 
 extern uint32_t time_passes;
 extern uint32_t TrunkInitTime;
@@ -44,6 +44,15 @@ unsigned char add_checksum (unsigned char *buf, unsigned int len)
   
     return checksum;  
 }  
+
+void send_test_msg( uint8_t *input_data, uint8_t id)  
+{  
+	input_data[3] = id;
+	input_data[BOARD_TEST_REQUEST_PACKET_SIZE - 1] = add_checksum(input_data, BOARD_TEST_REQUEST_PACKET_SIZE - 1);  
+	RS485_Send_Data(input_data, BOARD_TEST_REQUEST_PACKET_SIZE);
+	RTOS_TimeDlyHMSM(0, 0, 0, 50);
+	send_query_message(id);
+} 
 
 void FactoryFuncTest(void)
 {  	
@@ -80,16 +89,16 @@ void FactoryFuncTest(void)
 	
 
 	UsartPrintf(USART_DEBUG, "Front Door test start\r\n");
-	FrontDoor_Set(BOX_DOOR_OPEN);
+	FrontRightDoor_Set(BOX_DOOR_OPEN);
 	RTOS_TimeDlyHMSM(0, 0, delay, 0);
-	FrontDoor_Set(BOX_DOOR_CLOSE);
+	FrontRightDoor_Set(BOX_DOOR_CLOSE);
 	UsartPrintf(USART_DEBUG, "Front Door test stop\r\n");
 	
 
 	UsartPrintf(USART_DEBUG, "Back Door test start\r\n");
-	BackDoor_Set(BOX_DOOR_OPEN);
+	BackRightDoor_Set(BOX_DOOR_OPEN);
 	RTOS_TimeDlyHMSM(0, 0, delay, 0);
-	BackDoor_Set(BOX_DOOR_CLOSE);
+	BackRightDoor_Set(BOX_DOOR_CLOSE);
 	UsartPrintf(USART_DEBUG, "Back Door test stop\r\n");
 
 
@@ -158,15 +167,6 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 		return;
 	}
 	
-	cmd_ack_info.board_id = g_src_board_id;
-	cmd_ack_info.rsp_cmd_type = test_request->cmd_type;
-	cmd_ack_info.status = 1;
-
-	if(g_src_board_id == 1)
-	send_command_ack((void *)&cmd_ack_info, UART1_IDX);
-	else
-	send_command_ack((void *)&cmd_ack_info, UART2_IDX);
-	
 	test_request->info.board_id = inputdata[3];
 	test_request->info.test_mode = inputdata[4];
 	test_request->info.test_status = inputdata[5];
@@ -175,18 +175,54 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 
 	UsartPrintf(USART_DEBUG, "board_id: 0x%02x\r\n", test_request->info.board_id);  
 
+
+	/*灯箱、前后大门由2号和5号单板处理*/
+	if(g_src_board_id == 1)
+	{
+		if((test_request->info.test_mode == FAN_TEST)||(test_request->info.test_mode == FAN_TEST))
+		{
+			send_test_msg(inputdata, BOX_COOLING_CONTROL_BOARD);
+			return;
+		}
+		else if(test_request->info.test_mode == LIGHT_TEST)
+		{
+			send_test_msg(inputdata, BOX_LIGHT_CONTROL_BOARD);
+			return;
+		}
+		else if(test_request->info.test_mode == FRONT_RIGHT_DOOR_TEST||
+			test_request->info.test_mode == FRONT_LEFT_DOOR_TEST)
+		{	
+			send_test_msg(inputdata, BOX_FrontDOOR_CONTROL_BOARD);
+			return;
+		}
+		else if(test_request->info.test_mode == BACK_RIGHT_DOOR_TEST||
+			test_request->info.test_mode == BACK_LEFT_DOOR_TEST)
+		{	
+			send_test_msg(inputdata, BOX_BackDOOR_CONTROL_BOARD);
+			return;
+		}
+	}
+	
 	print_board_test_request((uint8_t *)test_request);
 	
 	if(test_request->info.board_id == g_src_board_id)
 	{
+		/*确认指令*/
+		cmd_ack_info.board_id = g_src_board_id;
+		cmd_ack_info.rsp_cmd_type = test_request->cmd_type;
+		cmd_ack_info.status = 1;
+		if(g_src_board_id == 1)
+		send_command_ack((void *)&cmd_ack_info, UART1_IDX);
+		else
+		send_command_ack((void *)&cmd_ack_info, UART2_IDX);
+		
+	
 		motor_control.board_id = test_request->info.board_id;
 
 		UsartPrintf(USART_DEBUG, "push_time[0x%02x][0x%02x]\r\n",inputdata[7], inputdata[8]);
 
 		motor_control.medicine_track_number = test_request->info.medicine_track_number = inputdata[6];
 		motor_control.push_time = test_request->info.test_time= inputdata[7]<<8|inputdata[8];
-
-
 
 		
 		UsartPrintf(USART_DEBUG, "test mode[%d]\r\n",test_request->info.test_mode);
@@ -256,28 +292,52 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 			}
 
 		}
-		else if(test_request->info.test_mode == FRONT_DOOR_TEST)
+		else if(test_request->info.test_mode == FRONT_RIGHT_DOOR_TEST)
 		{
 			if(test_request->info.test_status == BOX_TEXT_MODE_OPEN)
 			{
-				FrontDoor_Set(BOX_DOOR_OPEN);
+				FrontRightDoor_Set(BOX_DOOR_OPEN);
 			}
 			else if(test_request->info.test_status == BOX_TEXT_MODE_CLOSE)
 			{
-				FrontDoor_Set(BOX_DOOR_CLOSE);
+				FrontRightDoor_Set(BOX_DOOR_CLOSE);
 			}
 		}
-		else if(test_request->info.test_mode == BACK_DOOR_TEST)
+		else if(test_request->info.test_mode == BACK_RIGHT_DOOR_TEST)
 		{
 			if(test_request->info.test_status == BOX_TEXT_MODE_OPEN)
 			{
-				BackDoor_Set(BOX_DOOR_OPEN);
+				BackRightDoor_Set(BOX_DOOR_OPEN);
 			}
 			else if(test_request->info.test_status == BOX_TEXT_MODE_CLOSE)
 			{
-				BackDoor_Set(BOX_DOOR_CLOSE);
+				BackRightDoor_Set(BOX_DOOR_CLOSE);
 			}
 		}
+		
+		else if(test_request->info.test_mode == FRONT_LEFT_DOOR_TEST)
+		{
+			if(test_request->info.test_status == BOX_TEXT_MODE_OPEN)
+			{
+				FrontLeftDoor_Set(BOX_DOOR_OPEN);
+			}
+			else if(test_request->info.test_status == BOX_TEXT_MODE_CLOSE)
+			{
+				FrontLeftDoor_Set(BOX_DOOR_CLOSE);
+			}
+		}
+		else if(test_request->info.test_mode == BACK_LEFT_DOOR_TEST)
+		{
+			if(test_request->info.test_status == BOX_TEXT_MODE_OPEN)
+			{
+				BackLeftDoor_Set(BOX_DOOR_OPEN);
+			}
+			else if(test_request->info.test_status == BOX_TEXT_MODE_CLOSE)
+			{
+				BackLeftDoor_Set(BOX_DOOR_CLOSE);
+			}
+		}
+		
 		else if(test_request->info.test_mode == DRUG_DOOR_TEST)
 		{
 			uint16_t run_time = 0;
@@ -860,6 +920,7 @@ void print_status_report_request(uint8_t *data)
 
 void send_query_message(uint8_t id)  
 {  
+	#if 0
 	struct query_struct query_struct;
 	
 	memset(&query_struct, 0x00, sizeof(struct query_struct));
@@ -868,8 +929,19 @@ void send_query_message(uint8_t id)
 	query_struct.cmd_type = CMD_QUERY_MSG;
 	query_struct.board_id = id;
 	
-	query_struct.checksum = add_checksum((unsigned char *)&query_struct, QUERY_REQUEST_PACKET_SIZE - 1);  
-	RS485_Send_QueryData((u8 *)(&query_struct), QUERY_REQUEST_PACKET_SIZE);
+	query_struct.checksum = add_checksum((uint8_t *)&query_struct, QUERY_REQUEST_PACKET_SIZE - 1);  
+	RS485_Send_QueryData((void *)(&query_struct), QUERY_REQUEST_PACKET_SIZE);
+	#else
+	uint8_t query_data[QUERY_REQUEST_PACKET_SIZE];
+	memset(&query_data, 0x00, QUERY_REQUEST_PACKET_SIZE);
+	
+	query_data[0] = START_CODE;
+	query_data[1] = QUERY_REQUEST_PACKET_SIZE - 1;
+	query_data[2] = CMD_QUERY_MSG;
+	query_data[3] = id;
+	query_data[4] = add_checksum(query_data, QUERY_REQUEST_PACKET_SIZE - 1);  
+	RS485_Send_QueryData((void *)query_data, QUERY_REQUEST_PACKET_SIZE);
+	#endif
 } 
 
 
@@ -903,6 +975,50 @@ void send_track_status_report(uint8_t track_id, uint8_t status)
 	{
 		MessageInsertQueue((u8 *)(&track_status), TRACK_STATUS_REPORT_PACKET_SIZE, UART2_IDX);
 	}
+} 
+
+
+void board_track_control(uint16_t track_num, uint8_t status)
+{
+	Motor_Set(status);
+	set_track(track_num, status);
+}
+
+
+
+
+
+
+
+
+
+void send_temperature_report(int temp, int humi)  
+{  
+	struct box_temperature_report_struct  temperature;
+	
+	memset(&temperature, 0x00, sizeof(struct box_temperature_report_struct));
+	temperature.start_code = START_CODE;
+	temperature.packet_len = TEMPERATURE_REPORT_PACKET_SIZE - 1;
+	temperature.cmd_type = CMD_TEMPERATURE_REPORT;
+	temperature.board_id = g_src_board_id;
+	temperature.part = COOLING_PART1;
+	
+	temperature.H_temp = temp/10;
+	temperature.L_temp = temp%10;
+	temperature.H_humi = humi/10;
+	temperature.L_humi = humi%10;
+
+	temperature.checksum = add_checksum((unsigned char *)&temperature, TEMPERATURE_REPORT_PACKET_SIZE - 1);  
+
+	if(g_src_board_id == 1)
+	{
+		UART1_IO_Send((u8 *)(&temperature), TEMPERATURE_REPORT_PACKET_SIZE);  
+	}
+	else
+	{
+		MessageInsertQueue((u8 *)(&temperature), TEMPERATURE_REPORT_PACKET_SIZE, UART2_IDX);
+	}
+	
 } 
 
 

@@ -32,6 +32,16 @@
 #define MSG_RESEND_TIME_500MS 500	//500s
 #define MSG_RESEND_TIME_SLEEP_100MS 100	//100ms
 
+#define BOX_FrontDOOR_CONTROL_BOARD	5
+#define BOX_BackDOOR_CONTROL_BOARD	7
+#define BOX_COOLING_CONTROL_BOARD 2
+#define BOX_LIGHT_CONTROL_BOARD 6
+
+#define COOLING_PART1 1
+#define COOLING_PART2 2
+#define COOLING_PART3 3
+#define COOLING_PART4 4
+
 
 #define RS485_ENABLE
 
@@ -74,6 +84,7 @@ typedef struct
 #define NORMAL_RUNNING_VOLTAGE ((float)2.53 / 3.3 * 4096)
 #define SHORTCIRCUIT_BLOCK_VOLTAGE ((float)2.6 / 3.3 * 4096)
 #define BROKENCIRCUIT_VOLTAGE ((float)2.51 / 3.3 * 4096)
+
 
 typedef enum
 {
@@ -121,5 +132,6 @@ extern OS_EVENT *MsgMutex;
 extern OS_EVENT *SemOfFactoryTest;				//出厂测试
 extern uint8_t OverCurrentDetected;	//货道开关状态1为检测到
 
+extern MOTOR_ENUM track_work;
 
 #endif

@@ -72,13 +72,13 @@ void Cooling_Init(void)
 void Coolingcompressor_Set(_Bool status)
 {
 	
-	GPIO_WriteBit(GPIOA, GPIO_Pin_4, status == COOLING_ON ? Bit_SET : Bit_RESET);		//如果status等于BEEP_ON，则返回Bit_SET，否则返回Bit_RESET
+	GPIO_WriteBit(GPIOA, GPIO_Pin_5, status == COOLING_ON ? Bit_SET : Bit_RESET);		//如果status等于BEEP_ON，则返回Bit_SET，否则返回Bit_RESET
 }
 
 void Coolingfan_Set(_Bool status)
 {
 	
-	GPIO_WriteBit(GPIOA, GPIO_Pin_5, status == COOLING_ON ? Bit_SET : Bit_RESET);		//如果status等于BEEP_ON，则返回Bit_SET，否则返回Bit_RESET
+	GPIO_WriteBit(GPIOA, GPIO_Pin_4, status == COOLING_ON ? Bit_SET : Bit_RESET);		//如果status等于BEEP_ON，则返回Bit_SET，否则返回Bit_RESET
 }
 
 

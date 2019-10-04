@@ -50,35 +50,9 @@ int down_data_parse(void)
 	
 }
 
-  
+
+
 extern uint8_t  g_src_board_id;
-int uart2_receive_data(void)
-{
-	int retval = -1;
-	
-	if(UART2_IO_Receive() == 0)
-	return retval;
-
-	uart2_enqueue_idx++;
-	if(uart2_enqueue_idx >= UART_MAX_IDX)
-	uart2_enqueue_idx = 0;
-	
-	
-	UART2_IO_ClearRecive();
-	
-	OSSemPost(SemOf485DataParse);
-	uart2_parse_protocol();
-	
-	return 0;
-}
-int down_shared_buf_copy(unsigned char *src, int len)
-{  	
-	return 0;
-}  
-
-
-
-
 int uart2_parse_protocol(void)
 {
 	unsigned char src[UART_BUF_MAX_LEN];
@@ -128,6 +102,32 @@ int uart2_parse_protocol(void)
 	};	
 	return 0;
 }
+
+  
+
+int uart2_receive_data(void)
+{
+	int retval = -1;
+	
+	if(UART2_IO_Receive() == 0)
+	return retval;
+
+	uart2_enqueue_idx++;
+	if(uart2_enqueue_idx >= UART_MAX_IDX)
+	uart2_enqueue_idx = 0;
+	
+	
+	UART2_IO_ClearRecive();
+	
+	OSSemPost(SemOf485DataParse);
+	uart2_parse_protocol();
+	
+	return 0;
+}
+int down_shared_buf_copy(unsigned char *src, int len)
+{  	
+	return 0;
+}  
 
 
 

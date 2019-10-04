@@ -14,11 +14,14 @@
 
 //通讯协议
 #include "stm32_protocol.h"
+#include "stm32_uart2.h"
+#include "protocol_func.h"
+
 
 //mem
 #include "malloc.h"
 
-#define SW_VERSION		"SV 2.0.0"
+#define SW_VERSION		"SV 2.0.1"
 
 //看门狗任务
 #define IWDG_TASK_PRIO		6
@@ -111,23 +114,25 @@ void Trigger_CalcRuntime_Task(void *pdata);
 OS_STK HEART_TASK_STK[HEART_STK_SIZE]; //
 void HeartBeat_Task(void *pdata);
 
-//产测任务
-#define FACTORY_TEST_TASK_PRIO		17
-#define FACTORY_TEST_STK_SIZE		256
-OS_STK FACTORY_TEST_TASK_STK[FACTORY_TEST_STK_SIZE];
-void Factory_Test_Task(void *pdata);
 
-
-
-
-//传感器
-#define TrackMonitor_TASK_PRIO	18
+//货道监测
+#define TrackMonitor_TASK_PRIO	17
 #define TrackMonitor_STK_SIZE		256
 OS_STK TrackMonitor_TASK_STK[TrackMonitor_STK_SIZE]; 
 void TrackMonitor_Task(void *pdata);
 
+//温度传感器，制冷控制
+#define Cooling_TASK_PRIO	18
+#define Cooling_STK_SIZE		256
+OS_STK Cooling_TASK_STK[Cooling_STK_SIZE]; 
+void CoolingControl_Task(void *pdata);
 
 
+//产测任务
+#define FACTORY_TEST_TASK_PRIO		19
+#define FACTORY_TEST_STK_SIZE		256
+OS_STK FACTORY_TEST_TASK_STK[FACTORY_TEST_STK_SIZE];
+void Factory_Test_Task(void *pdata);
 
 
 
@@ -179,8 +184,11 @@ uint8_t g_track_state = 0;
 uint8_t g_track_id = 0;
 
 
+	
+MOTOR_ENUM track_work = 0;
+
+
 extern struct status_report_request_info_struct  heart_info;
-extern uint8_t track_work;
 extern uint32_t time_passes;
 
 uint8_t board_drug_push_status[BOARD_ID_MAX] = {0};
@@ -200,7 +208,7 @@ INT8U MemPartition[100][32];
 
 //START 任务
 //设置任务优先级
-#define START_TASK_PRIO      			20 //开始任务的优先级设置为最低
+#define START_TASK_PRIO      			25 //开始任务的优先级设置为最低
 //设置任务堆栈大小
 #define START_STK_SIZE  				128
 //任务堆栈，8字节对齐	
@@ -256,6 +264,8 @@ void Hardware_Init(void)
 	BoardId_Init();
 
 	Adc_Init();
+
+	DHT12_Init();
 	
 	UsartPrintf(USART_DEBUG, " Current Board ID:0x%x\r\n", g_src_board_id); 
 	
@@ -269,15 +279,19 @@ void Hardware_Init(void)
 
 		Lifter_Init();		//取药升降机初始化
 	}
-	else if(g_src_board_id == 5)
+	else if(g_src_board_id == BOX_COOLING_CONTROL_BOARD)
+	{
+		Cooling_Init(); //制冷设备初始化
+	}
+	else if(g_src_board_id == BOX_FrontDOOR_CONTROL_BOARD || g_src_board_id == BOX_BackDOOR_CONTROL_BOARD)
+	{
+		Door_Init();	//前后大门控制初始化
+	}
+	else if(g_src_board_id == BOX_LIGHT_CONTROL_BOARD)
 	{
 		Light_Init();	//灯箱初始化
-		
-		//Door_Init();	//前后大门控制初始化
-		
-		Cooling_Init();	//制冷设备初始化
 	}
-
+	
 	for(i = 0; i < 10; i++)
 	{
 		Led_Set(LED_1, LED_OFF);
@@ -286,7 +300,7 @@ void Hardware_Init(void)
 		delay_ms(50);
 	}
 
-	//Iwdg_Init(4, 1250); 														//64分频，每秒625次，重载1250次，2s
+	Iwdg_Init(4, 1250); 														//64分频，每秒625次，重载1250次，2s
 }
 
 
@@ -344,6 +358,9 @@ void start_task(void *pdata)
 	OSTaskCreate(Track_OverCurrent_Task, (void *)0, (OS_STK*)&OVERCURRENT_TASK_STK[OVERCURRENT_STK_SIZE- 1], OVERCURRENT_TASK_PRIO);
 
 	OSTaskCreate(TrackMonitor_Task, (void *)0, (OS_STK*)&TrackMonitor_TASK_STK[TrackMonitor_STK_SIZE- 1], TrackMonitor_TASK_PRIO);
+
+	OSTaskCreate(CoolingControl_Task, (void *)0, (OS_STK*)&Cooling_TASK_STK[Cooling_STK_SIZE- 1], Cooling_TASK_PRIO);
+
 
 	//OSTaskCreate(Factory_Test_Task, (void *)0, (OS_STK*)&FACTORY_TEST_TASK_STK[FACTORY_TEST_STK_SIZE- 1], FACTORY_TEST_TASK_PRIO);
 
@@ -677,7 +694,7 @@ void Factory_Test_Task(void *pdata)
 	
 	uint8_t msg[BOARD_TEST_REQUEST_PACKET_SIZE] = {0x02,0x09,0x50,0xFF,0x80,00,00,00,00,0x74};
 	
-	uint8_t msg4track[TRACK_RUNTIME_CALC_REQUEST_PACKET_SIZE] = {0x02, 0x06, 0x80, 0x01, 0x01, 0x08, 0x92};
+	//uint8_t msg4track[TRACK_RUNTIME_CALC_REQUEST_PACKET_SIZE] = {0x02, 0x06, 0x80, 0x01, 0x01, 0x08, 0x92};
 
     INT8U            err;
 	
@@ -829,7 +846,7 @@ void Trigger_CalcRuntime_Task(void *pdata)
 					else if((i == 0)&&Key_Check(BackwardDetectKey))
 					{
 						trigger_calc_flag = 0;
-						running_time = TRACK_MAX_TIME_MS;
+						running_time = TRACK_MAX_TIME_MS + 100;
 						UsartPrintf(USART_DEBUG, "Motor Reverse!!!!\r\n");
 						break;
 					}	
@@ -865,7 +882,7 @@ void Trigger_CalcRuntime_Task(void *pdata)
 				{
 					running_time = 0;
 					trigger_calc_runtime = 0;
-					Track_trigger_calc_runtime_error(0, i, MOTOR_STOP);
+					Track_trigger_calc_runtime_error(0, running_time, MOTOR_STOP);
 		
 					UsartPrintf(USART_DEBUG, "Track calc time %d longer than 80s, error!!!!\r\n", running_time);
 					break;
@@ -916,7 +933,7 @@ void Message_Send_Task(void *pdata)
 	uint16_t node_num = 0;
 	uint32_t cur_time = 0;
 	uint8_t err = 0;
-	uint8_t i = 0, j = 0, node_i = 0;
+	uint8_t i = 0, node_i = 0;
 	
 	struct node* MsgNode = NULL;
 	struct node* NewMsgNode = NULL;
@@ -1120,69 +1137,122 @@ void QueryMain_Task(void *pdata)
 
 void TrackMonitor_Task(void *pdata)
 {
-	__IO uint16_t adcx;
+	float adcx;
 	float voltage;
+	static float g_standby_voltage = 0;
+	static float g_standby_adcx = 0;
 	
 	uint8_t status = 0;
 	uint8_t track_id = 0;
 	uint8_t is_report = 0;
+	int i = 0;
+	
 	static LED_STATUS_ENUM led_st = LED_ON;
 	
 	UsartPrintf(USART_DEBUG, "SENSOR_Task run!!!!!!!!!!!!\r\n");
-	
 
 	while(1)
 	{	
-		is_report = 0;
-		if (g_track_state == TRACK_STANDBY) 
+		if(g_standby_voltage == 0)
 		{
-			adcx = Get_Adc_Average();			
-			//voltage = (float) adcx/4096*3.3;
-
-			//UsartPrintf(USART_DEBUG, "TRACK_STANDBY adcx:%d, %d,%d,%d\r\n", adcx, (uint16_t)MOTOR_STANDBY_VOLTAGE,(uint16_t)NORMAL_RUNNING_VOLTAGE, (uint16_t)SHORTCIRCUIT_BLOCK_VOLTAGE);
-			
-			if(adcx > (uint16_t)MOTOR_STANDBY_VOLTAGE)
+			voltage = 0;
+			for(i = 0; i < 3; i++)
 			{
-				is_report = 1;
-				track_id = 0xff;
-				status = SHORTCIRCUIT_BLOCK;
-				UsartPrintf(USART_DEBUG, "TRACK_STANDBY adcx[%d] > STANDBY_VOLTAGE[%d]\r\n", adcx, (uint16_t)MOTOR_STANDBY_VOLTAGE);
+				adcx = (float)Get_Adc_Average();
+				voltage = adcx*(3.3/4096);
+				
+				g_standby_adcx += adcx;
+				g_standby_voltage += voltage;
+				
+				RTOS_TimeDlyHMSM(0, 0, 0, 500);
+				UsartPrintf(USART_DEBUG, "First Boot voltage:%.3f[%.3f]\r\n", voltage, adcx);
 			}
 			
-			Led_Set(LED_2, LED_OFF);
+			g_standby_adcx = g_standby_adcx/3;
+			g_standby_voltage = g_standby_voltage/3;
+			UsartPrintf(USART_DEBUG, "First Boot g_standby_voltage:%.3f[%.3f]\r\n", g_standby_voltage, g_standby_adcx);
 		}
-		else if(g_track_state == TRACK_WORKING)
-		{
-			RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
-			adcx = Get_Adc_Average();
-			//voltage = (float)adcx*(3.3/4096);
-			
-			//UsartPrintf(USART_DEBUG, "TRACK_WORKING adcx:%d, %d, %d\n", adcx, (uint16_t)NORMAL_RUNNING_VOLTAGE, (uint16_t)SHORTCIRCUIT_BLOCK_VOLTAGE);
-			
-			if(adcx < (uint16_t)NORMAL_RUNNING_VOLTAGE)
+		else
+		{			
+			if ((g_track_state == TRACK_STANDBY) && (motor_run_detect_flag == 0)) 
 			{
-				status = SHORTCIRCUIT_BLOCK;
-				is_report = 1;
-				track_id = g_track_id;
-				UsartPrintf(USART_DEBUG, "TRACK_WORKING adcx[%d] < RUNNING_VOLTAGE[%d]\r\n", adcx, (uint16_t)NORMAL_RUNNING_VOLTAGE);
-			}	
-			
-			if(adcx > (uint16_t)SHORTCIRCUIT_BLOCK_VOLTAGE)
+				for(i = 0; i < 2; i++)
+				{
+					is_report = 0;
+					adcx = Get_Adc_Average();			
+					voltage = adcx*(3.3/4096);
+					
+					if(motor_run_detect_flag == 1)
+					break;
+				}
+				UsartPrintf(USART_DEBUG, "TRACK_STANDBY voltage:%.3f[%.3f]\r\n", voltage, adcx);
+				if(voltage >= g_standby_voltage + 0.3)//g_standby_voltage + 0.3，单板短路故障
+				{
+					is_report = 1;
+					track_id = 0xff;
+					status = SHORTCIRCUIT_BLOCK;
+					UsartPrintf(USART_DEBUG, "TRACK_STANDBY voltage[%.3f] > [%.3f]\r\n", voltage, g_standby_voltage + 0.3);
+				}
+				Led_Set(LED_2, LED_OFF);
+			}
+			else if((g_track_state == TRACK_WORKING) && (motor_run_detect_flag == 1))
 			{
-				status = BROKENCIRCUIT;
-				is_report = 1;
-				track_id = g_track_id;
-				UsartPrintf(USART_DEBUG, "TRACK_WORKING adcx[%d] > SHORTCIRCUIT_BLOCK_VOLTAGE[%d]\r\n", adcx, (uint16_t)SHORTCIRCUIT_BLOCK_VOLTAGE);
+				for(i = 0; i < 2; i++)
+				{
+					is_report = 0;
+					adcx = Get_Adc_Average();			
+					voltage += adcx*(3.3/4096);
+					
+					if((g_track_state != TRACK_WORKING) || (motor_run_detect_flag != 1))
+					break;
+				}
+				
+				voltage = voltage/2;
+				UsartPrintf(USART_DEBUG, "TRACK_WORKING adcx:%.3f[%.3f]\r\n", voltage, adcx);
+				
+				if(voltage < g_standby_voltage + 0.2)//< g_standby_voltage + 0.2，断路
+				{
+					status = BROKENCIRCUIT;
+					is_report = 1;
+					track_id = g_track_id;
+					UsartPrintf(USART_DEBUG, "TRACK_WORKING BROKENCIRCUIT voltage[%.3f] < [%.3f]\r\n", voltage, g_standby_voltage + 0.2);
+				}	
+				else if(voltage > g_standby_voltage + 0.5)// > g_standby_voltage + 0.5，堵转
+				{
+					status = SHORTCIRCUIT_BLOCK;
+					is_report = 1;
+					track_id = g_track_id;
+					UsartPrintf(USART_DEBUG, "TRACK_WORKING SHORTCIRCUIT_BLOCK voltage[%.3f] > [%.3f]\r\n", voltage, g_standby_voltage + 0.5);
+				}
+				
+				Led_Set(LED_2, led_st);
+				led_st = !led_st;		
 			}
 			
-			Led_Set(LED_2, led_st);
-			led_st = !led_st;		
+			if(is_report)
+			send_track_status_report(track_id, status);
 		}
-
-		//if(is_report)
-		//send_track_status_report(track_id, status);
-		
-		RTOS_TimeDlyHMSM(0, 0, 0, 500);
 	}
 }
+
+
+void CoolingControl_Task(void *pdata)
+{
+	int temperature = 0;  	    
+	int humidity = 0;
+	
+	UsartPrintf(USART_DEBUG, "%s running!!!!!!!!!!\r\n", __FUNCTION__);
+	
+	while(1)
+	{	
+		RTOS_TimeDlyHMSM(0, 0, 5, 0);
+		if(DHT12_READ(&temperature, &humidity) == 0)
+		{
+			UsartPrintf(USART_DEBUG, "temperature:%0.1f, humidity:%0.1f\r\n", (float)temperature/10, (float)humidity/10);
+			//send_temperature_report(temperature, humidity);
+		}
+	}
+}
+
+
 

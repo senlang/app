@@ -11,8 +11,9 @@
 #define EN_USART2_RX 	1			//0,不接收;1,接收.
 
 void RS485_Init(u32 bound);
+
 void RS485_Send_Data(u8 *buf,u8 len);
 
-void RS485_Send_QueryData(u8 *buf,u8 len);
+void RS485_Send_QueryData(void *buf,u8 len);
 
 #endif

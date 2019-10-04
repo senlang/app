@@ -44,6 +44,8 @@ extern void EXTIX_Init(void);
 
 _Bool KeyScan(GPIO_TypeDef* GPIOX, unsigned int NUM);
 
+_Bool Key_Check(unsigned int NUM);
+
 extern unsigned char Keyboard(void);
 
 

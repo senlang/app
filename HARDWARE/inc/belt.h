@@ -31,7 +31,7 @@ uint8_t Push_Belt_Check(void);
 
 void Belt_Set(BELT_ENUM belt,BELT_WORK_ENUM status);
 
-void PushBeltControl(uint8_t status);
+void PushBeltControl(BELT_WORK_ENUM status);
 
 #endif
 

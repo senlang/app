@@ -150,7 +150,7 @@ uint8_t Push_Belt_Check(void)
 
 
 
-void PushBeltControl(uint8_t status)
+void PushBeltControl(BELT_WORK_ENUM status)
 {
 	Belt_Set(PUSH_BELT, status);
 }

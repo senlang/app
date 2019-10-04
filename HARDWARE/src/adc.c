@@ -71,15 +71,15 @@ u16 Get_Adc_Average_1(u8 ch,u8 times)
 } 	 
 
 //得到ADC采样内部电压传感器的值
-//取10次,然后平均
+//取5次,然后平均
 u16 Get_Adc_Average(void)
 {
 	u16 temp_val=0;
 	u8 t;
-	for(t = 0; t < 10; t++)
+	for(t = 0; t < 5; t++)
 	{
 		temp_val+=Get_Adc(ADC_Channel_1);	  //voltage
-		delay_ms(5);
+		delay_ms(100);
 	}
 	return temp_val/10;
 }

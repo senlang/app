@@ -5,7 +5,8 @@
 //硬件驱动
 #include "door.h"
 #include "delay.h"
-
+#include "motor.h"
+#include "protocol_func.h"
 
 
 
@@ -35,9 +36,13 @@ void Door_Init(void)
 	
 	GPIO_Init(GPIOA, &gpioInitStruct);							//初始化GPIO
 	
-	FrontDoor_Set(BOX_DOOR_CLOSE);
+	FrontRightDoor_Set(BOX_DOOR_CLOSE);
 	
-	BackDoor_Set(BOX_DOOR_CLOSE);
+	BackRightDoor_Set(BOX_DOOR_CLOSE);
+
+	FrontLeftDoor_Set(BOX_DOOR_CLOSE);
+
+	BackLeftDoor_Set(BOX_DOOR_CLOSE);	
 }
 
 /*
@@ -54,14 +59,7 @@ void Door_Init(void)
 ************************************************************
 */
 
-void FrontDoor_Set(_Bool status)
-{	
-	GPIO_WriteBit(GPIOA, GPIO_Pin_7, status == BOX_DOOR_OPEN ? Bit_SET : Bit_RESET);		//如果status等于DOOR_OPEN，则返回Bit_SET，否则返回Bit_RESET
-	delay_ms(500);
-	GPIO_WriteBit(GPIOA, GPIO_Pin_7, Bit_RESET);
-}
-
-void BackDoor_Set(_Bool status)
+void FrontRightDoor_Set(_Bool status)
 {	
 	GPIO_WriteBit(GPIOA, GPIO_Pin_6, status == BOX_DOOR_OPEN ? Bit_SET : Bit_RESET);		//如果status等于DOOR_OPEN，则返回Bit_SET，否则返回Bit_RESET
 	delay_ms(500);
@@ -69,10 +67,28 @@ void BackDoor_Set(_Bool status)
 }
 
 
+void FrontLeftDoor_Set(_Bool status)
+{  
+   GPIO_WriteBit(GPIOA, GPIO_Pin_7, status == BOX_DOOR_OPEN ? Bit_SET : Bit_RESET); 	   //如果status等于DOOR_OPEN，则返回Bit_SET，否则返回Bit_RESET
+   delay_ms(500);
+   GPIO_WriteBit(GPIOA, GPIO_Pin_7, Bit_RESET);
+}
 
 
+void BackRightDoor_Set(_Bool status)
+{  
+	GPIO_WriteBit(GPIOA, GPIO_Pin_6, status == BOX_DOOR_OPEN ? Bit_SET : Bit_RESET);		//如果status等于DOOR_OPEN，则返回Bit_SET，否则返回Bit_RESET
+	delay_ms(500);
+	GPIO_WriteBit(GPIOA, GPIO_Pin_6, Bit_RESET);
 
+}
 
+void BackLeftDoor_Set(_Bool status)
+{  
+	GPIO_WriteBit(GPIOA, GPIO_Pin_7, status == BOX_DOOR_OPEN ? Bit_SET : Bit_RESET);		//如果status等于DOOR_OPEN，则返回Bit_SET，否则返回Bit_RESET
+	delay_ms(500);
+	GPIO_WriteBit(GPIOA, GPIO_Pin_7, Bit_RESET);
+}
 
 
 

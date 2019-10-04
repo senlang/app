@@ -37,4 +37,8 @@ void send_query_message(uint8_t id);
 
 void send_track_status_report(uint8_t track_id, uint8_t status);
 
+void board_track_control(uint16_t track_num, uint8_t status);
+
+void send_temperature_report(int temp, int humi);
+
 #endif

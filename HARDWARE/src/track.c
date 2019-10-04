@@ -211,11 +211,11 @@ uint8_t set_track_y(uint16_t col, uint8_t status)
 	track_elem y;
 
 	y = Y_value[col];
-	if(0 == status)
+	if(0 == MOTOR_STOP)
 	{
 		GPIO_WriteBit(y.GPIOx, y.GPIO_Pin, Bit_RESET);
 	}
-	else if((1 == status) || (2== status))
+	else if((1 == MOTOR_RUN_FORWARD) || (2== MOTOR_RUN_BACKWARD))
 	{
 		GPIO_WriteBit(y.GPIOx, y.GPIO_Pin, Bit_SET);
 	}
@@ -594,7 +594,7 @@ int Track_trigger_calc_runtime_error(int is_block, int step, MOTOR_ENUM run_mode
 	set_track(cur_calc_track, run_mode);
 	if(!is_block)
 	{
-		if(0 == step)
+		if(step >= TRACK_MAX_TIME_MS)
 		{
 			track_time.track_backward_time = 999;
 			track_time.track_forward_time = 999;

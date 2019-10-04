@@ -48,9 +48,6 @@ uint16_t drag_push_time[BOARD_ID_MAX];
 uint16_t drag_push_time_calc_pre = 0;
 uint16_t drag_push_time_calc = 0;
 
-uint8_t track_work = 0;
-
-
 //static uint32_t buf_bitmap = 0;  
   
 
@@ -466,9 +463,8 @@ int board_send_message(int msg_type, void *input_data)
 			send_command_ack(input_data, UART1_IDX);
 		break;
 
-		
-		defualt:
-		return 0;
+		default:
+		break;
 	}
 
 	return 0;
@@ -705,6 +701,7 @@ void up_packet_parser(unsigned char *src, int len)
 		UsartPrintf(USART_DEBUG, "uart2 pkt_len = %d, chk_offset = %d, len = %d!!\r\n", pkt_len, chk_offset, len);
 		chk_offset = chk_offset + pkt_len;
 		UPDATA_CONTINUE:
+		;
 	}while(chk_offset > 0 && chk_offset < len);
 		
 }
@@ -754,14 +751,6 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 		cmd_type = *(uart1_shared_rx_buf + 2);
 		board_id = *(uart1_shared_rx_buf + 3);
 
-		UsartPrintf(USART_DEBUG, "One Packet:");
-		for(i = 0; i < pkt_len; i++)
-		{
-			UsartPrintf(USART_DEBUG, "0x%02x,", *(uart1_shared_rx_buf + i));
-		}
-		UsartPrintf(USART_DEBUG, "\r\n");
-		
-
 		check_sum = add_checksum(uart1_shared_rx_buf, pkt_len - 1);
 		
 		if(check_sum != uart1_shared_rx_buf[pkt_len - 1])
@@ -771,6 +760,12 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 			goto	NEXT_OFFSET;
 		}
 
+		UsartPrintf(USART_DEBUG, "One Packet:");
+		for(i = 0; i < pkt_len; i++)
+		{
+			UsartPrintf(USART_DEBUG, "0x%02x,", *(uart1_shared_rx_buf + i));
+		}
+		UsartPrintf(USART_DEBUG, "\r\n");
 
 		if((*uart1_shared_rx_buf == START_CODE)&&(cmd_type == CMD_MSG_ACK)&&(*(uart1_shared_rx_buf + 4) == g_src_board_id))
 		goto START_PARSER;
@@ -874,7 +869,7 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 		{
 			if((board_id != g_src_board_id)&&(uart_idx == UART2_IDX))/*非1号单板，其他单板发送*/
 			{
-				UsartPrintf(USART_DEBUG, "From Device Board(%d->%d). Forward!!!!!!!\r\n", g_src_board_id, board_id);
+				UsartPrintf(USART_DEBUG, "To Device Board(%d->%d). Drop!!!!!!!\r\n", g_src_board_id, board_id);
 				goto	NEXT_PACKET;
 			}
 			else if(uart_idx == UART1_IDX)/*非1号单板，其他单板发送*/
@@ -974,6 +969,7 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 		chk_offset = chk_offset + pkt_len;
 		
 		NEXT_OFFSET:
+		;
 	}while(chk_offset > 0 && chk_offset < len);
 		
 }

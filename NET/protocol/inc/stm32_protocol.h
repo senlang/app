@@ -87,6 +87,10 @@
 
 #define TRACK_STATUS_REPORT_PACKET_SIZE (IPUC + 3 + CHECKSUM_SIZE)
 
+#define TEMPERATURE_REPORT_PACKET_SIZE (IPUC + 6 + CHECKSUM_SIZE)
+
+
+
 enum {  
     STATUS_REPORT_REQUEST = 0,  
 	PUSH_MEDICINE_REQUEST,
@@ -160,15 +164,20 @@ typedef enum{
 	TRACK_TEST = 1, //货道前进
 	PUSH_BELT_TEST = 2, 	//出货传送带
 	COLLECT_BELT_TEST = 3,	//回收传送带
-	COMPRESSOR_TEST,		//压缩机
-	FAN_TEST,				//风扇
-	FRONT_DOOR_TEST,		//前大门
-	BACK_DOOR_TEST, 		//后大门
-	DRUG_DOOR_TEST, 		//取货口
-	LIGHT_TEST, 			//灯箱
-	LIFTER_TEST,
-	CALIBRATE_TRACK_TEST,	//货道手动校准
+	COMPRESSOR_TEST = 4,		//压缩机
+	FAN_TEST = 5,				//风扇
+	FRONT_RIGHT_DOOR_TEST = 6,		//前右大门
+	BACK_RIGHT_DOOR_TEST = 7, 		//后右大门
+	DRUG_DOOR_TEST = 8, 		//取货口
+	LIGHT_TEST = 9, 			//灯箱
+	LIFTER_TEST = 10,
+	FRONT_LEFT_DOOR_TEST = 11,		//前左大门
+	BACK_LEFT_DOOR_TEST = 12, 		//后左大门
+
+	CALIBRATE_TRACK_TEST = 13,	//货道手动校准
+	
 	FACTORY_TEST = 0x80,
+	
 	TEST_MODE_MAX,
 }BOARD_TEST_MODE;  
 
@@ -197,6 +206,8 @@ typedef enum{
 #define CMD_TRACK_RUNTIME_REPORT 0xB0	//货道运行时长上报
 
 #define CMD_TRACK_STATUS_REPORT 0xB1	//货道状态上报
+
+#define CMD_TEMPERATURE_REPORT 0xB2	//温湿度上报
 
 #define CMD_MCU_ADD_MEDICINE_COMPLETE 0xC0	//单板补货完成
 
@@ -487,6 +498,8 @@ struct track_status_struct
 
 
 
+
+
 struct motor_control_struct  
 {  
 	uint8_t motor_run;
@@ -508,7 +521,25 @@ struct track_trigger_calc_runtime{
     uint8_t track_backward_runtime;//回退时长
 };
 
-extern uint8_t track_work;
+
+
+struct box_temperature_report_struct  
+{  
+	uint8_t start_code; 
+	uint8_t packet_len;
+	uint8_t cmd_type;
+	uint8_t board_id;
+	uint8_t part;
+	uint8_t H_temp;
+	uint8_t L_temp;
+	uint8_t H_humi;
+	uint8_t L_humi;
+	uint8_t checksum; 		
+};
+
+
+
+
 
 extern int motor_enqueue_idx;
 
