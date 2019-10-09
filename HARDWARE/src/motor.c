@@ -103,7 +103,7 @@ void Motor_Set(uint8_t status)
 	{	
 		GPIO_WriteBit(GPIOC, GPIO_Pin_4, Bit_RESET);
 		GPIO_WriteBit(GPIOC, GPIO_Pin_5, Bit_RESET);
-		motor_run_direction = status;
+		//motor_run_direction = status;
 		g_track_state = TRACK_STANDBY;
 	}
 	else if(MOTOR_RUN_FORWARD== status)

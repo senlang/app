@@ -81,6 +81,6 @@ u16 Get_Adc_Average(void)
 		temp_val+=Get_Adc(ADC_Channel_1);	  //voltage
 		delay_ms(100);
 	}
-	return temp_val/10;
+	return temp_val/5;
 }
 

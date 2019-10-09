@@ -650,7 +650,20 @@ void up_packet_parser(unsigned char *src, int len)
 			goto	UPDATA_CONTINUE;
 		}
 
-		if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_COMPLETE)) //收到出货完成状态上报响应
+		if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_MSG_ACK))
+		{
+			/*0x02,0x06,0xf0,0xa0,0x03,0x01,0x9c*/
+			board_id = *(uart2_shared_rx_buf + 4);
+			if(*(uart2_shared_rx_buf + 3) == CMD_PUSH_MEDICINE_REQUEST)
+			board_push_ackmsg &= ~(1<<(board_id - 1));
+			if(*(uart2_shared_rx_buf + 3) == CMD_REPLENISH_MEDICINE_REQUEST)
+			board_add_ackmsg &= ~(1<<(board_id - 1));
+			
+			UART1_IO_Send(uart2_shared_rx_buf, pkt_len);
+			MessageAckCheck(uart2_shared_rx_buf, pkt_len);
+		}
+
+		else if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_COMPLETE)) //收到出货完成状态上报响应
 		{	 
 			/*0x02,0x06,0xa0,0x03,0xff,0x00,0xaa*/
 			board_id = *(uart2_shared_rx_buf + 3);
@@ -680,22 +693,10 @@ void up_packet_parser(unsigned char *src, int len)
 			cmd_ack_info.status = 1;
 			send_command_ack(&cmd_ack_info, UART2_IDX);
 		}
-		else if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_MSG_ACK))
-		{
-			/*0x02,0x06,0xf0,0xa0,0x03,0x01,0x9c*/
-			board_id = *(uart2_shared_rx_buf + 4);
-			if(*(uart2_shared_rx_buf + 3) == CMD_PUSH_MEDICINE_REQUEST)
-			board_push_ackmsg &= ~(1<<(board_id - 1));
-			if(*(uart2_shared_rx_buf + 3) == CMD_REPLENISH_MEDICINE_REQUEST)
-			board_add_ackmsg &= ~(1<<(board_id - 1));
-
-			MessageAckCheck(uart2_shared_rx_buf, pkt_len);
-			UART1_IO_Send(uart2_shared_rx_buf, pkt_len);
-		}
 		else
 		{
-			UsartPrintf(USART_DEBUG, "[up]Other Message [0x%02x]!!\r\n", *(uart2_shared_rx_buf + 2));
 			UART1_IO_Send(uart2_shared_rx_buf, pkt_len);
+			UsartPrintf(USART_DEBUG, "[up]Other Message [0x%02x]!!\r\n", *(uart2_shared_rx_buf + 2));
 		}
 
 		UsartPrintf(USART_DEBUG, "uart2 pkt_len = %d, chk_offset = %d, len = %d!!\r\n", pkt_len, chk_offset, len);
@@ -851,7 +852,7 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 			if((board_id != g_src_board_id)&&(uart_idx == UART1_IDX))/*安卓机器发给其他单板的数据*/
 			{
 				RS485_Send_Data(uart1_shared_rx_buf, pkt_len);
-				RTOS_TimeDlyHMSM(0, 0, 0, 50);
+				RTOS_TimeDlyHMSM(0, 0, 0, 100);
 				send_query_message(board_id);
 				UsartPrintf(USART_DEBUG, "ID Mismatch(%d->%d). Forward!!!!!!!\r\n", g_src_board_id, board_id);
 				

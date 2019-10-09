@@ -50,7 +50,7 @@ void send_test_msg( uint8_t *input_data, uint8_t id)
 	input_data[3] = id;
 	input_data[BOARD_TEST_REQUEST_PACKET_SIZE - 1] = add_checksum(input_data, BOARD_TEST_REQUEST_PACKET_SIZE - 1);  
 	RS485_Send_Data(input_data, BOARD_TEST_REQUEST_PACKET_SIZE);
-	RTOS_TimeDlyHMSM(0, 0, 0, 50);
+	RTOS_TimeDlyHMSM(0, 0, 0, 100);
 	send_query_message(id);
 } 
 

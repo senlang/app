@@ -66,15 +66,6 @@ void Track_Run_Task(void *pdata);
 OS_STK Drug_Push_TASK_STK[Drug_Push_STK_SIZE];
 void DrugPush_Task(void *pdata);
 
-
-
-
-
-
-
-
-
-
 //消息重传
 #define MSG_SEND_TASK_PRIO		12
 #define MSG_SEND_STK_SIZE		256
@@ -83,16 +74,11 @@ void Message_Send_Task(void *pdata);
 void Message_Send_Task_HostBoard(void *pdata);
 
 
-
-
 //过流保护线程
 #define OVERCURRENT_TASK_PRIO		13
 #define OVERCURRENT_STK_SIZE		256
 OS_STK OVERCURRENT_TASK_STK[OVERCURRENT_STK_SIZE];
 void Track_OverCurrent_Task(void *pdata);
-
-
-
 
 
 //轮询任务
@@ -120,6 +106,7 @@ void HeartBeat_Task(void *pdata);
 #define TrackMonitor_STK_SIZE		256
 OS_STK TrackMonitor_TASK_STK[TrackMonitor_STK_SIZE]; 
 void TrackMonitor_Task(void *pdata);
+
 
 //温度传感器，制冷控制
 #define Cooling_TASK_PRIO	18
@@ -906,7 +893,7 @@ void Track_OverCurrent_Task(void *pdata)
 		
 		motor_run_detect_flag = 0;
 		
-		UsartPrintf(USART_DEBUG, "Track[%d] do OverCurrent protect!!!\r\n", motor_run_detect_track_num);
+		UsartPrintf(USART_DEBUG, "Track[%d],dir[%d] do OverCurrent protect!!!\r\n", motor_run_detect_track_num, motor_run_direction);
 		
 		if(motor_run_direction == MOTOR_RUN_BACKWARD)
 		{
@@ -1153,6 +1140,9 @@ void TrackMonitor_Task(void *pdata)
 
 	while(1)
 	{	
+		is_report = 0;
+		voltage =0;
+		
 		if(g_standby_voltage == 0)
 		{
 			voltage = 0;
@@ -1170,21 +1160,29 @@ void TrackMonitor_Task(void *pdata)
 			
 			g_standby_adcx = g_standby_adcx/3;
 			g_standby_voltage = g_standby_voltage/3;
+			
 			UsartPrintf(USART_DEBUG, "First Boot g_standby_voltage:%.3f[%.3f]\r\n", g_standby_voltage, g_standby_adcx);
+			
+			RTOS_TimeDlyHMSM(0, 0, 1, 0);
 		}
 		else
 		{			
-			if ((g_track_state == TRACK_STANDBY) && (motor_run_detect_flag == 0)) 
+			//UsartPrintf(USART_DEBUG, "%s:%d. %d\r\n", __FUNCTION__, g_track_state, motor_run_detect_flag);
+			if ((g_track_state == TRACK_STANDBY) && (motor_run_detect_flag == 0)&&(g_track_id == 0)) 
 			{
 				for(i = 0; i < 2; i++)
 				{
 					is_report = 0;
 					adcx = Get_Adc_Average();			
-					voltage = adcx*(3.3/4096);
+					voltage += adcx*(3.3/4096);
 					
-					if(motor_run_detect_flag == 1)
-					break;
+					RTOS_TimeDlyHMSM(0, 0, 0, 500);
+					
+					//if(motor_run_detect_flag == 1)
+					//break;
 				}
+				voltage = voltage/2;
+				
 				UsartPrintf(USART_DEBUG, "TRACK_STANDBY voltage:%.3f[%.3f]\r\n", voltage, adcx);
 				if(voltage >= g_standby_voltage + 0.3)//g_standby_voltage + 0.3，单板短路故障
 				{
@@ -1195,7 +1193,7 @@ void TrackMonitor_Task(void *pdata)
 				}
 				Led_Set(LED_2, LED_OFF);
 			}
-			else if((g_track_state == TRACK_WORKING) && (motor_run_detect_flag == 1))
+			else if((g_track_state == TRACK_WORKING) && (motor_run_detect_flag == 1) && (g_track_id != 0))
 			{
 				for(i = 0; i < 2; i++)
 				{
@@ -1203,26 +1201,29 @@ void TrackMonitor_Task(void *pdata)
 					adcx = Get_Adc_Average();			
 					voltage += adcx*(3.3/4096);
 					
-					if((g_track_state != TRACK_WORKING) || (motor_run_detect_flag != 1))
-					break;
+					RTOS_TimeDlyHMSM(0, 0, 0, 500);
+					
+					//if((g_track_state != TRACK_WORKING) || (motor_run_detect_flag != 1))
+					//break;
 				}
 				
 				voltage = voltage/2;
 				UsartPrintf(USART_DEBUG, "TRACK_WORKING adcx:%.3f[%.3f]\r\n", voltage, adcx);
 				
-				if(voltage < g_standby_voltage + 0.2)//< g_standby_voltage + 0.2，断路
+				if(voltage < g_standby_voltage + 0.03)//< g_standby_voltage + 0.03，断路
 				{
 					status = BROKENCIRCUIT;
 					is_report = 1;
 					track_id = g_track_id;
-					UsartPrintf(USART_DEBUG, "TRACK_WORKING BROKENCIRCUIT voltage[%.3f] < [%.3f]\r\n", voltage, g_standby_voltage + 0.2);
+					UsartPrintf(USART_DEBUG, "TRACK_WORKING BROKENCIRCUIT voltage[%.3f] < [%.3f]\r\n", voltage, g_standby_voltage + 0.03);
 				}	
-				else if(voltage > g_standby_voltage + 0.5)// > g_standby_voltage + 0.5，堵转
+				else if(voltage > g_standby_voltage + 0.3)// > g_standby_voltage + 0.5，堵转
 				{
 					status = SHORTCIRCUIT_BLOCK;
 					is_report = 1;
 					track_id = g_track_id;
-					UsartPrintf(USART_DEBUG, "TRACK_WORKING SHORTCIRCUIT_BLOCK voltage[%.3f] > [%.3f]\r\n", voltage, g_standby_voltage + 0.5);
+					Track_trigger(track_id, MOTOR_STOP);
+					UsartPrintf(USART_DEBUG, "TRACK_WORKING SHORTCIRCUIT_BLOCK voltage[%.3f] > [%.3f]\r\n", voltage, g_standby_voltage + 0.3);
 				}
 				
 				Led_Set(LED_2, led_st);
@@ -1232,6 +1233,7 @@ void TrackMonitor_Task(void *pdata)
 			if(is_report)
 			send_track_status_report(track_id, status);
 		}
+		
 	}
 }
 
