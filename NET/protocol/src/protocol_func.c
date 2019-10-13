@@ -27,6 +27,8 @@
 
 extern uint32_t time_passes;
 extern uint32_t TrunkInitTime;
+extern uint16_t TrackPushAllTime;
+extern uint32_t TrackPassTime;
 
 
 /*  
@@ -551,6 +553,7 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 		{
 			/*依次检查货道时间是否全为0，非0将环境货道出货线程*/
 			/*检查当前单板是否要出货*/
+			TrackPushAllTime = 0;
 			for(x = 0; x < 10; x++)
 			{
 				for(y = 0; y < 10; y++)
@@ -558,7 +561,7 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 					if(track_struct[x][y].push_time)
 					{
 						x_track_is_run = 1;
-						break;
+						TrackPushAllTime += track_struct[x][y].push_time;
 					}
 				}
 			}
@@ -573,6 +576,8 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 			cmd_ack_info.status = 1;
 
 			TrunkInitTime = 0;
+			TrackPassTime = time_passes;
+			
 			track_work = MOTOR_RUN_FORWARD;
 			UsartPrintf(USART_DEBUG, "Receive push complete!!!!!!!!!!!!\r\n");
 		}
@@ -723,9 +728,22 @@ void parse_replenish_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 			{
 				OSSemPost(SemOfTrack);
 				cmd_ack_info.status = 1;
+				
+				TrackPushAllTime = 0;
+				for(x = 0; x < 10; x++)
+				{
+					for(y = 0; y < 10; y++)
+					{
+						if(track_struct[x][y].push_time)
+						{
+							TrackPushAllTime += track_struct[x][y].push_time;
+						}
+					}
+				}
 			
 				track_work = MOTOR_RUN_BACKWARD;
 				TrunkInitTime = 0;
+				TrackPassTime = time_passes;
 				UsartPrintf(USART_DEBUG, "Receive replenish complete!!!!!!!!!!!!\r\n");
 			}
 		}

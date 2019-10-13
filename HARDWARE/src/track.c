@@ -299,8 +299,6 @@ void CleanTrackParam(void)
 	Motor_Set(MOTOR_STOP);	//µç»úÍ£Ö¹
 	
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
-	board_add_finish = 0;
-	board_push_finish = 0;
 }
 
 

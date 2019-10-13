@@ -184,6 +184,8 @@ struct node* UartMsgNode = NULL;
 
 uint8_t NeedClearBuffer = 0;
 uint32_t TrunkInitTime = 0;
+uint32_t TrackPassTime = 0;
+uint16_t TrackPushAllTime = 0;
 
 
 /*内存块32 *100*/
@@ -396,6 +398,26 @@ void IWDG_Task(void *pdata)
 		Led_Set(LED_1, status);
 		status = !status;
 
+
+		if(TrunkInitTime && (time_passes - TrunkInitTime > 600))
+		{
+			UsartPrintf(USART_DEBUG, "In 60s not receive finish cmd, clear!!!!\r\n", time_passes, TrunkInitTime, TrackPushAllTime);
+			CleanTrackParam();
+			track_work = MOTOR_STOP;
+			TrunkInitTime = 0;
+			TrackPushAllTime = 0;
+			board_add_finish = 0;
+			board_push_finish = 0;
+		}
+		else if(TrackPushAllTime && (time_passes - TrackPassTime > TrackPushAllTime + 300))
+		{
+			UsartPrintf(USART_DEBUG, "Track run over 30s not(%d, %d, %d), clear!!!!\r\n", time_passes, TrackPassTime, TrackPushAllTime);
+			CleanTrackParam();
+			track_work = MOTOR_STOP;
+			TrunkInitTime = 0;
+			TrackPushAllTime = 0;
+		}
+		
 		RTOS_TimeDly(50);	//挂起任务250ms
 	}
 }
@@ -496,13 +518,7 @@ void HeartBeat_Task(void *pdata)
 		//RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
 		//if(heart_count >= 30)
 		
-		if(TrunkInitTime && (time_passes - TrunkInitTime > 600))
-		{
-			UsartPrintf(USART_DEBUG, "In 60s not receive finish cmd, clear!!!!\r\n", time_passes, TrunkInitTime);
-			CleanTrackParam();
-			track_work = MOTOR_STOP;
-			TrunkInitTime = 0;
-		}
+		
 		
 		RTOS_TimeDlyHMSM(0, 1, 0, 0);
 		{
@@ -593,6 +609,7 @@ void DrugPush_Task(void *pdata)
 			Collect_Belt_Run();
 			CleanTrackParam();
 			
+			board_add_finish = 0;
 			board_push_finish = 0;
 			continue;
 		}
@@ -1177,10 +1194,14 @@ void TrackMonitor_Task(void *pdata)
 					voltage += adcx*(3.3/4096);
 					
 					RTOS_TimeDlyHMSM(0, 0, 0, 500);
-					
-					//if(motor_run_detect_flag == 1)
-					//break;
 				}
+				if((g_track_state != TRACK_STANDBY) || (motor_run_detect_flag != 0) || (g_track_id != 0))
+				{
+					UsartPrintf(USART_DEBUG, "Track Status Change!!!!!!\r\n");
+					goto NEXT_SETP;
+				}
+
+				
 				voltage = voltage/2;
 				
 				UsartPrintf(USART_DEBUG, "TRACK_STANDBY voltage:%.3f[%.3f]\r\n", voltage, adcx);
@@ -1202,9 +1223,11 @@ void TrackMonitor_Task(void *pdata)
 					voltage += adcx*(3.3/4096);
 					
 					RTOS_TimeDlyHMSM(0, 0, 0, 500);
-					
-					//if((g_track_state != TRACK_WORKING) || (motor_run_detect_flag != 1))
-					//break;
+				}
+				if((g_track_state != TRACK_WORKING) || (motor_run_detect_flag != 1) || (g_track_id == 0))
+				{
+					UsartPrintf(USART_DEBUG, "Track Status Change!!!!!!\r\n");
+					goto NEXT_SETP;
 				}
 				
 				voltage = voltage/2;
@@ -1222,14 +1245,15 @@ void TrackMonitor_Task(void *pdata)
 					status = SHORTCIRCUIT_BLOCK;
 					is_report = 1;
 					track_id = g_track_id;
-					Track_trigger(track_id, MOTOR_STOP);
 					UsartPrintf(USART_DEBUG, "TRACK_WORKING SHORTCIRCUIT_BLOCK voltage[%.3f] > [%.3f]\r\n", voltage, g_standby_voltage + 0.3);
+					Track_trigger(track_id, MOTOR_STOP);
 				}
 				
 				Led_Set(LED_2, led_st);
 				led_st = !led_st;		
 			}
-			
+
+			NEXT_SETP:
 			if(is_report)
 			send_track_status_report(track_id, status);
 		}
