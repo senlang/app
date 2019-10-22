@@ -62,7 +62,7 @@ void Track_Run_Task(void *pdata);
 
 //传送带、门控制任务
 #define Drug_Push_TASK_PRIO		11
-#define Drug_Push_STK_SIZE		256
+#define Drug_Push_STK_SIZE		512
 OS_STK Drug_Push_TASK_STK[Drug_Push_STK_SIZE];
 void DrugPush_Task(void *pdata);
 
@@ -96,21 +96,21 @@ void Trigger_CalcRuntime_Task(void *pdata);
 
 //心跳任务
 #define HEART_TASK_PRIO		16
-#define HEART_STK_SIZE		128
+#define HEART_STK_SIZE		256
 OS_STK HEART_TASK_STK[HEART_STK_SIZE]; //
 void HeartBeat_Task(void *pdata);
 
 
 //货道监测
 #define TrackMonitor_TASK_PRIO	17
-#define TrackMonitor_STK_SIZE		384
+#define TrackMonitor_STK_SIZE		256
 OS_STK TrackMonitor_TASK_STK[TrackMonitor_STK_SIZE]; 
 void TrackMonitor_Task(void *pdata);
 
 
 //温度传感器，制冷控制
 #define Cooling_TASK_PRIO	18
-#define Cooling_STK_SIZE		384
+#define Cooling_STK_SIZE		256
 OS_STK Cooling_TASK_STK[Cooling_STK_SIZE]; 
 void CoolingControl_Task(void *pdata);
 
@@ -158,10 +158,10 @@ uint8_t OverCurrentDetected = 0;	//货道开关状态1为检测到
 
 
 uint8_t key_stat = 0;
-uint32_t board_push_finish = 0;/*1111 1111每一个bit表示1个单板*/
-uint32_t board_add_finish = 0;/*1111 1111每一个bit表示1个单板*/
-uint32_t board_push_ackmsg = 0;/*1111 1111每一个bit表示1个单板*/
-uint32_t board_add_ackmsg = 0;/*1111 1111每一个bit表示1个单板*/
+uint16_t board_push_finish = 0;/*1111 1111每一个bit表示1个单板*/
+uint16_t board_add_finish = 0;/*1111 1111每一个bit表示1个单板*/
+uint16_t board_push_ackmsg = 0;/*1111 1111每一个bit表示1个单板*/
+uint16_t board_add_ackmsg = 0;/*1111 1111每一个bit表示1个单板*/
 
 
 uint8_t key_init = 0;
@@ -350,7 +350,8 @@ void start_task(void *pdata)
 
 	OSTaskCreate(CoolingControl_Task, (void *)0, (OS_STK*)&Cooling_TASK_STK[Cooling_STK_SIZE- 1], Cooling_TASK_PRIO);
 
-	OSTaskCreate(Factory_Test_Task, (void *)0, (OS_STK*)&FACTORY_TEST_TASK_STK[FACTORY_TEST_STK_SIZE- 1], FACTORY_TEST_TASK_PRIO);
+
+	//OSTaskCreate(Factory_Test_Task, (void *)0, (OS_STK*)&FACTORY_TEST_TASK_STK[FACTORY_TEST_STK_SIZE- 1], FACTORY_TEST_TASK_PRIO);
 
 	if(g_src_board_id == 1)
 	{
@@ -1273,8 +1274,8 @@ void TrackMonitor_Task(void *pdata)
 
 void CoolingControl_Task(void *pdata)
 {
-	int temperature = 195;  	    
-	int humidity = 720;
+	int temperature = 0;  	    
+	int humidity = 0;
 	
 	UsartPrintf(USART_DEBUG, "%s running!!!!!!!!!!\r\n", __FUNCTION__);
 	
@@ -1282,10 +1283,9 @@ void CoolingControl_Task(void *pdata)
 	{	
 		RTOS_TimeDlyHMSM(0, 0, 5, 0);
 		if(DHT12_READ(&temperature, &humidity) == 0)
-		//if(g_src_board_id <= 2)
 		{
 			UsartPrintf(USART_DEBUG, "temperature:%0.1f, humidity:%0.1f\r\n", (float)temperature/10, (float)humidity/10);
-			send_temperature_report(temperature, humidity);
+			//send_temperature_report(temperature, humidity);
 		}
 	}
 }
