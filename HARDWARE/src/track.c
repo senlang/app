@@ -34,6 +34,7 @@ extern struct track_work_struct track_struct[10][10];
 extern struct status_report_request_info_struct  heart_info;
 extern uint8_t cur_calc_track;
 extern uint16_t running_time;
+extern uint16_t TrackPushAllTime;
 
 extern uint8_t motor_run_detect_flag;
 extern uint8_t motor_run_detect_track_num;
@@ -290,6 +291,7 @@ int Track_run(MOTOR_ENUM run_mode)
 #else
 void CleanTrackParam(void)
 {
+	/*
 	int i = 0;
 	
 	for(i = 1; i <= TRACK_MAX; i++)
@@ -297,7 +299,7 @@ void CleanTrackParam(void)
 		set_track(i, MOTOR_STOP);//货道停止
 	}
 	Motor_Set(MOTOR_STOP);	//电机停止
-	
+	*/
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
 }
 
@@ -314,10 +316,13 @@ int Track_run(MOTOR_ENUM run_mode)
 	{
 		for(y = 0; y < 10; y++)
 		{
-			if(track_struct[x][y].push_time > KEY_DELAY_MS)
+			if(track_struct[x][y].push_time >= KEY_DELAY_500MS)
 			{
-				delay_s = (track_struct[x][y].push_time - KEY_DELAY_MS)/10;
-				delay_ms = ((track_struct[x][y].push_time - KEY_DELAY_MS) % 10) * 100;
+				if(track_struct[x][y].push_time >= KEY_DELAY_500MS + MOTOR_RESERVE_TIME)
+				{
+					delay_s = (track_struct[x][y].push_time - KEY_DELAY_500MS - MOTOR_RESERVE_TIME)/10;
+					delay_ms = ((track_struct[x][y].push_time - KEY_DELAY_500MS - MOTOR_RESERVE_TIME) % 10) * 100;
+				}
 				
 				motor_run_detect_track_num = x*10 + y + 1;	
 				UsartPrintf(USART_DEBUG, "start:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", motor_run_detect_track_num, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);
@@ -325,7 +330,7 @@ int Track_run(MOTOR_ENUM run_mode)
 				Motor_Set(track_struct[x][y].motor_run);//电机方向使能
 				set_track(motor_run_detect_track_num, track_struct[x][y].motor_run);//货道使能
 				
-				RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
+				RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_500MS * 100);
 				
 				motor_run_detect_flag = 1;
 				OverCurrentDetected = 0;
@@ -339,9 +344,9 @@ int Track_run(MOTOR_ENUM run_mode)
 				/*发生开关检测到，延时1.5S，预留时间给回退*/
 				if(OverCurrentDetected)
 				RTOS_TimeDlyHMSM(0, 0, 1, 500);
-				
-				set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
+
 				Motor_Set(MOTOR_STOP);	//电机停止
+				set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
 				OverCurrentDetected = 0;
 
 				//if(g_src_board_id != 1)
@@ -377,7 +382,7 @@ int Track_run(MOTOR_ENUM run_mode)
 				{
 					UsartPrintf(USART_DEBUG, "Backword detect keep down, track[%d]\r\n", motor_run_detect_track_num);
 					Motor_Set(MOTOR_RUN_FORWARD);//电机方向使能
-					set_track(motor_run_detect_track_num, MOTOR_RUN_BACKWARD);//货道使能
+					set_track(motor_run_detect_track_num, MOTOR_RUN_FORWARD);//货道使能
 					
 					RTOS_TimeDlyHMSM(0, 0, 1, 0);
 					
@@ -397,6 +402,7 @@ int Track_run(MOTOR_ENUM run_mode)
 	}
 	Motor_Set(MOTOR_STOP);	//电机停止
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
+	TrackPushAllTime = 0;
 	
 	if(MOTOR_RUN_FORWARD == run_mode)
 	{
@@ -443,10 +449,10 @@ int Track_run_only(MOTOR_ENUM run_mode)
 	{
 		for(y = 0; y < 10; y++)
 		{
-			if(track_struct[x][y].push_time > KEY_DELAY_MS)
+			if(track_struct[x][y].push_time > KEY_DELAY_500MS)
 			{
-				delay_s = (track_struct[x][y].push_time - KEY_DELAY_MS)/10;
-				delay_ms = ((track_struct[x][y].push_time - KEY_DELAY_MS) % 10) * 100;
+				delay_s = (track_struct[x][y].push_time - KEY_DELAY_500MS)/10;
+				delay_ms = ((track_struct[x][y].push_time - KEY_DELAY_500MS) % 10) * 100;
 				
 				motor_run_detect_track_num = x*10 + y + 1;	
 				UsartPrintf(USART_DEBUG, "start:track[%d]mode[%d]time[%d]=>%ds.%dms\r\n", motor_run_detect_track_num, track_struct[x][y].motor_run, track_struct[x][y].push_time, delay_s, delay_ms);
@@ -454,7 +460,7 @@ int Track_run_only(MOTOR_ENUM run_mode)
 				Motor_Set(track_struct[x][y].motor_run);//电机方向使能
 				set_track(motor_run_detect_track_num, track_struct[x][y].motor_run);//货道使能
 				
-				RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
+				RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_500MS * 100);
 				
 				motor_run_detect_flag = 1;
 				OverCurrentDetected = 0;
@@ -529,28 +535,6 @@ int Track_trigger_calc_runtime(uint8_t is_init, MOTOR_ENUM run_mode)
 		running_time = 0;
 		UsartPrintf(USART_DEBUG, "Calc Time[START]%d,%d,%d!!!\r\n", track_time.track_start_num, track_time.track_backward_time, track_time.track_backward_time);
 	}
-	if((!is_init) && (run_mode == MOTOR_STOP))
-	{
-		if(old_status == MOTOR_RUN_FORWARD)
-		{
-			//forward_running_time = running_time;
-			track_time.track_forward_time = running_time;
-			UsartPrintf(USART_DEBUG, "Forward Running Time :%d, %d\r\n", track_time.track_forward_time, running_time);
-			running_time = 0;
-			send_track_runtime_report(&track_time);
-		}
-		else if(old_status == MOTOR_RUN_BACKWARD)
-		{
-			//backward_running_time = running_time;
-			track_time.track_backward_time = running_time;
-			UsartPrintf(USART_DEBUG, "Backward Running Time:%d, %\r\n", track_time.track_backward_time, running_time);
-			running_time = 0;
-		}
-		UsartPrintf(USART_DEBUG, "Calc Time[END]%d,%d,%d!!!\r\n", track_time.track_start_num, track_time.track_forward_time, track_time.track_backward_time);
-		//if(track_time.track_forward_time && track_time.track_backward_time)
-		//send_track_runtime_report(&track_time);
-	}
-	old_status = run_mode;
 	return 0;
 }
 

@@ -88,14 +88,17 @@ void FactoryFuncTest(void)
 	Coolingfan_Set(COOLING_OFF);
 	UsartPrintf(USART_DEBUG, "Cooling  fan test stop\r\n");
 
-	
-
 	UsartPrintf(USART_DEBUG, "Front Door test start\r\n");
 	FrontRightDoor_Set(BOX_DOOR_OPEN);
 	RTOS_TimeDlyHMSM(0, 0, delay, 0);
 	FrontRightDoor_Set(BOX_DOOR_CLOSE);
 	UsartPrintf(USART_DEBUG, "Front Door test stop\r\n");
-	
+
+	UsartPrintf(USART_DEBUG, "Front Door test start\r\n");
+	FrontLeftDoor_Set(BOX_DOOR_OPEN);
+	RTOS_TimeDlyHMSM(0, 0, delay, 0);
+	FrontLeftDoor_Set(BOX_DOOR_CLOSE);
+	UsartPrintf(USART_DEBUG, "Front Door test stop\r\n");	
 
 	UsartPrintf(USART_DEBUG, "Back Door test start\r\n");
 	BackRightDoor_Set(BOX_DOOR_OPEN);
@@ -103,6 +106,11 @@ void FactoryFuncTest(void)
 	BackRightDoor_Set(BOX_DOOR_CLOSE);
 	UsartPrintf(USART_DEBUG, "Back Door test stop\r\n");
 
+	UsartPrintf(USART_DEBUG, "Back Door test start\r\n");
+	BackLeftDoor_Set(BOX_DOOR_OPEN);
+	RTOS_TimeDlyHMSM(0, 0, delay, 0);
+	BackLeftDoor_Set(BOX_DOOR_CLOSE);
+	UsartPrintf(USART_DEBUG, "Back Door test stop\r\n");
 
 	UsartPrintf(USART_DEBUG, "Open Box Door test start\r\n");
 	Door_Control_Set(MOTOR_RUN_BACKWARD);
@@ -181,7 +189,7 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 	/*灯箱、前后大门由2号和5号单板处理*/
 	if(g_src_board_id == 1)
 	{
-		if((test_request->info.test_mode == FAN_TEST)||(test_request->info.test_mode == FAN_TEST))
+		if((test_request->info.test_mode == FAN_TEST)||(test_request->info.test_mode == COMPRESSOR_TEST))
 		{
 			send_test_msg(inputdata, BOX_COOLING_CONTROL_BOARD);
 			return;
@@ -625,9 +633,14 @@ void send_command_ack( void *input_data, uint8_t uart_idx)
 	else if(uart_idx == UART2_IDX)
 	{
 		if(g_src_board_id == 1)
-		RS485_Send_Data(send_cmd_ack_data, COMMAND_ACK_PACKET_SIZE);	
+		{
+			RS485_Send_Data(send_cmd_ack_data, COMMAND_ACK_PACKET_SIZE);	
+		}
 		else
-		NotRetryMessageInsertQueue(send_cmd_ack_data, COMMAND_ACK_PACKET_SIZE, UART2_IDX);
+		{
+			//RS485_Send_Data(send_cmd_ack_data, COMMAND_ACK_PACKET_SIZE);
+			NotRetryMessageInsertQueue(send_cmd_ack_data, COMMAND_ACK_PACKET_SIZE, UART2_IDX);
+		}
 	}
 } 
 
@@ -842,6 +855,7 @@ void parse_track_runtime_calc_request(uint8_t *outputdata, uint8_t *inputdata)
 {  
 	struct msg_ack_info_struct cmd_ack_info;
 	struct track_calc_request_struct *track_runtime_calc_request = (struct track_calc_request_struct *)outputdata;
+	OS_SEM_DATA sema_info;
 
 
 	
@@ -879,8 +893,12 @@ void parse_track_runtime_calc_request(uint8_t *outputdata, uint8_t *inputdata)
 	if(g_src_board_id == 1)
 		send_command_ack((void *)&cmd_ack_info, UART1_IDX);
 	else
-	send_command_ack(&cmd_ack_info, UART2_IDX);
+		send_command_ack(&cmd_ack_info, UART2_IDX);
 
+	OSSemQuery (SemOfCalcTime, &sema_info);
+	UsartPrintf(USART_DEBUG, " SemOfCalcTime OSCnt = %d!!!!!!\r\n", sema_info.OSCnt);
+
+	if(sema_info.OSCnt == 0)
 	OSSemPost(SemOfCalcTime);
 }  
 
@@ -1020,11 +1038,24 @@ void send_temperature_report(int temp, int humi)
 	temperature.cmd_type = CMD_TEMPERATURE_REPORT;
 	temperature.board_id = g_src_board_id;
 	temperature.part = COOLING_PART1;
+
 	
 	temperature.H_temp = temp/10;
 	temperature.L_temp = temp%10;
-	temperature.H_humi = humi/10;
+	
+	if(temp < 0)
+	{
+		temp = 0 - temp;
+		temperature.H_temp = (temp/10) | 0x80;
+		temperature.L_temp = temp%10;
+	}
+	else
+	{
+		temperature.H_temp = temp/10;
+		temperature.L_temp = temp%10;
+	}
 	temperature.L_humi = humi%10;
+
 
 	temperature.checksum = add_checksum((unsigned char *)&temperature, TEMPERATURE_REPORT_PACKET_SIZE - 1);  
 

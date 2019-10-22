@@ -224,9 +224,9 @@ void EXTI4_IRQHandler(void)
 			if(motor_run_detect_flag == 1)
 			{
 				UsartPrintf(USART_DEBUG, "Track[%d] over current!!!!!!\r\n", motor_run_detect_track_num);
-				
-				set_track(motor_run_detect_track_num, MOTOR_STOP);
+
 				Motor_Set(MOTOR_STOP);
+				set_track(motor_run_detect_track_num, MOTOR_STOP);
 
 				OSSemQuery (SemOfOverCurrent, &sema_info);
 				UsartPrintf(USART_DEBUG, "sema_info.OSCnt = %d!!!!!!\r\n", sema_info.OSCnt);
@@ -297,8 +297,9 @@ void EXTI9_5_IRQHandler(void)
 			if(motor_run_detect_flag == 1)
 			{
 				UsartPrintf(USART_DEBUG, "ForwardDetectKey:Track %d Arrive First Position!!!!!!\r\n", motor_run_detect_track_num);
-				set_track(motor_run_detect_track_num, MOTOR_STOP);
+
 				Motor_Set(MOTOR_STOP);
+				set_track(motor_run_detect_track_num, MOTOR_STOP);
 				
 				OSSemQuery (SemOfOverCurrent, &sema_info);
 				UsartPrintf(USART_DEBUG, "sema_info.OSCnt = %d!!!!!!\r\n", sema_info.OSCnt);
@@ -313,22 +314,21 @@ void EXTI9_5_IRQHandler(void)
 				#if 1
 				set_track(cur_calc_track, MOTOR_STOP);
 				Motor_Set(MOTOR_STOP);
+				trigger_calc_runtime = 0;
 				#else
 				if(key_stat == 0) //初始位置
 				{
-					UsartPrintf(USART_DEBUG, "ForwardDetectKey:Arrive First Position!!!!!!\r\n");
-					Track_trigger_calc_runtime(1, MOTOR_STOP);
-					trigger_calc_runtime = 0;				
+					UsartPrintf(USART_DEBUG, "FarwardDetectKey:Arrive First Position!!!!!!\r\n");
+					Track_Runtime(1, MOTOR_STOP, MOTOR_RUN_FORWARD);
+					trigger_calc_runtime = 0;
 					trigger_calc_flag = 0;
 				}
 				else if(key_stat == 2)//反向		
 				{
-					UsartPrintf(USART_DEBUG, "ForwardDetectKey:Arrive 2First Position!!!!!!\r\n");
-
-					Track_trigger_calc_runtime(0, MOTOR_STOP);
-					trigger_calc_runtime = 0; 	
+					UsartPrintf(USART_DEBUG, "FarwardDetectKey:Arrive 2First Position!!!!!!\r\n");
+					Track_Runtime(0, MOTOR_STOP, MOTOR_RUN_FORWARD);
+					trigger_calc_runtime = 0;	
 					trigger_calc_flag = 0;
-					
 					key_stat = 0xff;
 				}
 				#endif
@@ -369,13 +369,14 @@ void EXTI9_5_IRQHandler(void)
 				#if 1
 				set_track(cur_calc_track, MOTOR_STOP);
 				Motor_Set(MOTOR_STOP);
+				trigger_calc_runtime = 0;
 				#else
-				if(key_stat == 1) //正向
+				if(key_stat == 1)//正向	
 				{
 					UsartPrintf(USART_DEBUG, "BackwardDetectKey:Arrive Last Position!!!!!!\r\n");
-					Track_trigger_calc_runtime(0, MOTOR_STOP);
+					Track_Runtime(0, MOTOR_STOP, MOTOR_RUN_BACKWARD);
 					trigger_calc_runtime = 0;	
-					trigger_calc_flag = 0;		
+					trigger_calc_flag = 0;
 				}
 				#endif
 			}

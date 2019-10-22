@@ -635,13 +635,12 @@ void up_packet_parser(unsigned char *src, int len)
 
 		pkt_len = *(uart2_shared_rx_buf + 1) + 1;//data + checksum
 
-
-		UsartPrintf(USART_DEBUG, "One packet:");
-		for(i = 0; i < pkt_len; i++)
+		if (pkt_len > len - chk_offset)
 		{
-			UsartPrintf(USART_DEBUG, "0x%02x,", *(uart2_shared_rx_buf + i));
+			chk_offset++;
+			UsartPrintf(USART_DEBUG, "len error[%d %d], chk_offset:%d\r\n", pkt_len, len, chk_offset);
+			goto	UPDATA_CONTINUE;
 		}
-		UsartPrintf(USART_DEBUG, "\r\n");
 
 		if(up_packet_preparser(uart2_shared_rx_buf, pkt_len - 1) == FALSE)
 		{
@@ -649,6 +648,13 @@ void up_packet_parser(unsigned char *src, int len)
 			UsartPrintf(USART_DEBUG, "CheckSum error, chk_offset:%d\r\n", chk_offset);
 			goto	UPDATA_CONTINUE;
 		}
+		
+		UsartPrintf(USART_DEBUG, "One packet:");
+		for(i = 0; i < pkt_len; i++)
+		{
+			UsartPrintf(USART_DEBUG, "0x%02x,", *(uart2_shared_rx_buf + i));
+		}
+		UsartPrintf(USART_DEBUG, "\r\n");
 
 		if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_MSG_ACK))
 		{
@@ -751,6 +757,13 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 		pkt_len = *(uart1_shared_rx_buf + 1) + 1;//data + checksum
 		cmd_type = *(uart1_shared_rx_buf + 2);
 		board_id = *(uart1_shared_rx_buf + 3);
+
+		if (pkt_len > len - chk_offset)
+		{
+			chk_offset++;
+			UsartPrintf(USART_DEBUG, "pkt_len error[%d %d], chk_offset:%d\r\n", pkt_len, len, chk_offset);
+			goto	NEXT_OFFSET;
+		}
 
 		check_sum = add_checksum(uart1_shared_rx_buf, pkt_len - 1);
 		

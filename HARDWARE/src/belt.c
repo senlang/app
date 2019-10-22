@@ -129,7 +129,7 @@ int Collect_Belt_Run(void)
 {
 	Belt_Set(COLLECT_BELT, BELT_RUN);
 	
-	RTOS_TimeDlyHMSM(0, 0, BELT_RUN_TIME * 2, 0);
+	RTOS_TimeDlyHMSM(0, 0, BELT_RUN_TIME, 0);
 	
 	Belt_Set(COLLECT_BELT, BELT_STOP);
 

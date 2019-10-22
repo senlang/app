@@ -150,10 +150,7 @@ u8 DHT12_READ(int *Temprature, int *Humi)
 			{
 				Temp_Temprature = Temp_H * 256 + Temp_L;//为正温度
 			}
-			
-			//UsartPrintf(USART_DEBUG, "Temprature:  %f  ℃\r\n",(float)Temp_Temprature/10); //显示温度
-			//UsartPrintf(USART_DEBUG, "Humi:  %f  ℃\r\n",(float)Temp_Humi/10); //显示温度
-			
+					
 			//判断数据是否超过量程（温度：-20℃~60℃，湿度20％RH~95％RH）
 			if(Temp_Humi > 950) 
 			{
@@ -176,8 +173,8 @@ u8 DHT12_READ(int *Temprature, int *Humi)
 			*Temprature = Temp_Temprature;
 			*Humi = Temp_Humi;
 			
-			//UsartPrintf(USART_DEBUG, "\r\n温度为:  %d.%d  ℃\r\n",*Temprature, *Temprature/10, *Temprature%10); //显示温度
-			//UsartPrintf(USART_DEBUG, "湿度为:  %d.%d  %%RH\r\n",*Humi, *Humi/10, *Humi%10);//显示湿度	
+			UsartPrintf(USART_DEBUG, "\r\n温度为:%d,  %d.%d  ℃\r\n",*Temprature, *Temprature/10, *Temprature%10); //显示温度
+			UsartPrintf(USART_DEBUG, "湿度为:%d,  %d.%d  %%RH\r\n",*Humi, *Humi/10, *Humi%10);//显示湿度	
 			retval = 0;
 		}
 		else

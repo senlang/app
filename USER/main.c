@@ -62,7 +62,7 @@ void Track_Run_Task(void *pdata);
 
 //传送带、门控制任务
 #define Drug_Push_TASK_PRIO		11
-#define Drug_Push_STK_SIZE		512
+#define Drug_Push_STK_SIZE		256
 OS_STK Drug_Push_TASK_STK[Drug_Push_STK_SIZE];
 void DrugPush_Task(void *pdata);
 
@@ -96,21 +96,21 @@ void Trigger_CalcRuntime_Task(void *pdata);
 
 //心跳任务
 #define HEART_TASK_PRIO		16
-#define HEART_STK_SIZE		256
+#define HEART_STK_SIZE		128
 OS_STK HEART_TASK_STK[HEART_STK_SIZE]; //
 void HeartBeat_Task(void *pdata);
 
 
 //货道监测
 #define TrackMonitor_TASK_PRIO	17
-#define TrackMonitor_STK_SIZE		256
+#define TrackMonitor_STK_SIZE		384
 OS_STK TrackMonitor_TASK_STK[TrackMonitor_STK_SIZE]; 
 void TrackMonitor_Task(void *pdata);
 
 
 //温度传感器，制冷控制
 #define Cooling_TASK_PRIO	18
-#define Cooling_STK_SIZE		256
+#define Cooling_STK_SIZE		384
 OS_STK Cooling_TASK_STK[Cooling_STK_SIZE]; 
 void CoolingControl_Task(void *pdata);
 
@@ -158,10 +158,10 @@ uint8_t OverCurrentDetected = 0;	//货道开关状态1为检测到
 
 
 uint8_t key_stat = 0;
-uint16_t board_push_finish = 0;/*1111 1111每一个bit表示1个单板*/
-uint16_t board_add_finish = 0;/*1111 1111每一个bit表示1个单板*/
-uint16_t board_push_ackmsg = 0;/*1111 1111每一个bit表示1个单板*/
-uint16_t board_add_ackmsg = 0;/*1111 1111每一个bit表示1个单板*/
+uint32_t board_push_finish = 0;/*1111 1111每一个bit表示1个单板*/
+uint32_t board_add_finish = 0;/*1111 1111每一个bit表示1个单板*/
+uint32_t board_push_ackmsg = 0;/*1111 1111每一个bit表示1个单板*/
+uint32_t board_add_ackmsg = 0;/*1111 1111每一个bit表示1个单板*/
 
 
 uint8_t key_init = 0;
@@ -350,8 +350,7 @@ void start_task(void *pdata)
 
 	OSTaskCreate(CoolingControl_Task, (void *)0, (OS_STK*)&Cooling_TASK_STK[Cooling_STK_SIZE- 1], Cooling_TASK_PRIO);
 
-
-	//OSTaskCreate(Factory_Test_Task, (void *)0, (OS_STK*)&FACTORY_TEST_TASK_STK[FACTORY_TEST_STK_SIZE- 1], FACTORY_TEST_TASK_PRIO);
+	OSTaskCreate(Factory_Test_Task, (void *)0, (OS_STK*)&FACTORY_TEST_TASK_STK[FACTORY_TEST_STK_SIZE- 1], FACTORY_TEST_TASK_PRIO);
 
 	if(g_src_board_id == 1)
 	{
@@ -409,9 +408,9 @@ void IWDG_Task(void *pdata)
 			board_add_finish = 0;
 			board_push_finish = 0;
 		}
-		else if(TrackPushAllTime && (time_passes - TrackPassTime > TrackPushAllTime + 300))
+		else if(TrackPushAllTime && (time_passes - TrackPassTime > TrackPushAllTime + 1200))
 		{
-			UsartPrintf(USART_DEBUG, "Track run over 30s not(%d, %d, %d), clear!!!!\r\n", time_passes, TrackPassTime, TrackPushAllTime);
+			UsartPrintf(USART_DEBUG, "Track run over 120s not(%d, %d, %d) finish, clear!!!!\r\n", time_passes, TrackPassTime, TrackPushAllTime);
 			CleanTrackParam();
 			track_work = MOTOR_STOP;
 			TrunkInitTime = 0;
@@ -735,23 +734,33 @@ void Factory_Test_Task(void *pdata)
 		#endif
 		
 		OSSemPend(SemOfFactoryTest, 0u, &err);
-		
-		UsartPrintf(USART_DEBUG, "Facroty test %d, ", test_time);
-		FactoryFuncTest();
-
-		UsartPrintf(USART_DEBUG, "Facroty Track test\r\n");
-		for(track = 1; track <= TRACK_MAX; track++)
+		//if(KeyScan(GPIOB, ForwardDetectKey) == KEYDOWN)
 		{
-			UsartPrintf(USART_DEBUG, "track - %d\r\n", track);
+			UsartPrintf(USART_DEBUG, "Facroty test %d, ", test_time);
+			FactoryFuncTest();
 			
-			SetTrackTestTime(track, MOTOR_RUN_FORWARD, 300);
-			Track_run_only(MOTOR_RUN_FORWARD);
-			
-			SetTrackTestTime(track, MOTOR_RUN_BACKWARD, 300);
-			Track_run_only(MOTOR_RUN_BACKWARD);
-			
-			RTOS_TimeDlyHMSM(0, 0, 1, 0);
+			UsartPrintf(USART_DEBUG, "Facroty Track test\r\n");
+
+			#if 0
+			for(track = 1; track <= TRACK_MAX; track++)
+			{
+				UsartPrintf(USART_DEBUG, "track - %d\r\n", track);
+				
+				SetTrackTestTime(track, MOTOR_RUN_FORWARD, 300);
+				Track_run_only(MOTOR_RUN_FORWARD);
+				
+				SetTrackTestTime(track, MOTOR_RUN_BACKWARD, 300);
+				Track_run_only(MOTOR_RUN_BACKWARD);
+				
+				RTOS_TimeDlyHMSM(0, 0, 1, 0);
+			}
+			#else
+			calc_track_start_idx = 0;
+			calc_track_count = TRACK_MAX;
+			OSSemPost(SemOfCalcTime);
+			#endif
 		}
+		
 		test_time ++;
 		RTOS_TimeDlyHMSM(0, 0, 10, 0);
 	}
@@ -780,7 +789,7 @@ void Trigger_CalcRuntime_Task(void *pdata)
 		for(cur_calc_track = calc_track_start_idx; cur_calc_track < calc_track_count + calc_track_start_idx; cur_calc_track ++)
 		{
 			UsartPrintf(USART_DEBUG, "cur_calc_track :%d, calc_track_count :%d\r\n", cur_calc_track, calc_track_count);
-			RTOS_TimeDlyHMSM(0, 0, 1, 0);	//延时1S
+			RTOS_TimeDlyHMSM(0, 0, 2, 0);	//延时2s
 			
 			for( i = 0; i < 4; i++)
 			{
@@ -790,9 +799,10 @@ void Trigger_CalcRuntime_Task(void *pdata)
 					trigger_calc_flag = 0;		//关中断
 					UsartPrintf(USART_DEBUG, "Track[%d], do prepare\r\n", cur_calc_track);
 
+					running_time = 0;
 					trigger_calc_runtime = 1;
 					Track_trigger_calc_runtime(1, MOTOR_RUN_FORWARD);
-					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
+					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_500MS * 100);
 					trigger_calc_flag = 1;//开中断，进循环
 					key_stat = 0;
 				}
@@ -804,23 +814,24 @@ void Trigger_CalcRuntime_Task(void *pdata)
 					trigger_calc_flag = 0;		//关中断
 					RTOS_TimeDlyHMSM(0, 0, 1, 0);	//延时1S
 					
+					running_time = 0;
 					trigger_calc_runtime = 1;
 					Track_trigger_calc_runtime(0, MOTOR_RUN_BACKWARD);
-					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
+					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_500MS * 100);
 					trigger_calc_flag = 1;		//开中断，进循环
 					key_stat = 1;
 				}
 				else if(i == 2)
 				{
 					UsartPrintf(USART_DEBUG, "Track[%d], do forward\r\n", cur_calc_track);
-					
 					trigger_calc_runtime = 0;	//清计时
 					trigger_calc_flag = 0;		//关中断
 					RTOS_TimeDlyHMSM(0, 0, 1, 0);	//延时1S
-					
+
+					running_time = 0;
 					trigger_calc_runtime = 1;
 					Track_trigger_calc_runtime(0, MOTOR_RUN_FORWARD);
-					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_MS * 100);
+					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_500MS * 100);
 					trigger_calc_flag = 1;
 					key_stat = 2;
 				}
@@ -833,7 +844,7 @@ void Trigger_CalcRuntime_Task(void *pdata)
 					
 					/*货道第二次运行到头部，回退1S*/
 					Track_trigger(cur_calc_track, MOTOR_RUN_BACKWARD);
-					RTOS_TimeDlyHMSM(0, 0, 1, 0);
+					RTOS_TimeDlyHMSM(0, 0, 0, TRACK_BACK_TIME);
 					Track_trigger(cur_calc_track, MOTOR_STOP);
 					
 					UsartPrintf(USART_DEBUG, "Track[%d], do little backword11\r\n", cur_calc_track);
@@ -877,7 +888,7 @@ void Trigger_CalcRuntime_Task(void *pdata)
 					{
 						break;
 					}
-					RTOS_TimeDlyHMSM(0, 0, 0, 200);
+					RTOS_TimeDlyHMSM(0, 0, 0, 100);
 				}while(trigger_calc_flag);
 
 				key_stat = 0;
@@ -922,7 +933,7 @@ void Track_OverCurrent_Task(void *pdata)
 			Motor_Set(MOTOR_RUN_BACKWARD);
 			set_track(motor_run_detect_track_num, MOTOR_RUN_BACKWARD);
 		}
-		RTOS_TimeDlyHMSM(0, 0, 1, 0);
+		RTOS_TimeDlyHMSM(0, 0, 0, TRACK_BACK_TIME);
 		
 		set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
 		Motor_Set(MOTOR_STOP);
@@ -1129,7 +1140,6 @@ void QueryMain_Task(void *pdata)
 
 	while(1)
 	{	
-		//for(id = 2; id <= 3; id++)
 		for(id = 2; id <= BOARD_ID_MAX; id++)
 		{
 			send_query_message(id);
@@ -1187,6 +1197,7 @@ void TrackMonitor_Task(void *pdata)
 			//UsartPrintf(USART_DEBUG, "%s:%d. %d\r\n", __FUNCTION__, g_track_state, motor_run_detect_flag);
 			if ((g_track_state == TRACK_STANDBY) && (motor_run_detect_flag == 0)&&(g_track_id == 0)) 
 			{
+				RTOS_TimeDlyHMSM(0, 0, 0, 500);
 				for(i = 0; i < 2; i++)
 				{
 					is_report = 0;
@@ -1200,10 +1211,8 @@ void TrackMonitor_Task(void *pdata)
 					UsartPrintf(USART_DEBUG, "Track Status Change!!!!!!\r\n");
 					goto NEXT_SETP;
 				}
-
 				
 				voltage = voltage/2;
-				
 				UsartPrintf(USART_DEBUG, "TRACK_STANDBY voltage:%.3f[%.3f]\r\n", voltage, adcx);
 				if(voltage >= g_standby_voltage + 0.3)//g_standby_voltage + 0.3，单板短路故障
 				{
@@ -1264,8 +1273,8 @@ void TrackMonitor_Task(void *pdata)
 
 void CoolingControl_Task(void *pdata)
 {
-	int temperature = 0;  	    
-	int humidity = 0;
+	int temperature = 195;  	    
+	int humidity = 720;
 	
 	UsartPrintf(USART_DEBUG, "%s running!!!!!!!!!!\r\n", __FUNCTION__);
 	
@@ -1273,9 +1282,10 @@ void CoolingControl_Task(void *pdata)
 	{	
 		RTOS_TimeDlyHMSM(0, 0, 5, 0);
 		if(DHT12_READ(&temperature, &humidity) == 0)
+		//if(g_src_board_id <= 2)
 		{
 			UsartPrintf(USART_DEBUG, "temperature:%0.1f, humidity:%0.1f\r\n", (float)temperature/10, (float)humidity/10);
-			//send_temperature_report(temperature, humidity);
+			send_temperature_report(temperature, humidity);
 		}
 	}
 }
