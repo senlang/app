@@ -174,8 +174,7 @@ typedef enum{
 	FRONT_LEFT_DOOR_TEST = 11,		//前左大门
 	BACK_LEFT_DOOR_TEST = 12, 		//后左大门
 
-	CALIBRATE_TRACK_TEST = 13,	//货道手动校准
-	
+	CALIBRATE_TRACK_TEST = 0x79,	//货道手动校准
 	FACTORY_TEST = 0x80,
 	
 	TEST_MODE_MAX,

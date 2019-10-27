@@ -336,8 +336,9 @@ void TrackRunMonitor(void)
 		Motor_Set(MOTOR_STOP);	//电机停止
 	}
 
-	if(Key_Check(CurrentDetectKey) == KEYDOWN)
+	if(motor_run_detect_flag && Key_Check(CurrentDetectKey) == KEYDOWN)
 	{
+		UsartPrintf(USART_DEBUG, "TrackRunMonitor:OverCurrent detect keep down, track[%d]\r\n", motor_run_detect_track_num);
 		set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
 		Motor_Set(MOTOR_STOP);	//电机停止
 	}

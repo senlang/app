@@ -350,9 +350,6 @@ void start_task(void *pdata)
 
 	OSTaskCreate(TrackMonitor_Task, (void *)0, (OS_STK*)&TrackMonitor_TASK_STK[TrackMonitor_STK_SIZE- 1], TrackMonitor_TASK_PRIO);
 
-	OSTaskCreate(CoolingControl_Task, (void *)0, (OS_STK*)&Cooling_TASK_STK[Cooling_STK_SIZE- 1], Cooling_TASK_PRIO);
-
-
 	//OSTaskCreate(Factory_Test_Task, (void *)0, (OS_STK*)&FACTORY_TEST_TASK_STK[FACTORY_TEST_STK_SIZE- 1], FACTORY_TEST_TASK_PRIO);
 
 	if(g_src_board_id == 1)
@@ -365,6 +362,7 @@ void start_task(void *pdata)
 	else
 	{
 		OSTaskCreate(Message_Send_Task, (void *)0, (OS_STK*)&MSG_SEND_TASK_STK[MSG_SEND_STK_SIZE- 1], MSG_SEND_TASK_PRIO);
+		OSTaskCreate(CoolingControl_Task, (void *)0, (OS_STK*)&Cooling_TASK_STK[Cooling_STK_SIZE- 1], Cooling_TASK_PRIO);
 	}
 	
 	OSTaskSuspend(START_TASK_PRIO);	//挂起起始任务.
@@ -1097,7 +1095,7 @@ void Message_Send_Task_HostBoard(void *pdata)
 		//释放信号量
 		OSMutexPost(MsgMutex);
 		
-		RTOS_TimeDlyHMSM(0, 0, 0, MSG_RESEND_TIME_500MS);//等待500ms，重传
+		RTOS_TimeDlyHMSM(0, 0, 2, 0);//等待500ms，重传
 	}
 
 	DeleNode(MsgNode, 0);
@@ -1277,11 +1275,22 @@ void CoolingControl_Task(void *pdata)
 	
 	while(1)
 	{	
-		RTOS_TimeDlyHMSM(0, 0, 5, 0);
+		RTOS_TimeDlyHMSM(0, 0, 10, 0);
 		if(DHT12_READ(&temperature, &humidity) == 0)
 		{
+			send_temperature_report(temperature, humidity);
 			UsartPrintf(USART_DEBUG, "temperature:%0.1f, humidity:%0.1f\r\n", (float)temperature/10, (float)humidity/10);
-			//send_temperature_report(temperature, humidity);
+
+			if(temperature > SHADE_AREA_TEMPERATURE_MAX)
+			{
+				UsartPrintf(USART_DEBUG, "temperature:%d > %d", temperature , SHADE_AREA_TEMPERATURE_MAX);
+				Coolingcompressor_Set(COOLING_ON);
+			}
+			else if(temperature < SHADE_AREA_TEMPERATURE_MIN)
+			{
+				UsartPrintf(USART_DEBUG, "temperature:%d < %d", temperature , SHADE_AREA_TEMPERATURE_MIN);
+				Coolingcompressor_Set(COOLING_OFF);
+			}
 		}
 	}
 }

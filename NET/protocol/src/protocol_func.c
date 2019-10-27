@@ -1006,6 +1006,7 @@ void send_track_status_report(uint8_t track_id, uint8_t status)
 	if(g_src_board_id == 1)
 	{
 		UART1_IO_Send((u8 *)(&track_status), TRACK_STATUS_REPORT_PACKET_SIZE);  
+		MessageInsertQueue((u8 *)(&track_status), TRACK_STATUS_REPORT_PACKET_SIZE, UART1_IDX);
 	}
 	else
 	{
@@ -1027,21 +1028,21 @@ void board_track_control(uint16_t track_num, uint8_t status)
 
 
 
-
+/*
 void send_temperature_report(int temp, int humi)  
 {  
 	struct box_temperature_report_struct  temperature;
 	
 	memset(&temperature, 0x00, sizeof(struct box_temperature_report_struct));
+
+	UsartPrintf(USART_DEBUG, "temp:%d, humi:%d\r\n", temp, humi);
+
+	
 	temperature.start_code = START_CODE;
 	temperature.packet_len = TEMPERATURE_REPORT_PACKET_SIZE - 1;
 	temperature.cmd_type = CMD_TEMPERATURE_REPORT;
 	temperature.board_id = g_src_board_id;
 	temperature.part = COOLING_PART1;
-
-	
-	temperature.H_temp = temp/10;
-	temperature.L_temp = temp%10;
 	
 	if(temp < 0)
 	{
@@ -1054,8 +1055,8 @@ void send_temperature_report(int temp, int humi)
 		temperature.H_temp = temp/10;
 		temperature.L_temp = temp%10;
 	}
+	temperature.H_humi = humi/10;
 	temperature.L_humi = humi%10;
-
 
 	temperature.checksum = add_checksum((unsigned char *)&temperature, TEMPERATURE_REPORT_PACKET_SIZE - 1);  
 
@@ -1066,6 +1067,60 @@ void send_temperature_report(int temp, int humi)
 	else
 	{
 		MessageInsertQueue((u8 *)(&temperature), TEMPERATURE_REPORT_PACKET_SIZE, UART2_IDX);
+	}
+	
+} 
+*/
+
+
+
+
+
+
+
+
+
+
+void send_temperature_report(int temp, int humi)  
+{  
+	unsigned char  temperature[TEMPERATURE_REPORT_PACKET_SIZE];
+	
+	memset(temperature, 0x00, TEMPERATURE_REPORT_PACKET_SIZE);
+
+	temperature[0] = START_CODE;
+	temperature[1] = TEMPERATURE_REPORT_PACKET_SIZE - 1;
+	temperature[2] = CMD_TEMPERATURE_REPORT;
+	temperature[3] = g_src_board_id;
+	temperature[4] = COOLING_PART1;
+
+	
+	UsartPrintf(USART_DEBUG, "temp:%d, humi:%d\r\n", temp, humi);
+	if(temp < 0)
+	{
+		temp = 0 - temp;
+		temperature[5] = (temp/10) | 0x80;
+		temperature[6] = temp%10;
+	}
+	else
+	{
+		temperature[5] = temp/10;
+		temperature[6] = temp%10;
+	}
+	temperature[7] = humi/10;
+	temperature[8] = humi%10;
+
+	UsartPrintf(USART_DEBUG, "temp:0x%02x,0x%02x. humi:0x%02x, 0x%02x\r\n", 
+		temperature[5],temperature[6],temperature[7],temperature[8]);
+
+	temperature[9] = add_checksum(temperature, TEMPERATURE_REPORT_PACKET_SIZE - 1);  
+
+	if(g_src_board_id == 1)
+	{
+		UART1_IO_Send(temperature, TEMPERATURE_REPORT_PACKET_SIZE);  
+	}
+	else
+	{
+		NotRetryMessageInsertQueue(temperature, TEMPERATURE_REPORT_PACKET_SIZE, UART2_IDX);
 	}
 	
 } 
