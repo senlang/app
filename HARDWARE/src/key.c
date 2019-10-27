@@ -215,7 +215,6 @@ void EXTI4_IRQHandler(void)
 #endif  	
 	if(EXTI_GetITStatus(EXTI_Line4)==SET)//是8线的中断
 	{
-		delay_ms(10);
 		if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN) 					//消抖后检查是否有过流
 		{		
 			UsartPrintf(USART_DEBUG, "OverCurrent Dir = %d\r\n", motor_run_direction);
@@ -289,9 +288,8 @@ void EXTI9_5_IRQHandler(void)
 	//前进到位检查
 	if(EXTI_GetITStatus(EXTI_Line8)==SET)//是8线的中断
 	{
-		delay_ms(10);
 		UsartPrintf(USART_DEBUG, "Forward:ForwardDetectKey CHECK: ", motor_run_direction);
-		if((KeyScan(GPIOB, ForwardDetectKey) == KEYDOWN))//&& (motor_run_direction == MOTOR_RUN_FORWARD)) 					//
+		if(KeyScan(GPIOB, ForwardDetectKey) == KEYDOWN)					//
 		{		
 			UsartPrintf(USART_DEBUG, "DOWN. Dir = %d\r\n", motor_run_direction);
 			if(motor_run_detect_flag == 1)
@@ -339,6 +337,7 @@ void EXTI9_5_IRQHandler(void)
 			UsartPrintf(USART_DEBUG, "UP \r\n");
 		}
 	}
+	
 	EXTI_ClearITPendingBit(EXTI_Line8);  //清除LINE2上的中断标志位
 
 
@@ -346,8 +345,7 @@ void EXTI9_5_IRQHandler(void)
 	if(EXTI_GetITStatus(EXTI_Line9) == SET)//是8线的中断
 	{
 		UsartPrintf(USART_DEBUG, "Backword:BackwardDetectKey CHECK:", motor_run_direction);
-		delay_ms(10);
-		if((KeyScan(GPIOB, BackwardDetectKey) == KEYDOWN))//&&(motor_run_direction == MOTOR_RUN_BACKWARD))					//
+		if(KeyScan(GPIOB, BackwardDetectKey) == KEYDOWN)					//
 		{		
 			UsartPrintf(USART_DEBUG, "DOWN. Dir = %d\r\n", motor_run_direction);
 			if(motor_run_detect_flag == 1){
@@ -387,14 +385,6 @@ void EXTI9_5_IRQHandler(void)
 		}		
 	}
 	EXTI_ClearITPendingBit(EXTI_Line9);  //清除LINE2上的中断标志位	
-
-
-
-
-
-
-
-
 	
 #ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.
 	OSIntExit();    

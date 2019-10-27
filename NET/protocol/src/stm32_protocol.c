@@ -601,7 +601,7 @@ void up_packet_parser(unsigned char *src, int len)
 	int pkt_len = 0;
 	int board_id = 0;
 	unsigned char *uart2_shared_rx_buf; 
-	//char cmd_type = 0;
+	uint8_t check_sum = 0;
 	int i = 0;
 	//unsigned char forward_data[32] = {0};
 	struct push_medicine_complete_struct push_medicine_complete_request;
@@ -642,10 +642,11 @@ void up_packet_parser(unsigned char *src, int len)
 			goto	UPDATA_CONTINUE;
 		}
 
-		if(up_packet_preparser(uart2_shared_rx_buf, pkt_len - 1) == FALSE)
+		check_sum = add_checksum(uart2_shared_rx_buf, pkt_len - 1);
+		if(check_sum != uart2_shared_rx_buf[pkt_len - 1])
 		{
-			chk_offset++;
-			UsartPrintf(USART_DEBUG, "CheckSum error, chk_offset:%d\r\n", chk_offset);
+			UsartPrintf(USART_DEBUG, "checksum error: 0x%02x, 0x%02x\r\n", check_sum, uart2_shared_rx_buf[pkt_len - 1]);
+			chk_offset ++;
 			goto	UPDATA_CONTINUE;
 		}
 		

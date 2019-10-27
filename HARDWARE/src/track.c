@@ -303,6 +303,45 @@ void CleanTrackParam(void)
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
 }
 
+void TrackRunMonitor(void)
+{
+	if(motor_run_detect_track_num == 0)
+	return;
+	
+	if(Key_Check(ForwardDetectKey) == KEYDOWN)//行程开关检测到到达货道头
+	{
+		UsartPrintf(USART_DEBUG, "TrackRunMonitor:Forward detect keep down, track[%d]\r\n", motor_run_detect_track_num);
+
+		motor_run_detect_flag = 0;
+		Motor_Set(MOTOR_RUN_BACKWARD);//电机方向使能
+		set_track(motor_run_detect_track_num, MOTOR_RUN_BACKWARD);//货道使能
+		
+		RTOS_TimeDlyHMSM(0, 0, 0, TRACK_BACK_TIME);
+		
+		set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
+		Motor_Set(MOTOR_STOP);	//电机停止
+	}
+	
+	if(Key_Check(BackwardDetectKey) == KEYDOWN)//行程开关检测到到达货尾
+	{
+		UsartPrintf(USART_DEBUG, "TrackRunMonitor:Backword detect keep down, track[%d]\r\n", motor_run_detect_track_num);
+
+		motor_run_detect_flag = 0;
+		Motor_Set(MOTOR_RUN_FORWARD);//电机方向使能
+		set_track(motor_run_detect_track_num, MOTOR_RUN_FORWARD);//货道使能
+		
+		RTOS_TimeDlyHMSM(0, 0, 0, TRACK_BACK_TIME);
+		
+		set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
+		Motor_Set(MOTOR_STOP);	//电机停止
+	}
+
+	if(Key_Check(CurrentDetectKey) == KEYDOWN)
+	{
+		set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
+		Motor_Set(MOTOR_STOP);	//电机停止
+	}
+}
 
 int Track_run(MOTOR_ENUM run_mode)
 {
@@ -349,6 +388,38 @@ int Track_run(MOTOR_ENUM run_mode)
 				set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
 				OverCurrentDetected = 0;
 
+				
+				#if 1
+				if((Key_Check(ForwardDetectKey) == KEYDOWN)||
+				((MOTOR_RUN_FORWARD == run_mode)&&(Key_Check(CurrentDetectKey) == KEYDOWN)))//行程开关检测到到达货道头
+				{
+					UsartPrintf(USART_DEBUG, "Forward detect keep down, track[%d]\r\n", motor_run_detect_track_num);
+
+					Motor_Set(MOTOR_RUN_BACKWARD);//电机方向使能
+					set_track(motor_run_detect_track_num, MOTOR_RUN_BACKWARD);//货道使能
+					
+					RTOS_TimeDlyHMSM(0, 0, 0, TRACK_BACK_TIME);
+					
+					set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
+					Motor_Set(MOTOR_STOP);	//电机停止
+				}
+				
+				if((Key_Check(BackwardDetectKey) == KEYDOWN)||
+					((MOTOR_RUN_BACKWARD == run_mode)&&(Key_Check(CurrentDetectKey) == KEYDOWN)))//行程开关检测到到达货尾
+				{
+					UsartPrintf(USART_DEBUG, "Backword detect keep down, track[%d]\r\n", motor_run_detect_track_num);
+					Motor_Set(MOTOR_RUN_FORWARD);//电机方向使能
+					set_track(motor_run_detect_track_num, MOTOR_RUN_FORWARD);//货道使能
+					
+					RTOS_TimeDlyHMSM(0, 0, 0, TRACK_BACK_TIME);
+					
+					set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
+					Motor_Set(MOTOR_STOP);	//电机停止
+				}
+				
+				RTOS_TimeDlyHMSM(0, 0, 1, 0);
+				#endif
+				
 				//if(g_src_board_id != 1)
 				{
 					/*暂时注释，方便消息应答处理*/
@@ -361,35 +432,6 @@ int Track_run(MOTOR_ENUM run_mode)
 						mcu_add_medicine_track_only(g_src_board_id, motor_run_detect_track_num);
 					}
 				}
-
-				#if 1
-				RTOS_TimeDlyHMSM(0, 0, 0, 500);
-				if((Key_Check(ForwardDetectKey) == KEYDOWN)||
-				((MOTOR_RUN_FORWARD == run_mode)&&(Key_Check(CurrentDetectKey) == KEYDOWN)))//行程开关检测到到达货道头
-				{
-					UsartPrintf(USART_DEBUG, "Forward detect keep down, track[%d]\r\n", motor_run_detect_track_num);
-
-					Motor_Set(MOTOR_RUN_BACKWARD);//电机方向使能
-					set_track(motor_run_detect_track_num, MOTOR_RUN_BACKWARD);//货道使能
-					
-					RTOS_TimeDlyHMSM(0, 0, 1, 0);
-					
-					set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
-					Motor_Set(MOTOR_STOP);	//电机停止
-				}
-				else if((Key_Check(BackwardDetectKey) == KEYDOWN)||
-					((MOTOR_RUN_BACKWARD == run_mode)&&(Key_Check(CurrentDetectKey) == KEYDOWN)))//行程开关检测到到达货尾
-				{
-					UsartPrintf(USART_DEBUG, "Backword detect keep down, track[%d]\r\n", motor_run_detect_track_num);
-					Motor_Set(MOTOR_RUN_FORWARD);//电机方向使能
-					set_track(motor_run_detect_track_num, MOTOR_RUN_FORWARD);//货道使能
-					
-					RTOS_TimeDlyHMSM(0, 0, 1, 0);
-					
-					set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
-					Motor_Set(MOTOR_STOP);	//电机停止
-				}
-				#endif
 			}
 		}
 		

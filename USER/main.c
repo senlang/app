@@ -317,7 +317,9 @@ int main(void)
    	
 	OSTaskCreate(start_task,(void *)0,(OS_STK *)&START_TASK_STK[START_STK_SIZE-1],START_TASK_PRIO );//创建起始任务
 
-	OSStart();	  						    
+	OSStart();	  	
+
+
 }   	  
 //开始任务
 void start_task(void *pdata)
@@ -511,16 +513,10 @@ void HeartBeat_Task(void *pdata)
 	heart_info.board_status = STANDBY_STATUS;
 	UsartPrintf(USART_DEBUG, "%s running!!!!!!!!!!\r\n", __FUNCTION__);
 	while(1)
-	{	
-		//Led_Set(LED_1, LED_OFF);
-		//RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
-		//Led_Set(LED_1, LED_ON);
-		//RTOS_TimeDlyHMSM(0, 0, 1, 0);	//挂起任务1s
-		//if(heart_count >= 30)
-		
-		
-		
-		RTOS_TimeDlyHMSM(0, 1, 0, 0);
+	{
+		TrackRunMonitor();
+		RTOS_TimeDlyHMSM(0, 0, 0, 100);
+		if(heart_count >= 600)
 		{
 			board_send_message(STATUS_REPORT_REQUEST, &heart_info);
 			heart_count = 0;
@@ -1170,7 +1166,7 @@ void TrackMonitor_Task(void *pdata)
 	{	
 		is_report = 0;
 		voltage =0;
-		
+
 		if(g_standby_voltage == 0)
 		{
 			voltage = 0;
