@@ -784,8 +784,8 @@ void Trigger_CalcRuntime_Task(void *pdata)
 		for(cur_calc_track = calc_track_start_idx; cur_calc_track < calc_track_count + calc_track_start_idx; cur_calc_track ++)
 		{
 			UsartPrintf(USART_DEBUG, "cur_calc_track :%d, calc_track_count :%d\r\n", cur_calc_track, calc_track_count);
-			RTOS_TimeDlyHMSM(0, 0, 2, 0);	//ÑÓÊ±2s
 			
+			//motor_run_detect_track_num = cur_calc_track;
 			for( i = 0; i < 4; i++)
 			{
 				if(i == 0)
@@ -897,6 +897,7 @@ void Trigger_CalcRuntime_Task(void *pdata)
 					UsartPrintf(USART_DEBUG, "Track calc time %d longer than 80s, error!!!!\r\n", running_time);
 					break;
 				}
+				motor_run_detect_track_num = 0;
 				RTOS_TimeDlyHMSM(0, 0, 1, 0);
 			}
 		}

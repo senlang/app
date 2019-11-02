@@ -158,7 +158,7 @@ uint8_t set_track(uint16_t track_num, uint8_t status)
 	track_elem y;
 	track_addr addr;
 
-	if(track_num == 255)
+	if(track_num == 255 || track_num == 0)
 	return 0;
 	
 	get_track_addr(track_num, &addr);
@@ -433,6 +433,7 @@ int Track_run(MOTOR_ENUM run_mode)
 						mcu_add_medicine_track_only(g_src_board_id, motor_run_detect_track_num);
 					}
 				}
+				motor_run_detect_track_num = 0;
 			}
 		}
 		
