@@ -897,6 +897,7 @@ void Trigger_CalcRuntime_Task(void *pdata)
 					UsartPrintf(USART_DEBUG, "Track calc time %d longer than 80s, error!!!!\r\n", running_time);
 					break;
 				}
+				RTOS_TimeDlyHMSM(0, 0, 1, 0);
 			}
 		}
 		trigger_calc_flag = 0;
@@ -1285,11 +1286,13 @@ void CoolingControl_Task(void *pdata)
 			{
 				UsartPrintf(USART_DEBUG, "temperature:%d > %d", temperature , SHADE_AREA_TEMPERATURE_MAX);
 				Coolingcompressor_Set(COOLING_ON);
+				Coolingfan_Set(COOLING_ON);
 			}
 			else if(temperature < SHADE_AREA_TEMPERATURE_MIN)
 			{
 				UsartPrintf(USART_DEBUG, "temperature:%d < %d", temperature , SHADE_AREA_TEMPERATURE_MIN);
 				Coolingcompressor_Set(COOLING_OFF);
+				Coolingfan_Set(COOLING_OFF);
 			}
 		}
 	}
