@@ -280,6 +280,10 @@ void Hardware_Init(void)
 	{
 		Light_Init();	//µ∆œ‰≥ı ºªØ
 	}
+	else if(g_src_board_id ==HEALTH_MONITOR_BOARD)
+	{
+
+	}
 	
 	for(i = 0; i < 10; i++)
 	{
@@ -513,7 +517,6 @@ void HeartBeat_Task(void *pdata)
 	while(1)
 	{
 		TrackRunMonitor();
-		RTOS_TimeDlyHMSM(0, 0, 0, 100);
 		if(heart_count >= 600)
 		{
 			board_send_message(STATUS_REPORT_REQUEST, &heart_info);
@@ -522,6 +525,7 @@ void HeartBeat_Task(void *pdata)
 			UsartPrintf(USART_DEBUG, "mcu run %dh:%dmin!!!!!!!!!!!!!!!\r\n", have_run_time/60, have_run_time%60);
 		}
 		heart_count++;
+		RTOS_TimeDlyHMSM(0, 0, 0, 100);
 	}
 }
 void Track_Run_Task(void *pdata)

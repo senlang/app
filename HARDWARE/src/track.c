@@ -417,9 +417,9 @@ int Track_run(MOTOR_ENUM run_mode)
 					set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
 					Motor_Set(MOTOR_STOP);	//电机停止
 				}
-				
-				RTOS_TimeDlyHMSM(0, 0, 1, 0);
 				#endif
+				
+				RTOS_TimeDlyHMSM(0, 0, 2, 0);
 				
 				//if(g_src_board_id != 1)
 				{

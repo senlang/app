@@ -23,7 +23,7 @@ typedef struct
 
 #define KEY_DELAY_500MS 5	//5 * 100ms,delay时间不能太短，否则电机启动电流过大会误判
 #define MOTOR_RESERVE_TIME 2
-#define TRACK_MAX_TIME_MS 800	//货道最大运行时间
+#define TRACK_MAX_TIME_MS 3000	//800	//货道最大运行时间
 #define TRACK_BACK_TIME 500
 
 uint8_t set_track(uint16_t track_num, uint8_t status);
