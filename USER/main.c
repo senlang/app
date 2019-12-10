@@ -121,16 +121,11 @@ void CoolingControl_Task(void *pdata);
 OS_STK FACTORY_TEST_TASK_STK[FACTORY_TEST_STK_SIZE];
 void Factory_Test_Task(void *pdata);
 
-
-
-
-
 OS_EVENT *SemOfMotor;        	//Motor控制信号量
 OS_EVENT *SemOfUart1RecvData;	//uart1 串口接收数据信号量
 OS_EVENT *SemOfUart2RecvData;	//uart2 串口接收数据信号量
 OS_EVENT *SemOfDataParse;	//数据解析线程信号量
 OS_EVENT *SemOf485DataParse;	//数据解析线程信号量
-
 
 OS_EVENT *SemOfKey;				// 按键控制信号量
 OS_EVENT *SemOfConveyor;        	//Motor控制信号量
@@ -141,7 +136,6 @@ OS_EVENT *SemOfFactoryTest;				//出厂测试
 OS_EVENT *MsgMutex;
 
 OS_EVENT *SemOf485MsgSend;				//rs485消息轮询发送
-
 
 
 uint8_t trigger_calc_flag = 0;
@@ -155,13 +149,7 @@ uint8_t motor_run_detect_track_num = 0;
 uint8_t motor_run_direction = MOTOR_STOP;	//货道电机方向
 uint8_t OverCurrentDetected = 0;	//货道开关状态1为检测到
 
-
-
 uint8_t key_stat = 0;
-uint16_t board_push_finish = 0;/*1111 1111每一个bit表示1个单板*/
-uint16_t board_add_finish = 0;/*1111 1111每一个bit表示1个单板*/
-uint16_t board_push_ackmsg = 0;/*1111 1111每一个bit表示1个单板*/
-uint16_t board_add_ackmsg = 0;/*1111 1111每一个bit表示1个单板*/
 
 
 uint8_t key_init = 0;
@@ -186,6 +174,9 @@ uint8_t NeedClearBuffer = 0;
 uint32_t TrunkInitTime = 0;
 uint32_t TrackPassTime = 0;
 uint16_t TrackPushAllTime = 0;
+
+box_struct *knl_box_struct = NULL;
+INT8U my_box_struct[64];
 
 
 /*内存块32 *100*/
@@ -316,9 +307,13 @@ int main(void)
     #else
 	mem_init(SRAMIN);			//内部内存池初始化
 	#endif
+
+	
+	knl_box_struct = (box_struct *)&my_box_struct[0];
+	memset(knl_box_struct, 0x00, sizeof(box_struct));
+	UsartPrintf(USART_DEBUG, "sizeof(box_struct): %d, %p\r\n", sizeof(box_struct), knl_box_struct);
 	
    	MessageDealQueueCreate();//消息队列初始化
-   	
 	OSTaskCreate(start_task,(void *)0,(OS_STK *)&START_TASK_STK[START_STK_SIZE-1],START_TASK_PRIO );//创建起始任务
 
 	OSStart();	  	
@@ -410,8 +405,8 @@ void IWDG_Task(void *pdata)
 			track_work = MOTOR_STOP;
 			TrunkInitTime = 0;
 			TrackPushAllTime = 0;
-			board_add_finish = 0;
-			board_push_finish = 0;
+			knl_box_struct->board_add_finish = 0;
+			knl_box_struct->board_push_finish = 0;
 		}
 		else if(TrackPushAllTime && (time_passes - TrackPassTime > TrackPushAllTime + 1200))
 		{
@@ -420,6 +415,8 @@ void IWDG_Task(void *pdata)
 			track_work = MOTOR_STOP;
 			TrunkInitTime = 0;
 			TrackPushAllTime = 0;
+			knl_box_struct->board_add_finish = 0;
+			knl_box_struct->board_push_finish = 0;
 		}
 		
 		RTOS_TimeDly(50);	//挂起任务250ms
@@ -516,7 +513,7 @@ void HeartBeat_Task(void *pdata)
 	UsartPrintf(USART_DEBUG, "%s running!!!!!!!!!!\r\n", __FUNCTION__);
 	while(1)
 	{
-		TrackRunMonitor();
+		//TrackRunMonitor();
 		if(heart_count >= 600)
 		{
 			board_send_message(STATUS_REPORT_REQUEST, &heart_info);
@@ -586,8 +583,9 @@ void DrugPush_Task(void *pdata)
 		
 		PushBeltControl(BELT_RUN);
 		do{
-			UsartPrintf(USART_DEBUG, "board_push_finish = 0x%x, board_push_ackmsg = 0x%x, runtime = %d/%d!!!!!!!!!!\r\n", board_push_finish, board_push_ackmsg, run_time, push_time);
-			if((board_push_finish == 0))// && (board_push_ackmsg == 0))
+			UsartPrintf(USART_DEBUG, "board_push_finish = 0x%x, board_push_ackmsg = 0x%x, runtime = %d/%d!!!!!!!!!!\r\n", 
+				knl_box_struct->board_push_finish, knl_box_struct->board_push_ackmsg, run_time, push_time);
+			if((knl_box_struct->board_push_finish == 0))// && knl_box_struct->(board_push_ackmsg == 0))
 			{
 				drug_push_status = 1;
 				break;
@@ -595,7 +593,7 @@ void DrugPush_Task(void *pdata)
 
 			RTOS_TimeDlyHMSM(0, 0, 1, 0);
 			run_time ++;
-			if((run_time >= push_time + 20) && (run_time > 120))// 最大运行时间+20S 后未出货完成开始回收
+			if((run_time >= push_time + 120) && (run_time > 300))// 最大运行时间+20S 后未出货完成开始回收
 			{
 				break;
 			}
@@ -603,12 +601,15 @@ void DrugPush_Task(void *pdata)
 		if(drug_push_status == 0)// 150s后未出货完成开始回收
 		{
 			UsartPrintf(USART_DEBUG, "Push Fail, Clean!!!!!!!!!!\r\n");
+			
 			PushBeltControl(BELT_STOP);
+			Lifter_Set(LIFTER_UP);
 			Collect_Belt_Run();
+			Lifter_Set(LIFTER_FALL);
 			CleanTrackParam();
 			
-			board_add_finish = 0;
-			board_push_finish = 0;
+			knl_box_struct->board_add_finish = 0;
+			knl_box_struct->board_push_finish = 0;
 			continue;
 		}
 
@@ -919,9 +920,11 @@ void Track_OverCurrent_Task(void *pdata)
 	while(1)
 	{
 		OSSemPend(SemOfOverCurrent, 0u, &err);
+		//货道启动前间隔500ms
+		RTOS_TimeDlyHMSM(0, 0, 0, TRACK_BACK_TIME * 2);
 		
 		motor_run_detect_flag = 0;
-		
+		exti_interrupt_set(DISABLE);
 		UsartPrintf(USART_DEBUG, "Track[%d],dir[%d] do OverCurrent protect!!!\r\n", motor_run_detect_track_num, motor_run_direction);
 		
 		if(motor_run_direction == MOTOR_RUN_BACKWARD)
@@ -939,6 +942,7 @@ void Track_OverCurrent_Task(void *pdata)
 		set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
 		Motor_Set(MOTOR_STOP);
 		
+		exti_interrupt_set(ENABLE);
 	}
 	OSSemDel(SemOfOverCurrent, 0, &err);
 }

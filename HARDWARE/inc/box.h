@@ -113,6 +113,15 @@ typedef enum
 }TRACK_STATUS_ENUM;
 
 
+typedef struct
+{
+	uint16_t board_push_finish;/*1111 1111每一个bit表示1个单板*/
+	uint16_t board_add_finish;/*1111 1111每一个bit表示1个单板*/
+	uint16_t board_push_ackmsg;/*1111 1111每一个bit表示1个单板*/
+	uint16_t board_add_ackmsg;/*1111 1111每一个bit表示1个单板*/
+} box_struct, *pbox_struct;
+
+
 extern uint8_t key_init;
 extern uint8_t key_stat;
 extern uint8_t trigger_calc_runtime;

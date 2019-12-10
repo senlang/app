@@ -58,7 +58,7 @@ void Key_Init(void)
 	#else
  	GPIO_InitTypeDef GPIO_InitStructure;
 	//初始化ForwardDetectKey-->GPIOB.1,BackwardDetectKey-->GPIOB.0  上拉输入
- 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB|RCC_APB2Periph_GPIOE, ENABLE);//使能PORTB时钟
+ 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB|RCC_APB2Periph_GPIOD|RCC_APB2Periph_GPIOE, ENABLE);//使能PORTB时钟
 
 	GPIO_InitStructure.GPIO_Pin  = GPIO_Pin_8|GPIO_Pin_9;//PB1~0
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU; //设置成上拉输入
@@ -67,6 +67,10 @@ void Key_Init(void)
 	GPIO_InitStructure.GPIO_Pin  = GPIO_Pin_4;//PE4
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU; //设置成上拉输入
  	GPIO_Init(GPIOE, &GPIO_InitStructure);//初始化GPIOB1,0
+
+	GPIO_InitStructure.GPIO_Pin  = GPIO_Pin_3;//PE4
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU; //设置成上拉输入
+ 	GPIO_Init(GPIOD, &GPIO_InitStructure);//初始化GPIOB1,0
 	
 	#endif
 	memset(&key_status, 0, sizeof(KEY_STATUS));
@@ -204,6 +208,17 @@ void EXTIX_Init(void)
  
 }
 
+void exti_interrupt_set(uint8_t status)
+{
+	EXTI_InitTypeDef EXTI_InitStructure;
+
+	EXTI_InitStructure.EXTI_Line=EXTI_Line4;	//BackwardDetectKey
+	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt; 
+	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
+	EXTI_InitStructure.EXTI_LineCmd = status;
+	EXTI_Init(&EXTI_InitStructure); 	//根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器	
+}
+ 	
 
 //外部中断4服务程序 
 void EXTI4_IRQHandler(void)
@@ -213,7 +228,7 @@ void EXTI4_IRQHandler(void)
 #ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.
 	OSIntEnter();	  
 #endif  	
-	if(EXTI_GetITStatus(EXTI_Line4)==SET)//是8线的中断
+	if(EXTI_GetITStatus(EXTI_Line4)==SET)//是4线的中断
 	{
 		if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN) 					//消抖后检查是否有过流
 		{		
@@ -305,7 +320,7 @@ void EXTI9_5_IRQHandler(void)
 				if(sema_info.OSCnt == 0)
 				OSSemPost(SemOfOverCurrent);
 				
-				OverCurrentDetected = 1;
+				//OverCurrentDetected = 1;
 			}
 			else if(trigger_calc_flag == 1)
 			{
@@ -360,7 +375,7 @@ void EXTI9_5_IRQHandler(void)
 				if(sema_info.OSCnt == 0)
 				OSSemPost(SemOfOverCurrent);
 
-				OverCurrentDetected = 1;
+				//OverCurrentDetected = 1;
 			}
 			else if(trigger_calc_flag == 1)
 			{
@@ -429,7 +444,22 @@ _Bool Key_Check(unsigned int NUM)
 			ret_val = KEYUP;
 		}
 	}
-	
+	else if(NUM == DrugPushFinishKey)
+	{
+		if(KeyScan(GPIOD, DrugPushFinishKey) == KEYDOWN) 					
+		{
+			delay_ms(10);								
+			if(KeyScan(GPIOD, DrugPushFinishKey) == KEYDOWN) 			
+			{
+				//UsartPrintf(USART_DEBUG, "DrugPushFinishKey KEYDOWN!!!\r\n");
+				ret_val= KEYDOWN;
+			}
+		}
+		else
+		{
+			ret_val = KEYUP;
+		}
+	}
 	return ret_val;	
 }
 

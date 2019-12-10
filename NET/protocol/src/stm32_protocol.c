@@ -77,10 +77,9 @@ extern OS_EVENT *SemOf485MsgSend;				//rs485消息轮询发送
 
 extern uint8_t calc_track_start_idx;
 extern uint8_t calc_track_count;
-extern uint16_t board_push_finish;
-extern uint16_t board_add_finish;
-extern uint16_t board_push_ackmsg;
-extern uint16_t board_add_ackmsg;
+
+
+extern box_struct *knl_box_struct;
 
 
 void BoardId_Init(void)
@@ -662,9 +661,9 @@ void up_packet_parser(unsigned char *src, int len)
 			/*0x02,0x06,0xf0,0xa0,0x03,0x01,0x9c*/
 			board_id = *(uart2_shared_rx_buf + 4);
 			if(*(uart2_shared_rx_buf + 3) == CMD_PUSH_MEDICINE_REQUEST)
-			board_push_ackmsg &= ~(1<<(board_id - 1));
+			knl_box_struct->board_push_ackmsg &= ~(1<<(board_id - 1));
 			if(*(uart2_shared_rx_buf + 3) == CMD_REPLENISH_MEDICINE_REQUEST)
-			board_add_ackmsg &= ~(1<<(board_id - 1));
+			knl_box_struct->board_add_ackmsg &= ~(1<<(board_id - 1));
 			
 			UART1_IO_Send(uart2_shared_rx_buf, pkt_len);
 			MessageAckCheck(uart2_shared_rx_buf, pkt_len);
@@ -679,7 +678,7 @@ void up_packet_parser(unsigned char *src, int len)
 
 			//TODO:统一由1号单板处理，在收集齐所有单板状态后统一上报安卓板
 			if(push_medicine_complete_request.info.medicine_track_number == 0xFF)
-			board_push_finish &= ~(1<<(board_id - 1));
+			knl_box_struct->board_push_finish &= ~(1<<(board_id - 1));
 
 			cmd_ack_info.board_id = board_id;
 			cmd_ack_info.rsp_cmd_type = CMD_PUSH_MEDICINE_COMPLETE;
@@ -693,7 +692,7 @@ void up_packet_parser(unsigned char *src, int len)
 			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MCU_ADD_MEDICINE_COMPLETE, Board[%d], Track[%d]!!\r\n", add_medicine_complete_request.info.board_id, add_medicine_complete_request.info.medicine_track_number);
 
 			if(add_medicine_complete_request.info.medicine_track_number == 0xFF)
-			board_add_finish &= ~(1<<(board_id - 1));
+			knl_box_struct->board_add_finish &= ~(1<<(board_id - 1));
 			
 			cmd_ack_info.board_id = board_id;
 			cmd_ack_info.rsp_cmd_type = CMD_MCU_ADD_MEDICINE_COMPLETE;
@@ -794,13 +793,13 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 				/*请求出货指令转发*/
 				if(preparse_push_medicine_request(&push_medicine_request, uart1_shared_rx_buf) == TRUE)
 				{
-					UsartPrintf(USART_DEBUG, "board_push_finish: 0x%02x\r\n", board_push_finish);
+					UsartPrintf(USART_DEBUG, "board_push_finish: 0x%02x\r\n", knl_box_struct->board_push_finish);
 					//转发
 					memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
 					for(i = 2; i <= BOARD_ID_MAX; i++)
 					{
-						UsartPrintf(USART_DEBUG, "board_push_finish & (1 << (i-1)): %d\r\n", board_push_finish & (1 << (i-1)));
-						if(board_push_finish & (1 << (i-1)))
+						UsartPrintf(USART_DEBUG, "board_push_finish & (1 << (i-1)): 0x%x\r\n", knl_box_struct->board_push_finish & (1 << (i-1)));
+						if(knl_box_struct->board_push_finish & (1 << (i-1)))
 						{
 							memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
 							*(forward_data + 3) = i;//board id
@@ -819,8 +818,10 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 				else
 				{	
 					/*请求出货，更新全局变量bit位*/
-					board_push_finish |= 1<<(board_id - 1);
-					board_push_ackmsg |= 1<<(board_id - 1);
+					knl_box_struct->board_push_finish |= 1<<(board_id - 1);
+					knl_box_struct->board_push_ackmsg |= 1<<(board_id - 1);
+					UsartPrintf(USART_DEBUG, "board_id[%d]board_push_finish[0x%x]\r\n", 
+						board_id, knl_box_struct->board_push_finish);
 				}
 			}
 			else if(cmd_type == CMD_REPLENISH_MEDICINE_REQUEST)
@@ -828,13 +829,13 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 				/*请求补货完成指令转发*/
 				if(preparse_push_medicine_request(&push_medicine_request, uart1_shared_rx_buf) == TRUE)
 				{
-					UsartPrintf(USART_DEBUG, "board_add_finish: 0x%02x\r\n", board_add_finish);
+					UsartPrintf(USART_DEBUG, "board_add_finish: 0x%02x\r\n", knl_box_struct->board_add_finish);
 					//转发
 					memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
 					for(i = 2; i <= BOARD_ID_MAX; i++)
 					{	
-						UsartPrintf(USART_DEBUG, "board_add_finish & (1 << (i-1)): %d\r\n", board_add_finish & (1 << (i-1)));
-						if(board_add_finish & (1 << (i-1)))
+						UsartPrintf(USART_DEBUG, "board_add_finish & (1 << (i-1)): %d\r\n", knl_box_struct->board_add_finish & (1 << (i-1)));
+						if(knl_box_struct->board_add_finish & (1 << (i-1)))
 						{
 							memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
 							*(forward_data + 3) = i;	//board id
@@ -851,8 +852,9 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 				}
 				else
 				{
-					board_add_finish |= 1<<(board_id - 1);
-					board_add_ackmsg |= 1<<(board_id - 1);
+					knl_box_struct->board_add_finish |= 1<<(board_id - 1);
+					knl_box_struct->board_add_ackmsg |= 1<<(board_id - 1);
+					UsartPrintf(USART_DEBUG, "board_id[%d]board_add_finish[0x%x]\r\n", board_id, knl_box_struct->board_add_finish);
 				}
 			}
 		}

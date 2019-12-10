@@ -30,7 +30,7 @@
 
 
 /*请求出货指令*/
-#define PUSH_MEDICINE_REQUEST_INFO_SIZE 4 //即(1字节	1字节	2字节)   
+#define PUSH_MEDICINE_REQUEST_INFO_SIZE 5 //即(1字节	1字节	2字节)   
 #define PUSH_MEDICINE_REQUEST_PACKET_SIZE (IPUC + PUSH_MEDICINE_REQUEST_INFO_SIZE + CHECKSUM_SIZE)  
 
 
@@ -262,7 +262,8 @@ struct motor_control_info_struct
 {  
     uint8_t board_id;  
     uint8_t medicine_track_number;  
-    uint16_t push_time;  	
+    uint16_t push_time;  
+    uint8_t drug_count;  	
 }; 
 
 
@@ -511,6 +512,8 @@ struct track_work_struct
 	uint8_t motor_run;
     uint8_t medicine_track_number;  
     uint16_t push_time;  
+    uint8_t work_mode;  
+    uint8_t drug_count;  
 };  
 
 

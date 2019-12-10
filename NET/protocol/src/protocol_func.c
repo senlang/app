@@ -461,17 +461,13 @@ void print_push_medicine_request(uint8_t *data)
 	uint8_t i = 0;
 	struct push_medicine_request_struct *push_medicine_request = (struct push_medicine_request_struct *)data;
 
-	request_cnt = (push_medicine_request->packet_len - IPUC)/PUSH_MEDICINE_REQUEST_INFO_SIZE;
-
     UsartPrintf(USART_DEBUG, "\r\n    ========= 出货请求报文-打印开始=========\r\n");  
 	UsartPrintf(USART_DEBUG, "\r\n	  包消息类型:0x%02x", push_medicine_request->cmd_type);  
 	UsartPrintf(USART_DEBUG, "\r\n	  包总长度:0x%02x", push_medicine_request->packet_len); 
-	for(i = 0; i < request_cnt; i++)
-	{
-	    UsartPrintf(USART_DEBUG, "\r\n    单板号:0x%04x", push_medicine_request->info[i].board_id); 
-	    UsartPrintf(USART_DEBUG, "\r\n    单板运货道号:0x%04x", push_medicine_request->info[i].medicine_track_number); 
-	    UsartPrintf(USART_DEBUG, "\r\n    单板运行时间:0x%04x", push_medicine_request->info[i].push_time); 
-	}
+    UsartPrintf(USART_DEBUG, "\r\n    单板号:0x%04x", push_medicine_request->info[i].board_id); 
+    UsartPrintf(USART_DEBUG, "\r\n    单板运货道号:0x%04x", push_medicine_request->info[i].medicine_track_number); 
+    UsartPrintf(USART_DEBUG, "\r\n    单板运行时间:0x%04x", push_medicine_request->info[i].push_time); 
+    UsartPrintf(USART_DEBUG, "\r\n    出货数量:0x%04x", push_medicine_request->info[i].drug_count); 
 	UsartPrintf(USART_DEBUG, "\r\n    包校验和:0x%02x\r\n", push_medicine_request->checksum);  
   
     UsartPrintf(USART_DEBUG, "\r\n    =========  出货请求报文-打印结束=========\r\n");  
@@ -535,6 +531,7 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 	{
 		push_medicine_request->info[0].medicine_track_number = inputdata[4];
 		push_medicine_request->info[0].push_time = inputdata[5]<<8|inputdata[6];
+		push_medicine_request->info[0].drug_count = inputdata[7];
 
 		if((push_medicine_request->info[0].medicine_track_number != 0) && (push_medicine_request->info[0].push_time != 0))
 		{
@@ -548,10 +545,16 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 
 			x = (push_medicine_request->info[0].medicine_track_number - 1)/10;
 			y = (push_medicine_request->info[0].medicine_track_number - 1)%10;
-			UsartPrintf(USART_DEBUG, "medicine_track_number = %d, track_struct[%d][%d].push_time = %d\r\n", push_medicine_request->info[0].medicine_track_number, x, y, track_struct[x][y].push_time);
+
 			track_struct[x][y].motor_run = MOTOR_RUN_FORWARD;
 			track_struct[x][y].medicine_track_number = push_medicine_request->info[0].medicine_track_number;
 			track_struct[x][y].push_time = push_medicine_request->info[0].push_time;
+			track_struct[x][y].drug_count = push_medicine_request->info[0].drug_count;
+			track_struct[x][y].work_mode = 1;//出货模式1
+
+			UsartPrintf(USART_DEBUG, "medicine_track_number = %d, track_struct[%d][%d].push_time = %d, count = %d\r\n", 
+				track_struct[x][y].medicine_track_number, x, y, track_struct[x][y].push_time, track_struct[x][y].drug_count);
+
 			cmd_ack_info.status = 1;
 			
 			TrunkInitTime = time_passes;

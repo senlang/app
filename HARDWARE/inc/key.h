@@ -14,6 +14,7 @@
 #define ForwardDetectKey			GPIO_Pin_8	//前进到位
 #define BackwardDetectKey			GPIO_Pin_9	//后退到位
 #define CurrentDetectKey			GPIO_Pin_4	//过流检查
+#define DrugPushFinishKey			GPIO_Pin_3	//前进到位
 
 
 
@@ -59,6 +60,8 @@ typedef struct
 	unsigned char ForwardDetectKeyStatChange;
 	unsigned char BackwardDetectKeyStatChange;
 } KEY_STATUS;
+
+void exti_interrupt_set(uint8_t status);
 
 
 #endif
