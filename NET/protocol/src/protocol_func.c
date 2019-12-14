@@ -533,7 +533,8 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 		push_medicine_request->info[0].push_time = inputdata[5]<<8|inputdata[6];
 		push_medicine_request->info[0].drug_count = inputdata[7];
 
-		if((push_medicine_request->info[0].medicine_track_number != 0) && (push_medicine_request->info[0].push_time != 0))
+		if((push_medicine_request->info[0].medicine_track_number != 0) && 
+			((push_medicine_request->info[0].push_time != 0) || push_medicine_request->info[0].drug_count))
 		{
 			//motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_FORWARD;
 			//motor_struct[motor_enqueue_idx].motor_work_mode = CMD_PUSH_MEDICINE_REQUEST;
@@ -550,6 +551,8 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 			track_struct[x][y].medicine_track_number = push_medicine_request->info[0].medicine_track_number;
 			track_struct[x][y].push_time = push_medicine_request->info[0].push_time;
 			track_struct[x][y].drug_count = push_medicine_request->info[0].drug_count;
+			
+			if(track_struct[x][y].drug_count)
 			track_struct[x][y].work_mode = 1;//出货模式1
 
 			UsartPrintf(USART_DEBUG, "medicine_track_number = %d, track_struct[%d][%d].push_time = %d, count = %d\r\n", 
@@ -569,7 +572,7 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 			{
 				for(y = 0; y < 10; y++)
 				{
-					if(track_struct[x][y].push_time)
+					if(track_struct[x][y].push_time||track_struct[x][y].drug_count)
 					{
 						x_track_is_run = 1;
 						TrackPushAllTime += track_struct[x][y].push_time;

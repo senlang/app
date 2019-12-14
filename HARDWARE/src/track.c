@@ -671,7 +671,7 @@ int Track_run(MOTOR_ENUM run_mode)
 	{
 		for(y = 0; y < 10; y++)
 		{
-			if(track_struct[x][y].push_time >= KEY_DELAY_500MS)
+			if((track_struct[x][y].push_time >= KEY_DELAY_500MS) || track_struct[x][y].drug_count)
 			{
 				if(track_struct[x][y].push_time >= KEY_DELAY_500MS + MOTOR_RESERVE_TIME)
 				{
@@ -680,7 +680,8 @@ int Track_run(MOTOR_ENUM run_mode)
 				}
 				
 				motor_run_detect_track_num = x*10 + y + 1;	
-				UsartPrintf(USART_DEBUG, "start:track[%d]run_mode[%d]work_mode[%d]time[%d]=>%ds.%dms\r\n", motor_run_detect_track_num, track_struct[x][y].motor_run, track_struct[x][y].work_mode, track_struct[x][y].push_time, delay_s, delay_ms);
+				UsartPrintf(USART_DEBUG, "start:track[%d]run_mode[%d]work_mode[%d]time[%d]=>%ds.%dms,cnt[%d]\r\n",
+					motor_run_detect_track_num, track_struct[x][y].motor_run, track_struct[x][y].work_mode, track_struct[x][y].push_time, delay_s, delay_ms,track_struct[x][y].drug_count);
 				
 				Motor_Set(track_struct[x][y].motor_run);//电机方向使能
 				set_track(motor_run_detect_track_num, track_struct[x][y].motor_run);//货道使能
@@ -691,11 +692,7 @@ int Track_run(MOTOR_ENUM run_mode)
 				OverCurrentDetected = 0;
 
 				
-				if(track_struct[x][y].work_mode == 0)
-				{
-					RTOS_TimeDlyHMSM(0, 0, delay_s, delay_ms);
-				}
-				else
+				if((track_struct[x][y].work_mode == 1) && (track_struct[x][y].drug_count > 0))
 				{
 					do{
 						if(Key_Check(DrugPushFinishKey) == KEYDOWN)
@@ -724,6 +721,10 @@ int Track_run(MOTOR_ENUM run_mode)
 						}
 						RTOS_TimeDlyHMSM(0, 0, 0, 10);
 					}while(1);
+				}
+				else
+				{
+					RTOS_TimeDlyHMSM(0, 0, delay_s, delay_ms);
 				}
 				
 

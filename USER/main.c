@@ -347,7 +347,7 @@ void start_task(void *pdata)
 
 	OSTaskCreate(Track_OverCurrent_Task, (void *)0, (OS_STK*)&OVERCURRENT_TASK_STK[OVERCURRENT_STK_SIZE- 1], OVERCURRENT_TASK_PRIO);
 
-	OSTaskCreate(TrackMonitor_Task, (void *)0, (OS_STK*)&TrackMonitor_TASK_STK[TrackMonitor_STK_SIZE- 1], TrackMonitor_TASK_PRIO);
+	//OSTaskCreate(TrackMonitor_Task, (void *)0, (OS_STK*)&TrackMonitor_TASK_STK[TrackMonitor_STK_SIZE- 1], TrackMonitor_TASK_PRIO);
 
 	//OSTaskCreate(Factory_Test_Task, (void *)0, (OS_STK*)&FACTORY_TEST_TASK_STK[FACTORY_TEST_STK_SIZE- 1], FACTORY_TEST_TASK_PRIO);
 
@@ -1156,7 +1156,7 @@ void QueryMain_Task(void *pdata)
 
 void TrackMonitor_Task(void *pdata)
 {
-	float adcx;
+	int adcx;
 	float voltage;
 	static float g_standby_voltage = 0;
 	static float g_standby_adcx = 0;
@@ -1167,27 +1167,29 @@ void TrackMonitor_Task(void *pdata)
 	int i = 0;
 	
 	static LED_STATUS_ENUM led_st = LED_ON;
+
+	#define xxx 0.0008056640625
 	
 	UsartPrintf(USART_DEBUG, "SENSOR_Task run!!!!!!!!!!!!\r\n");
 
 	while(1)
 	{	
 		is_report = 0;
-		voltage =0;
-
+		voltage = 0.0;
+		
 		if(g_standby_voltage == 0)
 		{
 			voltage = 0;
 			for(i = 0; i < 3; i++)
 			{
-				adcx = (float)Get_Adc_Average();
+				adcx = Get_Adc_Average();
 				voltage = adcx*(3.3/4096);
 				
 				g_standby_adcx += adcx;
 				g_standby_voltage += voltage;
 				
 				RTOS_TimeDlyHMSM(0, 0, 0, 500);
-				UsartPrintf(USART_DEBUG, "First Boot voltage:%.3f[%.3f]\r\n", voltage, adcx);
+				UsartPrintf(USART_DEBUG, "First Boot voltage:%.3f[%d]\r\n", voltage, adcx);
 			}
 			
 			g_standby_adcx = g_standby_adcx/3;
@@ -1203,11 +1205,13 @@ void TrackMonitor_Task(void *pdata)
 			if ((g_track_state == TRACK_STANDBY) && (motor_run_detect_flag == 0)&&(g_track_id == 0)) 
 			{
 				RTOS_TimeDlyHMSM(0, 0, 0, 500);
-				for(i = 0; i < 2; i++)
+				for(i = 0; i < 1; i++)
 				{
 					is_report = 0;
-					adcx = Get_Adc_Average();			
-					voltage += adcx*(3.3/4096);
+					adcx = Get_Adc_Average();
+					UsartPrintf(USART_DEBUG, "TRACK_STANDBY voltage:[%d]\r\n", adcx);
+					voltage += (float)adcx*xxx;
+					UsartPrintf(USART_DEBUG, "TRACK_STANDBY voltage:%f[%f]\r\n", voltage, adcx*xxx);
 					
 					RTOS_TimeDlyHMSM(0, 0, 0, 500);
 				}
@@ -1218,7 +1222,7 @@ void TrackMonitor_Task(void *pdata)
 				}
 				
 				voltage = voltage/2;
-				UsartPrintf(USART_DEBUG, "TRACK_STANDBY voltage:%.3f[%.3f]\r\n", voltage, adcx);
+				//UsartPrintf(USART_DEBUG, "TRACK_STANDBY voltage:%.3f[%.3f]\r\n", voltage, adcx);
 				if(voltage >= g_standby_voltage + 0.3)//g_standby_voltage + 0.3£¬µ¥°å¶ÌÂ·¹ÊÕÏ
 				{
 					is_report = 1;
@@ -1253,6 +1257,7 @@ void TrackMonitor_Task(void *pdata)
 					is_report = 1;
 					track_id = g_track_id;
 					UsartPrintf(USART_DEBUG, "TRACK_WORKING BROKENCIRCUIT voltage[%.3f] < [%.3f]\r\n", voltage, g_standby_voltage + 0.03);
+					Track_trigger(track_id, MOTOR_STOP);
 				}	
 				else if(voltage > g_standby_voltage + 0.3)// > g_standby_voltage + 0.5£¬¶Â×ª
 				{

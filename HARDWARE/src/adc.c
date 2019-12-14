@@ -1,5 +1,6 @@
  #include "adc.h"
  #include "delay.h"
+ #include "usart.h"
 
 	   
 		   
@@ -72,15 +73,17 @@ u16 Get_Adc_Average_1(u8 ch,u8 times)
 
 //得到ADC采样内部电压传感器的值
 //取5次,然后平均
-u16 Get_Adc_Average(void)
+int Get_Adc_Average(void)
 {
-	u16 temp_val=0;
+	int temp_val=0;
 	u8 t;
 	for(t = 0; t < 5; t++)
 	{
-		temp_val+=Get_Adc(ADC_Channel_1);	  //voltage
+		temp_val+=(int)Get_Adc(ADC_Channel_1);	  //voltage
 		delay_ms(100);
 	}
+	UsartPrintf(USART_DEBUG, "%s[%d]!!!!!!\r\n",__FUNCTION__, temp_val);
+	
 	return temp_val/5;
 }
 
