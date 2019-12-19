@@ -515,7 +515,7 @@ uint8_t preparse_push_medicine_request(struct push_medicine_request_struct *push
 	UsartPrintf(USART_DEBUG, "Push Time Display: board[%d]track[%d]time[%d]\r\n", board_id, push_medicine_request->info[0].medicine_track_number, push_time);  
 	
 	if((push_medicine_request->info[0].board_id == 1) && 
-		(push_medicine_request->info[0].medicine_track_number == 0) && 
+		((push_medicine_request->info[0].medicine_track_number == 0)||(push_medicine_request->info[0].medicine_track_number == 0xff)) && 
 		(push_medicine_request->info[0].push_time == 0))
 		
 	return TRUE;
@@ -547,7 +547,7 @@ uint8_t preparse_replenish_medicine_request(struct replenish_medicine_request_st
 	replenish_medicine_request->info[0].push_time = buffer[5]<<8|buffer[6];
 
 	if((replenish_medicine_request->info[0].board_id == 1) && 
-		(replenish_medicine_request->info[0].medicine_track_number == 0) && 
+		((replenish_medicine_request->info[0].medicine_track_number == 0)||(replenish_medicine_request->info[0].medicine_track_number == 0xff)) && 
 		(replenish_medicine_request->info[0].push_time == 0))
 	return TRUE;
 

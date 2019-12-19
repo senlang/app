@@ -16,6 +16,9 @@
 #define CurrentDetectKey			GPIO_Pin_4	//过流检查
 #define DrugPushFinishKey			GPIO_Pin_3	//前进到位
 
+#define RedDetectIntLine			3	//红外检测中断line
+#define OverCurrtenIntLine			4	//过流保护中断line
+
 
 
 /*******************************************

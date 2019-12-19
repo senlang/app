@@ -29,6 +29,7 @@ extern uint32_t time_passes;
 extern uint32_t TrunkInitTime;
 extern uint16_t TrackPushAllTime;
 extern uint32_t TrackPassTime;
+extern box_struct *knl_box_struct;
 
 
 /*  
@@ -525,15 +526,59 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 	
 	push_medicine_request->info[0].board_id = inputdata[3];
 	UsartPrintf(USART_DEBUG, "board_id: 0x%02x, 0x%02x\r\n", push_medicine_request->info[0].board_id, g_src_board_id);  
+	UsartPrintf(USART_DEBUG, "track: 0x%02x, push_time:0x%02x\r\n", push_medicine_request->info[0].medicine_track_number, push_medicine_request->info[0].push_time);  
 
-	
+
+	/*出货指令*/
 	if(push_medicine_request->info[0].board_id == g_src_board_id)
 	{
 		push_medicine_request->info[0].medicine_track_number = inputdata[4];
 		push_medicine_request->info[0].push_time = inputdata[5]<<8|inputdata[6];
 		push_medicine_request->info[0].drug_count = inputdata[7];
 
-		if((push_medicine_request->info[0].medicine_track_number != 0) && 
+		/*出货完成指令*/
+		if((push_medicine_request->info[0].medicine_track_number == 0xff) && (push_medicine_request->info[0].push_time == 0))
+		{
+			/*依次检查货道时间是否全为0，非0将环境货道出货线程*/
+			/*检查当前单板是否要出货*/
+			TrackPushAllTime = 0;
+			for(x = 0; x < 10; x++)
+			{
+				for(y = 0; y < 10; y++)
+				{
+					if(track_struct[x][y].push_time||track_struct[x][y].drug_count)
+					{
+						x_track_is_run = 1;
+						TrackPushAllTime += track_struct[x][y].push_time;
+					}
+				}
+			}
+			
+			if(x_track_is_run)
+			OSSemPost(SemOfTrack);
+		
+			/*开始唤醒传送带和取货口动作*/
+			if(1 == g_src_board_id)
+			OSSemPost(SemOfConveyor);
+			
+			cmd_ack_info.status = 1;
+		
+			TrunkInitTime = 0;
+			TrackPassTime = time_passes;
+			
+			track_work = MOTOR_RUN_FORWARD;
+			UsartPrintf(USART_DEBUG, "Receive push complete!!!!!!!!!!!!\r\n");
+		}
+		/*出货开始指令*/
+		else if((push_medicine_request->info[0].medicine_track_number == 0x00) && (push_medicine_request->info[0].push_time == 0))
+		{
+			UsartPrintf(USART_DEBUG, "Receive push start,clean all!!!!!!!!!!!!\r\n");
+			
+			cmd_ack_info.status = 1;
+			memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
+			memset(knl_box_struct, 0x00, sizeof(box_struct));
+		}
+		else if((push_medicine_request->info[0].medicine_track_number != 0) && 
 			((push_medicine_request->info[0].push_time != 0) || push_medicine_request->info[0].drug_count))
 		{
 			//motor_struct[motor_enqueue_idx].motor_run = MOTOR_RUN_FORWARD;
@@ -562,39 +607,7 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 			
 			TrunkInitTime = time_passes;
 		}
-		/*02 07 20 1 0 0 xx*//*货道出货*/
-		else if((push_medicine_request->info[0].medicine_track_number == 0) && (push_medicine_request->info[0].push_time == 0))
-		{
-			/*依次检查货道时间是否全为0，非0将环境货道出货线程*/
-			/*检查当前单板是否要出货*/
-			TrackPushAllTime = 0;
-			for(x = 0; x < 10; x++)
-			{
-				for(y = 0; y < 10; y++)
-				{
-					if(track_struct[x][y].push_time||track_struct[x][y].drug_count)
-					{
-						x_track_is_run = 1;
-						TrackPushAllTime += track_struct[x][y].push_time;
-					}
-				}
-			}
-			
-			if(x_track_is_run)
-			OSSemPost(SemOfTrack);
 
-			/*开始唤醒传送带和取货口动作*/
-			if(1 == g_src_board_id)
-			OSSemPost(SemOfConveyor);
-			
-			cmd_ack_info.status = 1;
-
-			TrunkInitTime = 0;
-			TrackPassTime = time_passes;
-			
-			track_work = MOTOR_RUN_FORWARD;
-			UsartPrintf(USART_DEBUG, "Receive push complete!!!!!!!!!!!!\r\n");
-		}
 	}
 
 	
@@ -743,7 +756,7 @@ void parse_replenish_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 				
 				TrunkInitTime = time_passes;
 			}
-			else if((replenish_medicine_request->info[0].medicine_track_number == 0) && (replenish_medicine_request->info[0].push_time == 0))
+			else if((replenish_medicine_request->info[0].medicine_track_number == 0xff) && (replenish_medicine_request->info[0].push_time == 0))
 			{
 				OSSemPost(SemOfTrack);
 				cmd_ack_info.status = 1;
@@ -765,6 +778,14 @@ void parse_replenish_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 				TrackPassTime = time_passes;
 				UsartPrintf(USART_DEBUG, "Receive replenish complete!!!!!!!!!!!!\r\n");
 			}
+			else if((replenish_medicine_request->info[0].medicine_track_number == 0) && (replenish_medicine_request->info[0].push_time == 0))
+			{
+				UsartPrintf(USART_DEBUG, "Receive replenish start,clean all!!!!!!!!!!!!\r\n");
+				memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
+				memset(knl_box_struct, 0x00, sizeof(box_struct));
+			}
+
+			
 		}
 
 

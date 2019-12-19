@@ -924,7 +924,8 @@ void Track_OverCurrent_Task(void *pdata)
 		RTOS_TimeDlyHMSM(0, 0, 0, TRACK_BACK_TIME * 2);
 		
 		motor_run_detect_flag = 0;
-		exti_interrupt_set(DISABLE);
+		//exti_interrupt_set(DISABLE);
+		box_interrupt_set(0, OverCurrtenIntLine);
 		UsartPrintf(USART_DEBUG, "Track[%d],dir[%d] do OverCurrent protect!!!\r\n", motor_run_detect_track_num, motor_run_direction);
 		
 		if(motor_run_direction == MOTOR_RUN_BACKWARD)
@@ -942,7 +943,8 @@ void Track_OverCurrent_Task(void *pdata)
 		set_track(motor_run_detect_track_num, MOTOR_STOP);//ªıµ¿Õ£÷π
 		Motor_Set(MOTOR_STOP);
 		
-		exti_interrupt_set(ENABLE);
+		//exti_interrupt_set(ENABLE);
+		box_interrupt_set(1, OverCurrtenIntLine);
 	}
 	OSSemDel(SemOfOverCurrent, 0, &err);
 }

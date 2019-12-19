@@ -26,7 +26,7 @@ KEY_STATUS key_status;
 extern unsigned char calibrate_enable;
 extern uint8_t cur_calc_track;
 
-
+extern uint8_t push_drug_cnt;
 
 
 /*
@@ -185,6 +185,18 @@ void EXTIX_Init(void)
   	EXTI_Init(&EXTI_InitStructure);	  	//根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
 
 
+ 	//GPIOD.3	  中断线以及中断初始化配置 下降沿触发 //DrugPushFinishKey
+  	GPIO_EXTILineConfig(GPIO_PortSourceGPIOD, GPIO_PinSource3);
+  	EXTI_InitStructure.EXTI_Line=EXTI_Line3;
+  	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;	
+  	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+  	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+  	EXTI_Init(&EXTI_InitStructure);	  	//根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
+
+
+
+
+
 	//GPIOE.4 中断线以及中断初始化配置	 下降沿触发
 	GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource4);
   	EXTI_InitStructure.EXTI_Line=EXTI_Line4;
@@ -205,6 +217,15 @@ void EXTIX_Init(void)
   	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;					//子优先级1 
   	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;								//使能外部中断通道
   	NVIC_Init(&NVIC_InitStructure);  	  //根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器
+
+
+
+	NVIC_InitStructure.NVIC_IRQChannel = EXTI3_IRQn;			//使能按键BackwardDetectKey所在的外部中断通道
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02;	//抢占优先级2 
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;					//子优先级1 
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE; 							//使能外部中断通道
+	NVIC_Init(&NVIC_InitStructure); 	  //根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器
+
  
 }
 
@@ -218,7 +239,21 @@ void exti_interrupt_set(uint8_t status)
 	EXTI_InitStructure.EXTI_LineCmd = status;
 	EXTI_Init(&EXTI_InitStructure); 	//根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器	
 }
- 	
+
+//中断屏蔽设置
+//en:1，开启;0，关闭;	 
+void box_interrupt_set(u8 en, uint32_t line)
+{
+	EXTI->PR=1 << line;  //清除LINEx上的中断标志位
+	if(en)
+	EXTI->IMR|=1<<line;//不屏蔽linex上的中断
+	else 
+	EXTI->IMR&=~(1<<line);//屏蔽linex上的中断   
+}
+
+
+
+	
 
 //外部中断4服务程序 
 void EXTI4_IRQHandler(void)
@@ -230,7 +265,7 @@ void EXTI4_IRQHandler(void)
 #endif  	
 	if(EXTI_GetITStatus(EXTI_Line4)==SET)//是4线的中断
 	{
-		if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN) 					//消抖后检查是否有过流
+		//if(KeyScan(GPIOE, GPIO_Pin_4) == KEYDOWN) 					//消抖后检查是否有过流
 		{		
 			UsartPrintf(USART_DEBUG, "OverCurrent Dir = %d\r\n", motor_run_direction);
 
@@ -280,10 +315,10 @@ void EXTI4_IRQHandler(void)
 				}
 			}
 		}
-		else if(KeyScan(GPIOE, CurrentDetectKey) == KEYUP)
-		{
-			//UsartPrintf(USART_DEBUG, "UP-------------\r\n");
-		}
+		//else if(KeyScan(GPIOE, CurrentDetectKey) == KEYUP)
+		//{
+		//	//UsartPrintf(USART_DEBUG, "UP-------------\r\n");
+		//}
 	}
 	EXTI_ClearITPendingBit(EXTI_Line4);  //清除LINE2上的中断标志位	
 #ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.
@@ -462,4 +497,36 @@ _Bool Key_Check(unsigned int NUM)
 	}
 	return ret_val;	
 }
+
+
+//外部中断3服务程序 
+void EXTI3_IRQHandler(void)
+{
+#ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.
+	OSIntEnter();	  
+#endif  	
+	if(EXTI_GetITStatus(EXTI_Line3)==SET)//是4线的中断
+	{
+		UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
+		if(KeyScan(GPIOD, DrugPushFinishKey) == KEYUP) 					//消抖后检查是否有过流
+		{
+			Motor_Set(MOTOR_STOP);
+			set_track(motor_run_detect_track_num, MOTOR_STOP);
+			push_drug_cnt++;
+			UsartPrintf(USART_DEBUG, "UP-------------, push_drug_cnt[%d]\r\n", push_drug_cnt);
+		}
+		else if(KeyScan(GPIOD, DrugPushFinishKey) == KEYDOWN)
+		{
+			UsartPrintf(USART_DEBUG, "DOWN-------------\r\n");
+		}
+		
+		box_interrupt_set(0, RedDetectIntLine);
+	}
+	EXTI_ClearITPendingBit(EXTI_Line3);  //清除LINE3上的中断标志位	
+#ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.
+	 OSIntExit();	 
+#endif  
+
+}
+
 
