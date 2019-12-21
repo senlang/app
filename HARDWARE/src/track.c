@@ -875,16 +875,19 @@ int Track_run(MOTOR_ENUM run_mode)
 	int time_pass_ms = 0;
 	uint8_t int_enable_flag = 0;
 	uint8_t push_result_fail = 0;
+	int i = 0;
 	
-	//struct push_medicine_complete_request_info_struct  push_complete_info;
-
 	UsartPrintf(USART_DEBUG, "Enter Track_run[%d], mode[%d]!!!\r\n", __LINE__, run_mode);
+
+	motor_run_detect_flag = 1;
 	for(x = 0; x < 10; x++)
 	{
 		for(y = 0; y < 10; y++)
 		{
 			push_drug_cnt = 0;
-			if((track_struct[x][y].push_time >= KEY_DELAY_500MS) || track_struct[x][y].drug_count)
+			OverCurrentDetected = 0;
+			
+			if(track_struct[x][y].drug_count || (track_struct[x][y].push_time >= KEY_DELAY_500MS))
 			{
 				if(track_struct[x][y].push_time >= KEY_DELAY_500MS + MOTOR_RESERVE_TIME)
 				{
@@ -896,63 +899,71 @@ int Track_run(MOTOR_ENUM run_mode)
 				UsartPrintf(USART_DEBUG, "start:track[%d]run_mode[%d]work_mode[%d]time[%d]=>%ds.%dms,cnt[%d]\r\n",
 					motor_run_detect_track_num, track_struct[x][y].motor_run, track_struct[x][y].work_mode, track_struct[x][y].push_time, delay_s, delay_ms,track_struct[x][y].drug_count);
 				
-				Motor_Set(track_struct[x][y].motor_run);//电机方向使能
-				set_track(motor_run_detect_track_num, track_struct[x][y].motor_run);//货道使能
-				
-				
-				RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_500MS * 100);
-				
-				motor_run_detect_flag = 1;
-				OverCurrentDetected = 0;
-				
 				if((track_struct[x][y].work_mode == 1) && (track_struct[x][y].drug_count > 0))
 				{
 					NEXT_MEDICINE:
 						
 					box_interrupt_set(0, OverCurrtenIntLine);
 					box_interrupt_set(1, RedDetectIntLine);
+					
 					Motor_Set(track_struct[x][y].motor_run);//电机方向使能
 					set_track(motor_run_detect_track_num, track_struct[x][y].motor_run);//货道使能
-					drug_cnt = push_drug_cnt;
 					
-					UsartPrintf(USART_DEBUG, "00Need Push[%d/%d], %d\r\n", push_drug_cnt, track_struct[x][y].drug_count, drug_cnt);
+					drug_cnt = push_drug_cnt;
+					int_enable_flag = 0;
+					time_pass_ms = 0;
+					
+					UsartPrintf(USART_DEBUG, "Need Push[%d/%d], %d\r\n", push_drug_cnt, track_struct[x][y].drug_count, drug_cnt);
 					do{	
-						if(push_drug_cnt != drug_cnt)
-						{
-							UsartPrintf(USART_DEBUG, "11Need Push[%d/%d], %d\r\n", push_drug_cnt, track_struct[x][y].drug_count, drug_cnt);
-
-							RTOS_TimeDlyHMSM(0, 0, 1, 0);
-							int_enable_flag = 0;
-							time_pass_ms = 0;
-							goto NEXT_MEDICINE;
-						}
-						
 						if(push_drug_cnt == track_struct[x][y].drug_count)
 						{
 							UsartPrintf(USART_DEBUG, "Push Drug Finish, Track[%d]Total[%d]\r\n", motor_run_detect_track_num, drug_cnt);
 							Motor_Set(MOTOR_STOP);	//电机停止
 							set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
 							break;
-						}		
+						}	
+						else if(push_drug_cnt != drug_cnt)
+						{
+							UsartPrintf(USART_DEBUG, "Have Push[%d/%d], %d\r\n", push_drug_cnt, track_struct[x][y].drug_count, drug_cnt);
+							RTOS_TimeDlyHMSM(0, 0, 1, 0);
+							goto NEXT_MEDICINE;
+						}
+
 						
 						time_pass_ms++;
-						if((time_pass_ms >= 100) && (int_enable_flag == 0))
+						if((time_pass_ms >= 10) && (int_enable_flag == 0))
 						{
 							box_interrupt_set(1, OverCurrtenIntLine);
 							int_enable_flag = 1;
 						}
-						if((time_pass_ms/10 >= 200) || (OverCurrentDetected == 1))
+						
+						//if((time_pass_ms >= 500) || (OverCurrentDetected == 1))
+						
+						if(time_pass_ms >= 500)
 						{
 							UsartPrintf(USART_DEBUG, "time_pass_ms[%d]OverCurrentDetected[%d]push[%d] fail %d/%d:%d\r\n", time_pass_ms, OverCurrentDetected, motor_run_detect_track_num, drug_cnt, track_struct[x][y].drug_count);
 							push_result_fail = 1;
 							break;
 						}
-						RTOS_TimeDlyHMSM(0, 0, 0, 10);
+						RTOS_TimeDlyHMSM(0, 0, 0, 100);
 					}while(1);
 				}
 				else
 				{
+					box_interrupt_set(0, OverCurrtenIntLine);
+					
+					Motor_Set(track_struct[x][y].motor_run);//电机方向使能
+					set_track(motor_run_detect_track_num, track_struct[x][y].motor_run);//货道使能
+
+					RTOS_TimeDlyHMSM(0, 0, 0, KEY_DELAY_500MS * 100);
+					
+					box_interrupt_set(1, OverCurrtenIntLine);
+
+					motor_run_detect_flag = 1;
+					OverCurrentDetected = 0;
+					
 					RTOS_TimeDlyHMSM(0, 0, delay_s, delay_ms);
+					box_interrupt_set(0, OverCurrtenIntLine);
 				}
 				
 
@@ -966,7 +977,7 @@ int Track_run(MOTOR_ENUM run_mode)
 
 				/*发生开关检测到，延时1.5S，预留时间给回退*/
 				if(OverCurrentDetected)
-				RTOS_TimeDlyHMSM(0, 0, 1, 500);
+				RTOS_TimeDlyHMSM(0, 0, 1, 0);
 
 				Motor_Set(MOTOR_STOP);	//电机停止
 				set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
@@ -975,6 +986,8 @@ int Track_run(MOTOR_ENUM run_mode)
 				if(push_result_fail == 1)
 				{
 					UsartPrintf(USART_DEBUG, "push[%d] fail %d/%d:%d\r\n", motor_run_detect_track_num, drug_cnt, track_struct[x][y].drug_count);
+					knl_box_struct->board_push_finish = 0xffff;
+					mcu_push_medicine_track_only(g_src_board_id, 0xFD);//向1号板发送当前单板出货失败
 					goto FINISH_RUN;
 				}
 				
@@ -1035,7 +1048,8 @@ int Track_run(MOTOR_ENUM run_mode)
 	}
 	Motor_Set(MOTOR_STOP);	//电机停止
 	memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
-	TrackPushAllTime = 0;
+	TrackPushAllTime = 0;	
+	motor_run_detect_flag = 0;
 	
 	if(MOTOR_RUN_FORWARD == run_mode)
 	{
@@ -1055,7 +1069,6 @@ int Track_run(MOTOR_ENUM run_mode)
 		{
 			mcu_add_medicine_track_only(g_src_board_id, 0xFF);//向1号板发送当前单板补货完成
 			RTOS_TimeDlyHMSM(0, 0, 1, 0);
-			mcu_add_medicine_track_only(g_src_board_id, 0xFF);//向1号板发送当前单板补货完成
 
 			if(g_src_board_id == 1)
 			knl_box_struct->board_add_finish &= ~(1<<0);//清标志
@@ -1064,6 +1077,15 @@ int Track_run(MOTOR_ENUM run_mode)
 	run_mode = MOTOR_STOP;
 	UsartPrintf(USART_DEBUG, "Exit Track_run!!!\r\n");
 
+	for(i = 2; i <= BOARD_ID_MAX; i++)
+	{
+		if(knl_box_struct->board_push_finish & (1 << (i-1)))
+		{
+			send_board_push_cmd(i);
+			break;
+		}
+	}
+	
 	heart_info.board_id = g_src_board_id;
 	heart_info.board_status = STANDBY_STATUS;
 	heart_info.medicine_track_number = 0; 

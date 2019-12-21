@@ -99,11 +99,12 @@ int parse_protocol(void)
 		UsartPrintf(USART_DEBUG, "11:en idx = %d, de idx = %d\r\n", uart1_enqueue_idx, uart1_dequeue_idx);
 		memcpy(src, uart1_recv_data[uart1_dequeue_idx].buf, UART_BUF_MAX_LEN);
 		len = uart1_recv_data[uart1_dequeue_idx].dataLen;
+		
+		memset(uart1_recv_data[uart1_dequeue_idx].buf, 0x00, UART_BUF_MAX_LEN);
 
 		uart1_dequeue_idx++;
 		if(uart1_dequeue_idx >= UART_MAX_IDX)
 		uart1_dequeue_idx = 0;
-		memset(uart1_recv_data[uart1_dequeue_idx].buf, 0x00, UART_BUF_MAX_LEN);
 
 		/*只有uart1 能收到*/		
 		packet_parser(src, len, UART1_IDX);

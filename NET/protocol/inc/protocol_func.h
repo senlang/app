@@ -41,4 +41,6 @@ void board_track_control(uint16_t track_num, uint8_t status);
 
 void send_temperature_report(int temp, int humi);
 
+void send_board_push_cmd(uint8_t board_id);
+
 #endif

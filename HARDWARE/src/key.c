@@ -244,6 +244,7 @@ void exti_interrupt_set(uint8_t status)
 //en:1，开启;0，关闭;	 
 void box_interrupt_set(u8 en, uint32_t line)
 {
+	UsartPrintf(USART_DEBUG, "InterruptLine[%d]Enable[%d]\r\n", line, en);
 	EXTI->PR=1 << line;  //清除LINEx上的中断标志位
 	if(en)
 	EXTI->IMR|=1<<line;//不屏蔽linex上的中断
@@ -505,15 +506,14 @@ void EXTI3_IRQHandler(void)
 #ifdef OS_TICKS_PER_SEC	 	//如果时钟节拍数定义了,说明要使用ucosII了.
 	OSIntEnter();	  
 #endif  	
-	if(EXTI_GetITStatus(EXTI_Line3)==SET)//是4线的中断
+	if(EXTI_GetITStatus(EXTI_Line3)==SET)					//是3线的中断
 	{
-		UsartPrintf(USART_DEBUG, "%s[%d]\r\n", __FUNCTION__, __LINE__);
-		if(KeyScan(GPIOD, DrugPushFinishKey) == KEYUP) 					//消抖后检查是否有过流
+		if(KeyScan(GPIOD, DrugPushFinishKey) == KEYUP) 		//消抖后检查是否有过流
 		{
 			Motor_Set(MOTOR_STOP);
 			set_track(motor_run_detect_track_num, MOTOR_STOP);
 			push_drug_cnt++;
-			UsartPrintf(USART_DEBUG, "UP-------------, push_drug_cnt[%d]\r\n", push_drug_cnt);
+			UsartPrintf(USART_DEBUG, "UP-------------, Teack[%d] Had Push cnt[%d]\r\n", motor_run_detect_track_num, push_drug_cnt);
 		}
 		else if(KeyScan(GPIOD, DrugPushFinishKey) == KEYDOWN)
 		{

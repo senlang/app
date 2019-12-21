@@ -66,7 +66,7 @@ int dequeue_replenish_index = 0;
 
 uint16_t calibrate_track_selected = 255;
 unsigned char calibrate_enable = 0;
-
+static uint8_t last_board = 0;
 
 extern OS_EVENT *SemOfMotor;          //Motor控制信号量
 extern OS_EVENT *SemOfKey;          // 按键控制信号量
@@ -130,6 +130,19 @@ void mcu_push_medicine_close_door_complete(void)
 	push_complete_info.track_status= 0;
 	board_send_message(PUSH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
 }
+
+/*出货失败，1号单板执行*/
+void mcu_push_medicine_fail(void)
+{
+	struct push_medicine_complete_request_info_struct  push_complete_info;
+	
+	memset(&push_complete_info, 0x00, sizeof(push_complete_info));
+	push_complete_info.board_id = 0xfd;
+	push_complete_info.track_status= 0;
+	board_send_message(PUSH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
+}
+
+
 
 /*各货道出货完成，所有单板都需要执行*/
 void mcu_push_medicine_track_only(uint8_t board, uint8_t track_number)
@@ -506,14 +519,17 @@ uint8_t preparse_push_medicine_request(struct push_medicine_request_struct *push
 	push_medicine_request->info[0].board_id = buffer[3];
 	push_medicine_request->info[0].medicine_track_number = buffer[4];
 	push_medicine_request->info[0].push_time = buffer[5]<<8|buffer[6];
-
+	push_medicine_request->info[0].drug_count = buffer[7];
+	
 	board_id = push_medicine_request->info[0].board_id;
  	push_time = push_medicine_request->info[0].push_time;
 
 	//累加货道总运行时间，为每一个货道预留2s
 	drag_push_time[board_id] += push_time + 20;
-	UsartPrintf(USART_DEBUG, "Push Time Display: board[%d]track[%d]time[%d]\r\n", board_id, push_medicine_request->info[0].medicine_track_number, push_time);  
-	
+	UsartPrintf(USART_DEBUG, "Push Time Display: board[%d]track[%d]time[%d]cnt[%d]\r\n", 
+		board_id, push_medicine_request->info[0].medicine_track_number, push_time, push_medicine_request->info[0].drug_count);  
+
+	//0x02,0x08,0x20,0x01,0xff,0x00,0x00,0x00,0x2a
 	if((push_medicine_request->info[0].board_id == 1) && 
 		((push_medicine_request->info[0].medicine_track_number == 0)||(push_medicine_request->info[0].medicine_track_number == 0xff)) && 
 		(push_medicine_request->info[0].push_time == 0))
@@ -668,7 +684,6 @@ void up_packet_parser(unsigned char *src, int len)
 			UART1_IO_Send(uart2_shared_rx_buf, pkt_len);
 			MessageAckCheck(uart2_shared_rx_buf, pkt_len);
 		}
-
 		else if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_COMPLETE)) //收到出货完成状态上报响应
 		{	 
 			/*0x02,0x06,0xa0,0x03,0xff,0x00,0xaa*/
@@ -676,14 +691,40 @@ void up_packet_parser(unsigned char *src, int len)
 			memcpy(&push_medicine_complete_request, uart2_shared_rx_buf, pkt_len);
 			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_PUSH_MEDICINE_COMPLETE, Board[%d], Track[%d]!!\r\n", push_medicine_complete_request.info.board_id, push_medicine_complete_request.info.medicine_track_number);
 
-			//TODO:统一由1号单板处理，在收集齐所有单板状态后统一上报安卓板
-			if(push_medicine_complete_request.info.medicine_track_number == 0xFF)
-			knl_box_struct->board_push_finish &= ~(1<<(board_id - 1));
 
 			cmd_ack_info.board_id = board_id;
 			cmd_ack_info.rsp_cmd_type = CMD_PUSH_MEDICINE_COMPLETE;
 			cmd_ack_info.status = 1;
 			send_command_ack(&cmd_ack_info, UART2_IDX);
+
+			//TODO:统一由1号单板处理，在收集齐所有单板状态后统一上报安卓板
+			if(push_medicine_complete_request.info.medicine_track_number == 0xFF)
+			{
+				UsartPrintf(USART_DEBUG, "Board[%d]Track[%d] Have Finish!!\r\n", board_id, push_medicine_complete_request.info.medicine_track_number);
+				knl_box_struct->board_push_finish &= ~(1<<(board_id - 1));
+				if(last_board != board_id)
+				{
+					for(i = 2; i <= BOARD_ID_MAX; i++)
+					{
+						if(knl_box_struct->board_push_finish & (1 << (i-1)))
+						{
+							send_board_push_cmd(i);
+							last_board = i;
+							break;
+						}
+					}
+				}
+				else
+				{
+					UsartPrintf(USART_DEBUG, "Board[%d] is old!!\r\n", board_id);
+				}
+			}
+			else if(push_medicine_complete_request.info.medicine_track_number == 0xFD)
+			{
+				UsartPrintf(USART_DEBUG, "Board[%d]Track[%d] Have Push Fail!!\r\n", board_id, push_medicine_complete_request.info.medicine_track_number);
+				knl_box_struct->board_push_finish = 0xffff;
+			}
+			
 		}  
 		else if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_MCU_ADD_MEDICINE_COMPLETE)) //收到补货完成状态上报响应
 		{  
@@ -791,31 +832,35 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 			if(cmd_type == CMD_PUSH_MEDICINE_REQUEST)
 			{
 				/*请求出货指令转发*/
-				if(preparse_push_medicine_request(&push_medicine_request, uart1_shared_rx_buf) == TRUE)
+				preparse_push_medicine_request(&push_medicine_request, uart1_shared_rx_buf);
+				if(push_medicine_request.info[0].medicine_track_number == 0 && push_medicine_request.info[0].push_time == 0)
 				{
-					UsartPrintf(USART_DEBUG, "board_push_finish: 0x%02x\r\n", knl_box_struct->board_push_finish);
 					//转发
 					memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
 					for(i = 2; i <= BOARD_ID_MAX; i++)
 					{
-						UsartPrintf(USART_DEBUG, "board_push_finish & (1 << (i-1)): 0x%x\r\n", knl_box_struct->board_push_finish & (1 << (i-1)));
-						if(knl_box_struct->board_push_finish & (1 << (i-1)))
-						{
-							memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
-							*(forward_data + 3) = i;//board id
-							*(forward_data + pkt_len - 1) = add_checksum(forward_data, pkt_len - 1);//message len
-							
-							UsartPrintf(USART_DEBUG, "PUSH_MEDICINE_REQUEST Forward: 0x%02x\r\n", *(forward_data + 3));
-		
-							MessageInsertQueue(forward_data, pkt_len, UART2_IDX);
-							RS485_Send_Data(forward_data, pkt_len);
-							RTOS_TimeDlyHMSM(0, 0, 0, 100);
-							
-							send_query_message(i);
-						}
+						//UsartPrintf(USART_DEBUG, "board_push_finish & (1 << (i-1)): 0x%x\r\n", knl_box_struct->board_push_finish & (1 << (i-1)));
+						memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
+						*(forward_data + 3) = i;//board id
+						*(forward_data + pkt_len - 1) = add_checksum(forward_data, pkt_len - 1);//message len
+						UsartPrintf(USART_DEBUG, "PUSH_MEDICINE_REQUEST Forward: 0x%02x\r\n", *(forward_data + 3));
+
+						RS485_Send_Data(forward_data, pkt_len);
+						RTOS_TimeDlyHMSM(0, 0, 0, 20);	
+						RS485_Send_Data(forward_data, pkt_len);
+						RTOS_TimeDlyHMSM(0, 0, 0, 20);	
+						
+						//MessageInsertQueue(forward_data, pkt_len, UART2_IDX);
+						//RTOS_TimeDlyHMSM(0, 0, 0, 100);			
+						//send_query_message(i);
 					}
 				}
-				else
+				else if(push_medicine_request.info[0].medicine_track_number == 0xff && push_medicine_request.info[0].push_time == 0)
+				{
+					last_board = 1;
+					UsartPrintf(USART_DEBUG, "board_push_finish: 0x%02x\r\n", knl_box_struct->board_push_finish);
+				}
+				else if(0 < board_id && board_id <= BOARD_ID_MAX)
 				{	
 					/*请求出货，更新全局变量bit位*/
 					knl_box_struct->board_push_finish |= 1<<(board_id - 1);

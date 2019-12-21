@@ -590,11 +590,18 @@ void DrugPush_Task(void *pdata)
 				drug_push_status = 1;
 				break;
 			}
+			else if(knl_box_struct->board_push_finish == 0xffff)
+			{
+				UsartPrintf(USART_DEBUG, "Push Fail. Error\r\n");
+				drug_push_status = 0;
+				break;
+			}
 
 			RTOS_TimeDlyHMSM(0, 0, 1, 0);
 			run_time ++;
 			if((run_time >= push_time + 120) && (run_time > 300))// 最大运行时间+20S 后未出货完成开始回收
 			{
+				UsartPrintf(USART_DEBUG, "Push Fail. Timeout\r\n");
 				break;
 			}
 		}while(1);
@@ -610,6 +617,9 @@ void DrugPush_Task(void *pdata)
 			
 			knl_box_struct->board_add_finish = 0;
 			knl_box_struct->board_push_finish = 0;
+			
+			mcu_push_medicine_fail();
+			
 			continue;
 		}
 
@@ -618,7 +628,7 @@ void DrugPush_Task(void *pdata)
 		if(1)//(conveyor == 1)
 		{
 			run_time = 0;
-			RTOS_TimeDlyHMSM(0, 0, BELT_RUN_TIME, 0);//传送带运行10s 时间
+			RTOS_TimeDlyHMSM(0, 0, 3, 0);//传送带运行3s 时间
 			PushBeltControl(BELT_STOP);
 			
 			if(1)//(Push_Belt_Run() != 0 )

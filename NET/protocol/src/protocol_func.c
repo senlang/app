@@ -525,8 +525,6 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 	}
 	
 	push_medicine_request->info[0].board_id = inputdata[3];
-	UsartPrintf(USART_DEBUG, "board_id: 0x%02x, 0x%02x\r\n", push_medicine_request->info[0].board_id, g_src_board_id);  
-	UsartPrintf(USART_DEBUG, "track: 0x%02x, push_time:0x%02x\r\n", push_medicine_request->info[0].medicine_track_number, push_medicine_request->info[0].push_time);  
 
 
 	/*出货指令*/
@@ -535,6 +533,11 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 		push_medicine_request->info[0].medicine_track_number = inputdata[4];
 		push_medicine_request->info[0].push_time = inputdata[5]<<8|inputdata[6];
 		push_medicine_request->info[0].drug_count = inputdata[7];
+
+
+		UsartPrintf(USART_DEBUG, "board_id: 0x%02x, 0x%02x\r\n", push_medicine_request->info[0].board_id, g_src_board_id);	
+		UsartPrintf(USART_DEBUG, "track: 0x%02x, push_time:0x%02x\r\n", push_medicine_request->info[0].medicine_track_number, push_medicine_request->info[0].push_time);  
+
 
 		/*出货完成指令*/
 		if((push_medicine_request->info[0].medicine_track_number == 0xff) && (push_medicine_request->info[0].push_time == 0))
@@ -553,13 +556,14 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 					}
 				}
 			}
-			
-			if(x_track_is_run)
-			OSSemPost(SemOfTrack);
 		
 			/*开始唤醒传送带和取货口动作*/
 			if(1 == g_src_board_id)
-			OSSemPost(SemOfConveyor);
+			{
+				OSSemPost(SemOfTrack);				
+				OSSemPost(SemOfConveyor);
+			}else if(x_track_is_run)
+			OSSemPost(SemOfTrack);
 			
 			cmd_ack_info.status = 1;
 		
@@ -605,7 +609,7 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 
 			cmd_ack_info.status = 1;
 			
-			TrunkInitTime = time_passes;
+			//TrunkInitTime = time_passes;
 		}
 
 	}
@@ -1151,5 +1155,40 @@ void send_temperature_report(int temp, int humi)
 	}
 	
 } 
+
+
+//0x02,0x08,0x20,0x01,0xff,0x00,0x00,0x00,0x2a
+void send_board_push_cmd(uint8_t board_id)  
+{
+	int i = 0;  
+	uint8_t cmd[9];
+	
+	cmd[0] = START_CODE;
+	cmd[1] = 9 - 1;
+	cmd[2] = CMD_PUSH_MEDICINE_REQUEST;
+
+	cmd[3] = board_id;
+	
+	cmd[4] = 0xff;
+	
+	cmd[5] = 0x00;
+	
+	cmd[6] = 0x00;
+
+	cmd[7] = 0x00;
+	
+	cmd[8] = add_checksum(cmd, 8); 
+
+	
+	UsartPrintf(USART_DEBUG, "push cmd to board[%d]:", board_id);
+	for(i = 0; i < 9; i++)
+	{
+		UsartPrintf(USART_DEBUG, "[0x%2x]", cmd[i]);
+	}
+	UsartPrintf(USART_DEBUG, "End\r\n");
+	
+	MessageInsertQueue(cmd, 9, UART2_IDX);
+} 
+
 
 

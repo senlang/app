@@ -593,6 +593,9 @@ uint8_t IsACKMsg(unsigned char *src, int len);
 int board_send_message(int msg_type, void *input_data);
 void mcu_push_medicine_open_door_complete(void);
 void mcu_push_medicine_close_door_complete(void);
+
+void mcu_push_medicine_fail(void);
+
 void mcu_push_medicine_track_only(uint8_t board, uint8_t track_number);
 void mcu_add_medicine_track_only(uint8_t board, uint8_t track_number);
 
