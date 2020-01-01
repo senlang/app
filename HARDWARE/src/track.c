@@ -917,7 +917,7 @@ int Track_run(MOTOR_ENUM run_mode)
 					do{	
 						if(push_drug_cnt == track_struct[x][y].drug_count)
 						{
-							UsartPrintf(USART_DEBUG, "Push Drug Finish, Track[%d]Total[%d]\r\n", motor_run_detect_track_num, drug_cnt);
+							UsartPrintf(USART_DEBUG, "Push Drug Finish, Track[%d]Total[%d]\r\n", motor_run_detect_track_num, push_drug_cnt);
 							Motor_Set(MOTOR_STOP);	//电机停止
 							set_track(motor_run_detect_track_num, MOTOR_STOP);//货道停止
 							break;

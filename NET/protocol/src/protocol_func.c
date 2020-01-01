@@ -483,6 +483,7 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 	struct msg_ack_info_struct cmd_ack_info;
 	struct push_medicine_request_struct *push_medicine_request = (struct push_medicine_request_struct *)outputdata;
 	uint8_t x_track_is_run = 0;
+	uint8_t need_ack = 1;
 
 	cmd_ack_info.status = 0;
 	push_medicine_request->start_code= inputdata[0];  
@@ -579,6 +580,7 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 			UsartPrintf(USART_DEBUG, "Receive push start,clean all!!!!!!!!!!!!\r\n");
 			
 			cmd_ack_info.status = 1;
+			need_ack = 0;
 			memset(track_struct, 0x00, sizeof(struct track_work_struct) * 10 * 10);
 			memset(knl_box_struct, 0x00, sizeof(box_struct));
 		}
@@ -618,10 +620,9 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 	cmd_ack_info.board_id = g_src_board_id;
 	cmd_ack_info.rsp_cmd_type = push_medicine_request->cmd_type;
 
-
 	if(g_src_board_id == 1)
 	send_command_ack(&cmd_ack_info, UART1_IDX);
-	else
+	else if(need_ack)
 	send_command_ack(&cmd_ack_info, UART2_IDX);
 	
 	return;

@@ -233,13 +233,14 @@ void send_push_medicine_complete_request( void *input_data)
 	if(g_src_board_id == 1)
 	{
 		UART1_IO_Send(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE); 
-
-		if(push_medicine_complete_info->medicine_track_number > TRACK_MAX)
+		
+		/*每个货道出货完成向1号板汇报*/
+		//if(push_medicine_complete_info->medicine_track_number > TRACK_MAX)
 		MessageInsertQueue(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE, UART1_IDX);
 	}	
 	else
 	{
-		if(push_medicine_complete_info->medicine_track_number > TRACK_MAX)
+		//if(push_medicine_complete_info->medicine_track_number > TRACK_MAX)
 		MessageInsertQueue(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE, UART2_IDX);
 	}
 
@@ -681,8 +682,8 @@ void up_packet_parser(unsigned char *src, int len)
 			if(*(uart2_shared_rx_buf + 3) == CMD_REPLENISH_MEDICINE_REQUEST)
 			knl_box_struct->board_add_ackmsg &= ~(1<<(board_id - 1));
 			
+			if(MessageAckCheck(uart2_shared_rx_buf, pkt_len) == 0) 
 			UART1_IO_Send(uart2_shared_rx_buf, pkt_len);
-			MessageAckCheck(uart2_shared_rx_buf, pkt_len);
 		}
 		else if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_COMPLETE)) //收到出货完成状态上报响应
 		{	 
@@ -847,6 +848,7 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 
 						RS485_Send_Data(forward_data, pkt_len);
 						RTOS_TimeDlyHMSM(0, 0, 0, 20);	
+						
 						RS485_Send_Data(forward_data, pkt_len);
 						RTOS_TimeDlyHMSM(0, 0, 0, 20);	
 						

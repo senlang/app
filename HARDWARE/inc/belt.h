@@ -3,7 +3,7 @@
 
 #include "stm32f10x.h"
 
-#define BELT_RUN_TIME 6
+#define BELT_RUN_TIME 8
 
 
 typedef enum

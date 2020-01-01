@@ -109,7 +109,7 @@ void Lifter_Set(uint8_t status)
 			RTOS_TimeDlyHMSM(0, 0, 0, 100);
 			time++;
 			
-			if(time >= 180)
+			if(time >= 180 * 2)
 			break;
 		};
 
@@ -126,7 +126,7 @@ void Lifter_Set(uint8_t status)
 			RTOS_TimeDlyHMSM(0, 0, 0, 100);
 			time++;
 			
-			if(time >= 180)
+			if(time >= 180 * 2)
 			break;
 		};
 		
