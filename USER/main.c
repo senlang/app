@@ -628,7 +628,7 @@ void DrugPush_Task(void *pdata)
 		if(1)//(conveyor == 1)
 		{
 			run_time = 0;
-			RTOS_TimeDlyHMSM(0, 0, 3, 0);//传送带运行3s 时间
+			RTOS_TimeDlyHMSM(0, 0, 5, 0);//传送带运行5 时间
 			PushBeltControl(BELT_STOP);
 			
 			if(1)//(Push_Belt_Run() != 0 )

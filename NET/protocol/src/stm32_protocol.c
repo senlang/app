@@ -703,6 +703,26 @@ void up_packet_parser(unsigned char *src, int len)
 			{
 				UsartPrintf(USART_DEBUG, "Board[%d]Track[%d] Have Finish!!\r\n", board_id, push_medicine_complete_request.info.medicine_track_number);
 				knl_box_struct->board_push_finish &= ~(1<<(board_id - 1));
+				UsartPrintf(USART_DEBUG, "Current push status[0x%x]!!\r\n", knl_box_struct->board_push_finish);
+
+				if(knl_box_struct->board_push_finish)
+				{
+					for(i = 2; i <= BOARD_ID_MAX; i++)
+					{
+						if(knl_box_struct->board_push_finish & (1 << (i-1)))
+						{
+							UsartPrintf(USART_DEBUG, "Send Push Message to board[%d]!!\r\n", i);
+							send_board_push_cmd(i);
+							break;
+						}
+					}
+				}
+				else
+				{
+					UsartPrintf(USART_DEBUG, "All Board Finish!!\r\n");
+				}
+				
+				/*
 				if(last_board != board_id)
 				{
 					for(i = 2; i <= BOARD_ID_MAX; i++)
@@ -719,6 +739,7 @@ void up_packet_parser(unsigned char *src, int len)
 				{
 					UsartPrintf(USART_DEBUG, "Board[%d] is old!!\r\n", board_id);
 				}
+				*/
 			}
 			else if(push_medicine_complete_request.info.medicine_track_number == 0xFD)
 			{
