@@ -246,13 +246,11 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 			{
 				CleanTrackParam();
 				SetTrackTestTime(motor_control.medicine_track_number, MOTOR_RUN_FORWARD, motor_control.push_time);
-				CleanTrackParam();
 			}
 			else
 			{
 				CleanTrackParam();
 				SetTrackTestTime(motor_control.medicine_track_number, MOTOR_RUN_BACKWARD, motor_control.push_time);
-				CleanTrackParam();
 			}
 			OSSemPost(SemOfTrack);
 		}
