@@ -66,7 +66,6 @@ int dequeue_replenish_index = 0;
 
 uint16_t calibrate_track_selected = 255;
 unsigned char calibrate_enable = 0;
-static uint8_t last_board = 0;
 
 extern OS_EVENT *SemOfMotor;          //Motor控制信号量
 extern OS_EVENT *SemOfKey;          // 按键控制信号量
@@ -80,6 +79,7 @@ extern uint8_t calc_track_count;
 
 
 extern box_struct *knl_box_struct;
+extern uint16_t g_push_time;
 
 
 void BoardId_Init(void)
@@ -685,13 +685,24 @@ void up_packet_parser(unsigned char *src, int len)
 			if(MessageAckCheck(uart2_shared_rx_buf, pkt_len) == 0) 
 			UART1_IO_Send(uart2_shared_rx_buf, pkt_len);
 		}
+		else if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_STATUS_REPORT_REQUEST))
+		{
+			/*0x02,0x07,0x10,0x03,0x02,0x00,0x2b,0x49*/
+			struct status_report_request_info_struct *info = (struct status_report_request_info_struct *)(uart2_shared_rx_buf + 3);
+			
+			if(info && (PUSHING_STATUS == info->board_status))
+			{
+				UsartPrintf(USART_DEBUG, "Board[%d]Track[%d] is Pushing!!\r\n", info->board_id, info->medicine_track_number);
+				g_push_time = 120;
+			}
+			UART1_IO_Send(uart2_shared_rx_buf, pkt_len);
+		}
 		else if ((*(uart2_shared_rx_buf + 0) == START_CODE)&&(*(uart2_shared_rx_buf + 2) == CMD_PUSH_MEDICINE_COMPLETE)) //收到出货完成状态上报响应
 		{	 
 			/*0x02,0x06,0xa0,0x03,0xff,0x00,0xaa*/
 			board_id = *(uart2_shared_rx_buf + 3);
 			memcpy(&push_medicine_complete_request, uart2_shared_rx_buf, pkt_len);
-			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_PUSH_MEDICINE_COMPLETE, Board[%d], Track[%d]!!\r\n", push_medicine_complete_request.info.board_id, push_medicine_complete_request.info.medicine_track_number);
-
+			UsartPrintf(USART_DEBUG, "Board[%d]Track[%d] Push Finish!!\r\n", board_id, push_medicine_complete_request.info.medicine_track_number);
 
 			cmd_ack_info.board_id = board_id;
 			cmd_ack_info.rsp_cmd_type = CMD_PUSH_MEDICINE_COMPLETE;
@@ -752,7 +763,8 @@ void up_packet_parser(unsigned char *src, int len)
 		{  
 			board_id = *(uart2_shared_rx_buf + 3);
 			memcpy(&add_medicine_complete_request, uart2_shared_rx_buf, pkt_len);
-			UsartPrintf(USART_DEBUG, "Preparse Recvie CMD_MCU_ADD_MEDICINE_COMPLETE, Board[%d], Track[%d]!!\r\n", add_medicine_complete_request.info.board_id, add_medicine_complete_request.info.medicine_track_number);
+			
+			UsartPrintf(USART_DEBUG, "Board[%d]Track[%d] Add Finish!!\r\n", add_medicine_complete_request.info.board_id, add_medicine_complete_request.info.medicine_track_number);
 
 			if(add_medicine_complete_request.info.medicine_track_number == 0xFF)
 			knl_box_struct->board_add_finish &= ~(1<<(board_id - 1));
@@ -857,6 +869,7 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 				preparse_push_medicine_request(&push_medicine_request, uart1_shared_rx_buf);
 				if(push_medicine_request.info[0].medicine_track_number == 0 && push_medicine_request.info[0].push_time == 0)
 				{
+					knl_box_struct->board_push_finish = 0;
 					//转发
 					memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
 					for(i = 2; i <= BOARD_ID_MAX; i++)
@@ -880,7 +893,6 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 				}
 				else if(push_medicine_request.info[0].medicine_track_number == 0xff && push_medicine_request.info[0].push_time == 0)
 				{
-					last_board = 1;
 					UsartPrintf(USART_DEBUG, "board_push_finish: 0x%02x\r\n", knl_box_struct->board_push_finish);
 				}
 				else if(0 < board_id && board_id <= BOARD_ID_MAX)
@@ -898,6 +910,11 @@ void packet_parser(unsigned char *src, int len, int uart_idx)
 				if(preparse_push_medicine_request(&push_medicine_request, uart1_shared_rx_buf) == TRUE)
 				{
 					UsartPrintf(USART_DEBUG, "board_add_finish: 0x%02x\r\n", knl_box_struct->board_add_finish);
+					if(push_medicine_request.info[0].medicine_track_number == 0 && push_medicine_request.info[0].push_time == 0)
+					{
+						knl_box_struct->board_add_finish = 0;
+					}
+					
 					//转发
 					memcpy(forward_data, uart1_shared_rx_buf, pkt_len);
 					for(i = 2; i <= BOARD_ID_MAX; i++)

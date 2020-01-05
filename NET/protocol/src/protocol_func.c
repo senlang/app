@@ -244,15 +244,15 @@ void parse_board_test_request(uint8_t *outputdata, uint8_t *inputdata)
 			
 			if(test_request->info.test_status == 0)
 			{
+				CleanTrackParam();
 				SetTrackTestTime(motor_control.medicine_track_number, MOTOR_RUN_FORWARD, motor_control.push_time);
-				//Track_run_only(MOTOR_RUN_FORWARD);
-				//CleanTrackParam();
+				CleanTrackParam();
 			}
 			else
 			{
+				CleanTrackParam();
 				SetTrackTestTime(motor_control.medicine_track_number, MOTOR_RUN_BACKWARD, motor_control.push_time);
-				//Track_run_only(MOTOR_RUN_BACKWARD);
-				//CleanTrackParam();
+				CleanTrackParam();
 			}
 			OSSemPost(SemOfTrack);
 		}
@@ -458,7 +458,6 @@ void print_board_test_request(uint8_t *data)
 
 void print_push_medicine_request(uint8_t *data)  
 {  
-  	uint8_t request_cnt = 0;
 	uint8_t i = 0;
 	struct push_medicine_request_struct *push_medicine_request = (struct push_medicine_request_struct *)data;
 
@@ -611,7 +610,7 @@ void parse_push_medicine_request(uint8_t *outputdata, uint8_t *inputdata)
 
 			cmd_ack_info.status = 1;
 			
-			//TrunkInitTime = time_passes;
+			TrunkInitTime = time_passes;
 		}
 
 	}

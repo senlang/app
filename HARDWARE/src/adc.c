@@ -82,7 +82,7 @@ int Get_Adc_Average(void)
 		temp_val+=(int)Get_Adc(ADC_Channel_1);	  //voltage
 		delay_ms(100);
 	}
-	UsartPrintf(USART_DEBUG, "%s[%d]!!!!!!\r\n",__FUNCTION__, temp_val);
+	//UsartPrintf(USART_DEBUG, "%s[%d]!!!!!!\r\n",__FUNCTION__, temp_val);
 	
 	return temp_val/5;
 }

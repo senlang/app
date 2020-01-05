@@ -45,6 +45,8 @@ extern uint8_t OverCurrentDetected;	//货道开关状态1为检测到
 extern uint8_t g_track_state;
 extern uint8_t g_track_id;
 
+extern uint16_t g_push_time;
+
 //static  uint16_t forward_running_time;  
 //static  uint16_t backward_running_time; 
 
@@ -902,6 +904,14 @@ int Track_run(MOTOR_ENUM run_mode)
 				if((track_struct[x][y].work_mode == 1) && (track_struct[x][y].drug_count > 0))
 				{
 					NEXT_MEDICINE:
+
+					memset(&heart_info, 0x00, sizeof(heart_info));
+					heart_info.board_id = g_src_board_id;
+					heart_info.board_status = PUSHING_STATUS;
+					heart_info.medicine_track_number = motor_run_detect_track_num; 
+					board_send_message(STATUS_REPORT_REQUEST, &heart_info);
+					
+					g_push_time = 120;//每处一盒药还原到180
 						
 					box_interrupt_set(0, OverCurrtenIntLine);
 					box_interrupt_set(1, RedDetectIntLine);
@@ -1085,10 +1095,13 @@ int Track_run(MOTOR_ENUM run_mode)
 			break;
 		}
 	}
-	
+
+
+	memset(&heart_info, 0x00, sizeof(heart_info));
 	heart_info.board_id = g_src_board_id;
 	heart_info.board_status = STANDBY_STATUS;
 	heart_info.medicine_track_number = 0; 
+	board_send_message(STATUS_REPORT_REQUEST, &heart_info);
 	
 	return 0;
 }

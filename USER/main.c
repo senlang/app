@@ -26,28 +26,28 @@
 //看门狗任务
 #define IWDG_TASK_PRIO		6
 #define IWDG_STK_SIZE		64
-OS_STK IWDG_TASK_STK[IWDG_STK_SIZE];
+__align(8) static OS_STK IWDG_TASK_STK[IWDG_STK_SIZE];
 void IWDG_Task(void *pdata);
 
 
 //UART1 串口数据接收
 #define UP_RECEIVE_TASK_PRIO		7 //
 #define UP_RECEIVE_STK_SIZE		1024
-OS_STK UP_RECEIVE_TASK_STK[UP_RECEIVE_STK_SIZE]; //
+__align(8) static OS_STK UP_RECEIVE_TASK_STK[UP_RECEIVE_STK_SIZE]; //
 void UART1_RECEIVE_Task(void *pdata);
 
 
 //UART2 串口数据接收
 #define DOWN_RECEIVE_TASK_PRIO		8 //
 #define DOWN_RECEIVE_STK_SIZE		1024
-OS_STK DOWN_RECEIVE_TASK_STK[DOWN_RECEIVE_STK_SIZE]; //
+__align(8) static OS_STK DOWN_RECEIVE_TASK_STK[DOWN_RECEIVE_STK_SIZE]; //
 void UART2_RECEIVE_Task(void *pdata);
 
 
 //uart1 接收消息解析
 #define PARSE_TASK_PRIO		9
 #define PARSE_STK_SIZE		1024
-OS_STK PARSE_TASK_STK[PARSE_STK_SIZE];
+__align(8) static OS_STK PARSE_TASK_STK[PARSE_STK_SIZE];
 void UARTMessageParse_Task(void *pdata);
 
 
@@ -55,7 +55,7 @@ void UARTMessageParse_Task(void *pdata);
 //出货、补货货道运行任务
 #define TRACK_TASK_PRIO		10
 #define TRACK_STK_SIZE		512
-OS_STK TRACK_TASK_STK[TRACK_STK_SIZE];
+__align(8) static OS_STK TRACK_TASK_STK[TRACK_STK_SIZE];
 void Track_Run_Task(void *pdata);
 
 
@@ -63,13 +63,13 @@ void Track_Run_Task(void *pdata);
 //传送带、门控制任务
 #define Drug_Push_TASK_PRIO		11
 #define Drug_Push_STK_SIZE		512
-OS_STK Drug_Push_TASK_STK[Drug_Push_STK_SIZE];
+__align(8) static OS_STK Drug_Push_TASK_STK[Drug_Push_STK_SIZE];
 void DrugPush_Task(void *pdata);
 
 //消息重传
 #define MSG_SEND_TASK_PRIO		12
 #define MSG_SEND_STK_SIZE		256
-OS_STK MSG_SEND_TASK_STK[MSG_SEND_STK_SIZE]; //
+__align(8) static OS_STK MSG_SEND_TASK_STK[MSG_SEND_STK_SIZE]; //
 void Message_Send_Task(void *pdata);
 void Message_Send_Task_HostBoard(void *pdata);
 
@@ -77,48 +77,48 @@ void Message_Send_Task_HostBoard(void *pdata);
 //过流保护线程
 #define OVERCURRENT_TASK_PRIO		13
 #define OVERCURRENT_STK_SIZE		256
-OS_STK OVERCURRENT_TASK_STK[OVERCURRENT_STK_SIZE];
+__align(8) static OS_STK OVERCURRENT_TASK_STK[OVERCURRENT_STK_SIZE];
 void Track_OverCurrent_Task(void *pdata);
 
 
 //轮询任务
 #define QUERY_TASK_PRIO		14
 #define QUERY_STK_SIZE		256
-OS_STK QUERY_TASK_STK[QUERY_STK_SIZE];
+__align(8) static OS_STK QUERY_TASK_STK[QUERY_STK_SIZE];
 void QueryMain_Task(void *pdata);
 
 //货道时长统计
 #define Trigger_CalcRuntime_Task_PRIO		15
 #define trigger_calc_runtime_STK_SIZE		384
-OS_STK Trigger_CalcRuntime_Task_STK[trigger_calc_runtime_STK_SIZE]; //
+__align(8) static OS_STK Trigger_CalcRuntime_Task_STK[trigger_calc_runtime_STK_SIZE]; //
 void Trigger_CalcRuntime_Task(void *pdata);
 
 
 //心跳任务
 #define HEART_TASK_PRIO		16
 #define HEART_STK_SIZE		256
-OS_STK HEART_TASK_STK[HEART_STK_SIZE]; //
+__align(8) static OS_STK HEART_TASK_STK[HEART_STK_SIZE]; //
 void HeartBeat_Task(void *pdata);
 
 
 //货道监测
 #define TrackMonitor_TASK_PRIO	17
 #define TrackMonitor_STK_SIZE		256
-OS_STK TrackMonitor_TASK_STK[TrackMonitor_STK_SIZE]; 
+__align(8) static OS_STK TrackMonitor_TASK_STK[TrackMonitor_STK_SIZE]; 
 void TrackMonitor_Task(void *pdata);
 
 
 //温度传感器，制冷控制
 #define Cooling_TASK_PRIO	18
 #define Cooling_STK_SIZE		256
-OS_STK Cooling_TASK_STK[Cooling_STK_SIZE]; 
+__align(8) static OS_STK Cooling_TASK_STK[Cooling_STK_SIZE]; 
 void CoolingControl_Task(void *pdata);
 
 
 //产测任务
 #define FACTORY_TEST_TASK_PRIO		19
 #define FACTORY_TEST_STK_SIZE		256
-OS_STK FACTORY_TEST_TASK_STK[FACTORY_TEST_STK_SIZE];
+__align(8) static OS_STK FACTORY_TEST_TASK_STK[FACTORY_TEST_STK_SIZE];
 void Factory_Test_Task(void *pdata);
 
 OS_EVENT *SemOfMotor;        	//Motor控制信号量
@@ -174,6 +174,10 @@ uint8_t NeedClearBuffer = 0;
 uint32_t TrunkInitTime = 0;
 uint32_t TrackPassTime = 0;
 uint16_t TrackPushAllTime = 0;
+
+
+uint16_t g_push_time = 0;
+uint16_t g_wait_push_time = 0;
 
 box_struct *knl_box_struct = NULL;
 INT8U my_box_struct[64];
@@ -347,7 +351,7 @@ void start_task(void *pdata)
 
 	OSTaskCreate(Track_OverCurrent_Task, (void *)0, (OS_STK*)&OVERCURRENT_TASK_STK[OVERCURRENT_STK_SIZE- 1], OVERCURRENT_TASK_PRIO);
 
-	//OSTaskCreate(TrackMonitor_Task, (void *)0, (OS_STK*)&TrackMonitor_TASK_STK[TrackMonitor_STK_SIZE- 1], TrackMonitor_TASK_PRIO);
+	OSTaskCreate(TrackMonitor_Task, (void *)0, (OS_STK*)&TrackMonitor_TASK_STK[TrackMonitor_STK_SIZE- 1], TrackMonitor_TASK_PRIO);
 
 	//OSTaskCreate(Factory_Test_Task, (void *)0, (OS_STK*)&FACTORY_TEST_TASK_STK[FACTORY_TEST_STK_SIZE- 1], FACTORY_TEST_TASK_PRIO);
 
@@ -393,14 +397,12 @@ void IWDG_Task(void *pdata)
 	while(1)
 	{
 		Iwdg_Feed(); 		//喂狗
-		
 		Led_Set(LED_1, status);
 		status = !status;
 
-
-		if(TrunkInitTime && (time_passes - TrunkInitTime > 600))
+		if(TrunkInitTime && (time_passes - TrunkInitTime > 3000))
 		{
-			UsartPrintf(USART_DEBUG, "In 60s not receive finish cmd, clear!!!!\r\n", time_passes, TrunkInitTime, TrackPushAllTime);
+			UsartPrintf(USART_DEBUG, "In 300s not receive finish cmd, clear!!!!\r\n", time_passes, TrunkInitTime, TrackPushAllTime);
 			CleanTrackParam();
 			track_work = MOTOR_STOP;
 			TrunkInitTime = 0;
@@ -408,6 +410,8 @@ void IWDG_Task(void *pdata)
 			knl_box_struct->board_add_finish = 0;
 			knl_box_struct->board_push_finish = 0;
 		}
+		
+		/*
 		else if(TrackPushAllTime && (time_passes - TrackPassTime > TrackPushAllTime + 1200))
 		{
 			UsartPrintf(USART_DEBUG, "Track run over 120s not(%d, %d, %d) finish, clear!!!!\r\n", time_passes, TrackPassTime, TrackPushAllTime);
@@ -418,7 +422,7 @@ void IWDG_Task(void *pdata)
 			knl_box_struct->board_add_finish = 0;
 			knl_box_struct->board_push_finish = 0;
 		}
-		
+		*/
 		RTOS_TimeDly(50);	//挂起任务250ms
 	}
 }
@@ -553,7 +557,7 @@ void DrugPush_Task(void *pdata)
 	uint8_t delay_time = 10;
 	uint16_t run_time = 0;
 	INT8U            err;
-	uint16_t push_time = 0;
+
 	uint8_t drug_push_status = 0;
 	INT8U try_times = 0;
 	
@@ -564,7 +568,7 @@ void DrugPush_Task(void *pdata)
 	#if 0
 	UsartPrintf(USART_DEBUG, "Drug Collect Start!!!!!!!!!!\r\n");
 	PushBeltControl(BELT_RUN);
-	RTOS_TimeDlyHMSM(0, 0, 15, 0);
+	RTOS_TimeDlyHMSM(0, 0, 10, 0);
 	PushBeltControl(BELT_STOP);
 	Lifter_Set(LIFTER_UP);
 	Collect_Belt_Run();
@@ -575,16 +579,20 @@ void DrugPush_Task(void *pdata)
 	
 	while(1)
 	{		
+		memset(&heart_info, 0x00, sizeof(heart_info));
+		heart_info.board_id = g_src_board_id;
+		heart_info.board_status = STANDBY_STATUS;
+		g_push_time = 120;
+
 		OSSemPend(SemOfConveyor, 0u, &err);
 		run_time = 0;
-		push_time = GetMaxPushTime();
 		drug_push_status = 0;
-
 		
 		PushBeltControl(BELT_RUN);
 		do{
-			UsartPrintf(USART_DEBUG, "board_push_finish = 0x%x, board_push_ackmsg = 0x%x, runtime = %d/%d!!!!!!!!!!\r\n", 
-				knl_box_struct->board_push_finish, knl_box_struct->board_push_ackmsg, run_time, push_time);
+			UsartPrintf(USART_DEBUG, "board_push_finish = 0x%x, runtime = %d/%d!!!!!!!!!!\r\n", 
+				knl_box_struct->board_push_finish, run_time, g_push_time);
+			
 			if((knl_box_struct->board_push_finish == 0))// && knl_box_struct->(board_push_ackmsg == 0))
 			{
 				drug_push_status = 1;
@@ -599,12 +607,8 @@ void DrugPush_Task(void *pdata)
 
 			RTOS_TimeDlyHMSM(0, 0, 1, 0);
 			run_time ++;
-			if((run_time >= push_time + 120) && (run_time > 300))// 最大运行时间+20S 后未出货完成开始回收
-			{
-				UsartPrintf(USART_DEBUG, "Push Fail. Timeout\r\n");
-				break;
-			}
-		}while(1);
+			g_push_time--;
+		}while(g_push_time >= 0);
 		if(drug_push_status == 0)// 150s后未出货完成开始回收
 		{
 			UsartPrintf(USART_DEBUG, "Push Fail, Clean!!!!!!!!!!\r\n");
@@ -628,7 +632,7 @@ void DrugPush_Task(void *pdata)
 		if(1)//(conveyor == 1)
 		{
 			run_time = 0;
-			RTOS_TimeDlyHMSM(0, 0, 5, 0);//传送带运行5 时间
+			RTOS_TimeDlyHMSM(0, 0, 8, 0);//传送带运行5 时间
 			PushBeltControl(BELT_STOP);
 			
 			if(1)//(Push_Belt_Run() != 0 )
@@ -659,6 +663,12 @@ void DrugPush_Task(void *pdata)
 					{
 						UsartPrintf(USART_DEBUG, "Close Door Detect Somebody, Stop!!!!!!!!!!\r\n");
 						Door_Control_Set(MOTOR_STOP);
+						
+						memset(&heart_info, 0x00, sizeof(heart_info));
+						heart_info.board_id = g_src_board_id;
+						heart_info.board_status = PUSHING_STATUS;
+						board_send_message(STATUS_REPORT_REQUEST, &heart_info);
+						
 						RTOS_TimeDlyHMSM(0, 0, 10, 0);
 						try_times++;
 						Door_Control_Set(MOTOR_RUN_FORWARD);
@@ -1188,10 +1198,13 @@ void TrackMonitor_Task(void *pdata)
 	{	
 		is_report = 0;
 		voltage = 0.0;
-		
+
 		if(g_standby_voltage == 0)
 		{
 			voltage = 0;
+			
+			RTOS_TimeDlyHMSM(0, 0, 3, 0);
+			
 			for(i = 0; i < 3; i++)
 			{
 				adcx = Get_Adc_Average();
@@ -1207,24 +1220,19 @@ void TrackMonitor_Task(void *pdata)
 			g_standby_adcx = g_standby_adcx/3;
 			g_standby_voltage = g_standby_voltage/3;
 			
-			UsartPrintf(USART_DEBUG, "First Boot g_standby_voltage:%.3f[%.3f]\r\n", g_standby_voltage, g_standby_adcx);
+			UsartPrintf(USART_DEBUG, "First Boot g_standby_voltage:%.3f[%d]\r\n", g_standby_voltage, g_standby_adcx);
 			
-			RTOS_TimeDlyHMSM(0, 0, 1, 0);
 		}
 		else
 		{			
-			//UsartPrintf(USART_DEBUG, "%s:%d. %d\r\n", __FUNCTION__, g_track_state, motor_run_detect_flag);
 			if ((g_track_state == TRACK_STANDBY) && (motor_run_detect_flag == 0)&&(g_track_id == 0)) 
 			{
 				RTOS_TimeDlyHMSM(0, 0, 0, 500);
-				for(i = 0; i < 1; i++)
+				for(i = 0; i < 2; i++)
 				{
 					is_report = 0;
 					adcx = Get_Adc_Average();
-					UsartPrintf(USART_DEBUG, "TRACK_STANDBY voltage:[%d]\r\n", adcx);
-					voltage += (float)adcx*xxx;
-					UsartPrintf(USART_DEBUG, "TRACK_STANDBY voltage:%f[%f]\r\n", voltage, adcx*xxx);
-					
+					voltage += (float)adcx*(3.3/4096);
 					RTOS_TimeDlyHMSM(0, 0, 0, 500);
 				}
 				if((g_track_state != TRACK_STANDBY) || (motor_run_detect_flag != 0) || (g_track_id != 0))
@@ -1234,7 +1242,7 @@ void TrackMonitor_Task(void *pdata)
 				}
 				
 				voltage = voltage/2;
-				//UsartPrintf(USART_DEBUG, "TRACK_STANDBY voltage:%.3f[%.3f]\r\n", voltage, adcx);
+				UsartPrintf(USART_DEBUG, "TRACK_STANDBY voltage:%.3f[%d]\r\n", voltage, adcx);
 				if(voltage >= g_standby_voltage + 0.3)//g_standby_voltage + 0.3，单板短路故障
 				{
 					is_report = 1;
@@ -1251,7 +1259,6 @@ void TrackMonitor_Task(void *pdata)
 					is_report = 0;
 					adcx = Get_Adc_Average();			
 					voltage += adcx*(3.3/4096);
-					
 					RTOS_TimeDlyHMSM(0, 0, 0, 500);
 				}
 				if((g_track_state != TRACK_WORKING) || (motor_run_detect_flag != 1) || (g_track_id == 0))
@@ -1261,7 +1268,7 @@ void TrackMonitor_Task(void *pdata)
 				}
 				
 				voltage = voltage/2;
-				UsartPrintf(USART_DEBUG, "TRACK_WORKING adcx:%.3f[%.3f]\r\n", voltage, adcx);
+				UsartPrintf(USART_DEBUG, "TRACK_WORKING adcx:%.3f[%d]\r\n", voltage, adcx);
 				
 				if(voltage < g_standby_voltage + 0.03)//< g_standby_voltage + 0.03，断路
 				{
@@ -1269,15 +1276,15 @@ void TrackMonitor_Task(void *pdata)
 					is_report = 1;
 					track_id = g_track_id;
 					UsartPrintf(USART_DEBUG, "TRACK_WORKING BROKENCIRCUIT voltage[%.3f] < [%.3f]\r\n", voltage, g_standby_voltage + 0.03);
-					Track_trigger(track_id, MOTOR_STOP);
+					//Track_trigger(track_id, MOTOR_STOP);
 				}	
-				else if(voltage > g_standby_voltage + 0.3)// > g_standby_voltage + 0.5，堵转
+				else if(voltage > g_standby_voltage + 0.5)// > g_standby_voltage + 0.5，堵转
 				{
 					status = SHORTCIRCUIT_BLOCK;
 					is_report = 1;
 					track_id = g_track_id;
 					UsartPrintf(USART_DEBUG, "TRACK_WORKING SHORTCIRCUIT_BLOCK voltage[%.3f] > [%.3f]\r\n", voltage, g_standby_voltage + 0.3);
-					Track_trigger(track_id, MOTOR_STOP);
+					//Track_trigger(track_id, MOTOR_STOP);
 				}
 				
 				Led_Set(LED_2, led_st);
@@ -1288,7 +1295,6 @@ void TrackMonitor_Task(void *pdata)
 			if(is_report)
 			send_track_status_report(track_id, status);
 		}
-		
 	}
 }
 
