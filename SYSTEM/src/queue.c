@@ -236,7 +236,7 @@ struct node* CreateNode(void)
 	memset(p,0,sizeof(struct node));
 	p->pNext = NULL;
 
-	UsartPrintf(USART_DEBUG, "CreateNode Node[%p]payload[%p]!!!\r\n", p, p->data.payload);
+	//UsartPrintf(USART_DEBUG, "CreateNode Node[%p]payload[%p]!!!\r\n", p, p->data.payload);
 	return p;
 }
 
@@ -270,7 +270,7 @@ struct node* CreateMsgNode(void)
 	memset(p->data.payload, 0, 32);
 	p->data.create_time = time_passes;
 
-	UsartPrintf(USART_DEBUG, "CreateMsgNode Node[%p]payload[%p]time[%d]!!!\r\n", p, p->data.payload, p->data.create_time);
+	//UsartPrintf(USART_DEBUG, "CreateMsgNode Node[%p]payload[%p]time[%d]!!!\r\n", p, p->data.payload, p->data.create_time);
 	
 	p->pNext = NULL;
 
@@ -302,7 +302,7 @@ struct node* GetNode(struct node *pHeader, uint16_t num)
 	}
 
 	
-	UsartPrintf(USART_DEBUG, "GetNode Node[%p]payload[%p]!!!\r\n", p, p->data.payload);
+	//UsartPrintf(USART_DEBUG, "GetNode Node[%p]payload[%p]!!!\r\n", p, p->data.payload);
 	
 	return p;
 }
@@ -332,7 +332,7 @@ struct node* GetMsgNode(struct node *pHeader)
 		return FAULSE;
 	}
 
-	UsartPrintf(USART_DEBUG, "GetMsgNode Node[%p]payload[%p]!!!\r\n", p, p->data.payload);
+	//UsartPrintf(USART_DEBUG, "GetMsgNode Node[%p]payload[%p]!!!\r\n", p, p->data.payload);
 	return p;
 }
 
@@ -420,7 +420,7 @@ uint8_t DeleNode(struct node *pHeader, uint16_t num)
 		myfree(SRAMIN, p1->data.payload);
 		myfree(SRAMIN, p1);
 		#endif
-		UsartPrintf(USART_DEBUG, "DeleNode Node head[%p]payload[%p]!!!\r\n", p1, p1->data.payload);
+		//UsartPrintf(USART_DEBUG, "DeleNode Node head[%p]payload[%p]!!!\r\n", p1, p1->data.payload);
 	}
 	
 	if (TAIL == num)//末尾删除节点
@@ -440,7 +440,7 @@ uint8_t DeleNode(struct node *pHeader, uint16_t num)
 		myfree(SRAMIN, p);
 		#endif
 		
-		UsartPrintf(USART_DEBUG, "DeleNode Node tail[%p]payload[%p]!!!\r\n", p, p->data.payload);
+		//UsartPrintf(USART_DEBUG, "DeleNode Node tail[%p]payload[%p]!!!\r\n", p, p->data.payload);
 	}
 	else if(num > 0 && num != TAIL)//在链表中间删除节点
 	{
@@ -456,7 +456,7 @@ uint8_t DeleNode(struct node *pHeader, uint16_t num)
 		myfree(SRAMIN, p1);
 		#endif
 		
-		UsartPrintf(USART_DEBUG, "DeleNode Node mid[%p]payload[%p]!!!\r\n", p1, p1->data.payload);
+		//UsartPrintf(USART_DEBUG, "DeleNode Node mid[%p]payload[%p]!!!\r\n", p1, p1->data.payload);
 	}
 	return TURE;
 }
@@ -537,13 +537,23 @@ int MessageAckCheck(unsigned char *pdata, uint16_t size)
 	
 	/*消息队列取消息*/
 	node_num = GetNodeNum(UartMsgNode);
-	UsartPrintf(USART_DEBUG, "MessageAckCheck node_num[%d]!!!\r\n", node_num);
+	//UsartPrintf(USART_DEBUG, "MessageAckCheck node_num[%d]!!!\r\n", node_num);
 	if(node_num == 0)
 	{
 		UsartPrintf(USART_DEBUG, "MessageAckQueue is empty!!!\r\n", node_num);
 		ret_val = 0;
 		goto FINISH_MSGCHK;
 	}
+
+	
+	UsartPrintf(USART_DEBUG, "Recv ack msg [%d]!!!\r\n", size);
+	for(j = 0; j < size; j++)
+	{
+		UsartPrintf(USART_DEBUG, "0x%02x, ", *(pdata + j ));
+	}
+	UsartPrintf(USART_DEBUG, "\r\n");
+
+
 	
 	MsgNode = UartMsgNode;
 	for(i = 1, node_i = 1; i <= node_num; i++)
@@ -551,11 +561,11 @@ int MessageAckCheck(unsigned char *pdata, uint16_t size)
 		//NewMsgNode = GetMsgNode(MsgNode);
 		NewMsgNode = GetNode(UartMsgNode, node_i);
 		
-		UsartPrintf(USART_DEBUG, "Node[%d/%d]node_p[%d]!!!\r\n", i, node_num, node_i);
+		UsartPrintf(USART_DEBUG, "MessageAck Node[%d/%d]node_p[%d]!!!\r\n", i, node_num, node_i);
 		
 		if(NewMsgNode)
 		{
-			UsartPrintf(USART_DEBUG, "NewMsgNode [%d]!!!\r\n", NewMsgNode->data.size);
+			UsartPrintf(USART_DEBUG, "DeQueue Msg [%d]!!!\r\n", NewMsgNode->data.size);
 			for(j = 0; j < NewMsgNode->data.size; j++)
 			{
 				UsartPrintf(USART_DEBUG, "0x%02x, ", NewMsgNode->data.payload[j]);
@@ -611,10 +621,11 @@ int MessageAckCheck(unsigned char *pdata, uint16_t size)
 
 void MessageInsertQueue(unsigned char *pdata, uint16_t size, uint8_t uart_idx)
 {
+	int i = 0;
 	struct node* Uart1MsgNode = NULL;
 	
 	Uart1MsgNode = CreateMsgNode();
-	UsartPrintf(USART_DEBUG, " MessageInsertQueue malloc Uart1MsgNode = 0x%p\r\n", Uart1MsgNode);
+	//UsartPrintf(USART_DEBUG, " MessageInsertQueue malloc Uart1MsgNode = 0x%p\r\n", Uart1MsgNode);
 	
 	if(Uart1MsgNode == NULL)
 	return;
@@ -622,13 +633,22 @@ void MessageInsertQueue(unsigned char *pdata, uint16_t size, uint8_t uart_idx)
 	Uart1MsgNode->data.size = size;
 	Uart1MsgNode->data.uart_idx = uart_idx;
 	memcpy(Uart1MsgNode->data.payload, pdata, size);
-	
+
 	InsertNode(UartMsgNode, TAIL, Uart1MsgNode);
+
+	UsartPrintf(USART_DEBUG, "MessageInsertQueue:", size);
+	for(i = 0; i < size; i++)
+	{
+		UsartPrintf(USART_DEBUG, "0x%02x, ", *(pdata + i ));
+	}
+	UsartPrintf(USART_DEBUG, "\r\n");
+	
 }
 
 
 void DelayMessageInsertQueue(unsigned char *pdata, uint16_t size, uint8_t uart_idx)
 {
+	int i = 0;
 	struct node* Uart1MsgNode = NULL;
 	
 	Uart1MsgNode = CreateMsgNode();
@@ -644,12 +664,22 @@ void DelayMessageInsertQueue(unsigned char *pdata, uint16_t size, uint8_t uart_i
 	memcpy(Uart1MsgNode->data.payload, pdata, size);
 	
 	InsertNode(UartMsgNode, TAIL, Uart1MsgNode);
+
+	UsartPrintf(USART_DEBUG, "DelayMessageInsertQueue:", size);
+	for(i = 0; i < size; i++)
+	{
+		UsartPrintf(USART_DEBUG, "0x%02x, ", *(pdata + i ));
+	}
+	UsartPrintf(USART_DEBUG, "\r\n");
+
+	
 }
 
 
 
 void NotRetryMessageInsertQueue(unsigned char *pdata, uint16_t size, uint8_t uart_idx)
 {
+	int i = 0;
 	struct node* Uart1MsgNode = NULL;
 	
 	Uart1MsgNode = CreateMsgNode();
@@ -665,6 +695,16 @@ void NotRetryMessageInsertQueue(unsigned char *pdata, uint16_t size, uint8_t uar
 	memcpy(Uart1MsgNode->data.payload, pdata, size);
 	
 	InsertNode(UartMsgNode, TAIL, Uart1MsgNode);
+
+
+	UsartPrintf(USART_DEBUG, "NotRetryMessageInsertQueue:", size);
+	for(i = 0; i < size; i++)
+	{
+		UsartPrintf(USART_DEBUG, "0x%02x, ", *(pdata + i ));
+	}
+	UsartPrintf(USART_DEBUG, "\r\n");
+
+	
 }
 
 

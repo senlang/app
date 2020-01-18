@@ -21,7 +21,7 @@
 //mem
 #include "malloc.h"
 
-#define SW_VERSION		"SV 2.0.1"
+#define SW_VERSION		"SV 0.1.0"
 
 //看门狗任务
 #define IWDG_TASK_PRIO		6
@@ -64,13 +64,13 @@ void Track_Run_Task(void *pdata);
 #define Drug_Push_TASK_PRIO		11
 #define Drug_Push_STK_SIZE		512
 __align(8) static OS_STK Drug_Push_TASK_STK[Drug_Push_STK_SIZE];
-void DrugPush_Task(void *pdata);
+void DrugPushMain_Task(void *pdata);
 
 //消息重传
 #define MSG_SEND_TASK_PRIO		12
 #define MSG_SEND_STK_SIZE		256
 __align(8) static OS_STK MSG_SEND_TASK_STK[MSG_SEND_STK_SIZE]; //
-void Message_Send_Task(void *pdata);
+void Message_Send_Task_ClientBoard(void *pdata);
 void Message_Send_Task_HostBoard(void *pdata);
 
 
@@ -299,7 +299,7 @@ int main(void)
    	Hardware_Init();		//系统初始化
    	
 
-	UsartPrintf(USART_DEBUG, "SW_VERSION: %s\r\n", SW_VERSION);		
+	UsartPrintf(USART_DEBUG, "SoftVersion: %s\r\n", SW_VERSION);		
 	UsartPrintf(USART_DEBUG, "Version Build: %s %s\r\n", __DATE__, __TIME__);
 
 	
@@ -358,13 +358,13 @@ void start_task(void *pdata)
 	if(g_src_board_id == 1)
 	{
 		UsartPrintf(USART_DEBUG, "g_src_board_id: %d\r\n", g_src_board_id);
-		OSTaskCreate(DrugPush_Task, (void *)0, (OS_STK*)&Drug_Push_TASK_STK[Drug_Push_STK_SIZE- 1], Drug_Push_TASK_PRIO);
+		OSTaskCreate(DrugPushMain_Task, (void *)0, (OS_STK*)&Drug_Push_TASK_STK[Drug_Push_STK_SIZE- 1], Drug_Push_TASK_PRIO);
 		OSTaskCreate(Message_Send_Task_HostBoard, (void *)0, (OS_STK*)&MSG_SEND_TASK_STK[MSG_SEND_STK_SIZE- 1], MSG_SEND_TASK_PRIO);
 		OSTaskCreate(QueryMain_Task, (void *)0, (OS_STK*)&QUERY_TASK_STK[QUERY_STK_SIZE- 1], QUERY_TASK_PRIO);
 	}	
 	else
 	{
-		OSTaskCreate(Message_Send_Task, (void *)0, (OS_STK*)&MSG_SEND_TASK_STK[MSG_SEND_STK_SIZE- 1], MSG_SEND_TASK_PRIO);
+		OSTaskCreate(Message_Send_Task_ClientBoard, (void *)0, (OS_STK*)&MSG_SEND_TASK_STK[MSG_SEND_STK_SIZE- 1], MSG_SEND_TASK_PRIO);
 		OSTaskCreate(CoolingControl_Task, (void *)0, (OS_STK*)&Cooling_TASK_STK[Cooling_STK_SIZE- 1], Cooling_TASK_PRIO);
 	}
 	
@@ -552,7 +552,7 @@ void Track_Run_Task(void *pdata)
 	OSSemDel(SemOfTrack, 0, &err);
 }
 
-void DrugPush_Task(void *pdata)
+void DrugPushMain_Task(void *pdata)
 {
 	uint8_t delay_time = 10;
 	uint16_t run_time = 0;
@@ -614,19 +614,19 @@ void DrugPush_Task(void *pdata)
 		if(drug_push_status == 0)// 出货失败开始回收
 		{
 			UsartPrintf(USART_DEBUG, "Push Fail, Clean!!!!!!!!!!\r\n");
-			
-			PushBeltControl(BELT_STOP);
-			Lifter_Set(LIFTER_UP);
-			Collect_Belt_Run();
-			Lifter_Set(LIFTER_FALL);
-			CleanTrackParam();
-			
+
 			//mcu_push_medicine_fail();
 			mcu_push_medicine_result(knl_box_struct->cur_boardidx, knl_box_struct->cur_trackidx, 1);
 			for(i = 2; i <= BOARD_ID_MAX; i++)
 			{
 				send_board_push_cmd(i, 0);
 			}
+
+			PushBeltControl(BELT_STOP);
+			Lifter_Set(LIFTER_UP);
+			Collect_Belt_Run();
+			Lifter_Set(LIFTER_FALL);
+			CleanTrackParam();
 			
 			knl_box_struct->board_add_finish = 0;
 			knl_box_struct->board_push_finish = 0;
@@ -978,12 +978,12 @@ void Track_OverCurrent_Task(void *pdata)
 }
 
 
-void Message_Send_Task(void *pdata)
+void Message_Send_Task_ClientBoard(void *pdata)
 {		
 	uint16_t node_num = 0;
 	uint32_t cur_time = 0;
 	uint8_t err = 0;
-	uint8_t i = 0, node_i = 0;
+	uint8_t i = 0, j = 0 , node_i = 0;
 	
 	struct node* MsgNode = NULL;
 	struct node* NewMsgNode = NULL;
@@ -1009,16 +1009,16 @@ void Message_Send_Task(void *pdata)
 		{
 			//NewMsgNode = GetMsgNode(MsgNode);
 			NewMsgNode = GetNode(UartMsgNode, node_i);	
-			UsartPrintf(USART_DEBUG, "Message_Send_Task Node[%d/%d]node_p[%d]!!!\r\n", i, node_num, node_i);
+			//UsartPrintf(USART_DEBUG, "Message_Send_Task_ClientBoard Node[%d/%d]node_p[%d]!!!\r\n", i, node_num, node_i);
 			
 			if(NewMsgNode)
 			{
 				if(NewMsgNode->data.times == 0xff)
 				{
 					/*立即发送*/
+					UsartPrintf(USART_DEBUG, "QuickSend One time!!!\r\n"); 
 					RS485_Send_Data(NewMsgNode->data.payload, NewMsgNode->data.size); 
-					UsartPrintf(USART_DEBUG, "NewMsgNode data.size[%d]time[%d]times[%d]!!!\r\n", 
-					NewMsgNode->data.size, NewMsgNode->data.create_time,NewMsgNode->data.times);
+
 					NewMsgNode->data.times = 5;
 				}
 				else 
@@ -1026,9 +1026,8 @@ void Message_Send_Task(void *pdata)
 					if((NewMsgNode->data.times == 0) || 
 						(cur_time >= NewMsgNode->data.create_time + (NewMsgNode->data.times + 1) * 20))//超时20*100ms,重传
 					{
+						UsartPrintf(USART_DEBUG, "TrySend time[%d]times[%d]!!!\r\n", NewMsgNode->data.create_time,NewMsgNode->data.times);
 						RS485_Send_Data(NewMsgNode->data.payload, NewMsgNode->data.size); 
-						UsartPrintf(USART_DEBUG, "NewMsgNode data.size[%d]time[%d]times[%d]!!!\r\n", 
-						NewMsgNode->data.size, NewMsgNode->data.create_time,NewMsgNode->data.times);
 						NewMsgNode->data.times++;
 					}
 				}
@@ -1036,6 +1035,12 @@ void Message_Send_Task(void *pdata)
 				if(NewMsgNode->data.times >= 5 && NewMsgNode->data.times != 0xff)//设定最大重传次数
 				{
 					UsartPrintf(USART_DEBUG, "Retry Send TimeOut, Delete Node[%d]\r\n", i);
+					for(j = 0;j < NewMsgNode->data.size; j++)	
+					{
+						UsartPrintf(USART_DEBUG, "0x%02x,", *(NewMsgNode->data.payload + j));
+					}
+					UsartPrintf(USART_DEBUG, "\r\n");
+					
 					if(i == node_num)
 					DeleNode(MsgNode, TAIL);
 					else
@@ -1088,21 +1093,21 @@ void Message_Send_Task_HostBoard(void *pdata)
 		{
 			//NewMsgNode = GetMsgNode(MsgNode);
 			NewMsgNode = GetNode(UartMsgNode, node_i);	
-			UsartPrintf(USART_DEBUG, "Message_Send_Task Node[%d/%d]node_p[%d]!!!\r\n", i, node_num, node_i);
+			//UsartPrintf(USART_DEBUG, "Message_Send_Task_HostBoard Node[%d/%d]node_p[%d]!!!\r\n", i, node_num, node_i);
 			
 			if(NewMsgNode)
 			{
-				UsartPrintf(USART_DEBUG, "NewMsgNode data.size[%d]time[%d]times[%d]!!!\r\n", 
-					NewMsgNode->data.size, NewMsgNode->data.create_time,NewMsgNode->data.times);
+				UsartPrintf(USART_DEBUG, "HostBoard TrySend time[%d]times[%d]!!!\r\n", NewMsgNode->data.create_time,NewMsgNode->data.times);
 
 				if((NewMsgNode->data.times == 0) || 
 					(cur_time >= NewMsgNode->data.create_time + (NewMsgNode->data.times + 1) * 20))//超时20*100ms,重传
 				{
+					UsartPrintf(USART_DEBUG, "Retry Send Message-->");
 					for(j = 0; j < NewMsgNode->data.size; j++)
 					{
 						UsartPrintf(USART_DEBUG, "0x%02x,", NewMsgNode->data.payload[j]);
 					}
-					UsartPrintf(USART_DEBUG, "<--Retry Send Message\r\n");
+					UsartPrintf(USART_DEBUG, "<--\r\n");
 					
 					if(NewMsgNode->data.uart_idx == UART1_IDX)
 					{
@@ -1197,8 +1202,6 @@ void TrackMonitor_Task(void *pdata)
 	int i = 0;
 	
 	static LED_STATUS_ENUM led_st = LED_ON;
-
-	#define xxx 0.0008056640625
 	
 	UsartPrintf(USART_DEBUG, "SENSOR_Task run!!!!!!!!!!!!\r\n");
 
@@ -1236,7 +1239,7 @@ void TrackMonitor_Task(void *pdata)
 			if ((g_track_state == TRACK_STANDBY) && (motor_run_detect_flag == 0)&&(g_track_id == 0)) 
 			{
 				RTOS_TimeDlyHMSM(0, 0, 0, 500);
-				for(i = 0; i < 2; i++)
+				for(i = 0; i < 3; i++)
 				{
 					is_report = 0;
 					adcx = Get_Adc_Average();
@@ -1249,7 +1252,7 @@ void TrackMonitor_Task(void *pdata)
 					goto NEXT_SETP;
 				}
 				
-				voltage = voltage/2;
+				voltage = voltage/3;
 				UsartPrintf(USART_DEBUG, "TRACK_STANDBY voltage:%.3f[%d]\r\n", voltage, adcx);
 				if(voltage >= g_standby_voltage + 0.3)//g_standby_voltage + 0.3，单板短路故障
 				{
@@ -1262,7 +1265,7 @@ void TrackMonitor_Task(void *pdata)
 			}
 			else if((g_track_state == TRACK_WORKING) && (motor_run_detect_flag == 1) && (g_track_id != 0))
 			{
-				for(i = 0; i < 2; i++)
+				for(i = 0; i < 3; i++)
 				{
 					is_report = 0;
 					adcx = Get_Adc_Average();			
@@ -1275,7 +1278,7 @@ void TrackMonitor_Task(void *pdata)
 					goto NEXT_SETP;
 				}
 				
-				voltage = voltage/2;
+				voltage = voltage/3;
 				UsartPrintf(USART_DEBUG, "TRACK_WORKING voltage[%.3f] > [%.3f]\r\n", voltage, g_standby_voltage + 0.3);
 				
 				if(voltage < g_standby_voltage + 0.03)//< g_standby_voltage + 0.03，断路

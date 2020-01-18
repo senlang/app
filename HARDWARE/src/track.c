@@ -170,7 +170,7 @@ uint8_t set_track(uint16_t track_num, uint8_t status)
 
 	//UsartPrintf(USART_DEBUG, "x.GPIO_Pin[0x%04x]y.GPIO_Pin[0x%04x]\r\n", x.GPIO_Pin, y.GPIO_Pin);
 	
-	UsartPrintf(USART_DEBUG, "set_track[%d]:%d\r\n", track_num, status);
+	//UsartPrintf(USART_DEBUG, "set_track[%d]:%d\r\n", track_num, status);
 	
 	if(0 == status)
 	{
@@ -1093,7 +1093,7 @@ int Track_run(MOTOR_ENUM run_mode)
 
 	for(i = 2; i <= BOARD_ID_MAX; i++)
 	{
-		if(knl_box_struct->board_push_finish & (1 << (i-1)))
+		if((push_result_fail == 0)&&(knl_box_struct->board_push_finish & (1 << (i-1))))
 		{
 			send_board_push_cmd(i, 0xFF);
 			break;
