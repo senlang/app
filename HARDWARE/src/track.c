@@ -428,7 +428,7 @@ int Track_run_bk(MOTOR_ENUM run_mode)
 					/*暂时注释，方便消息应答处理*/
 					if(MOTOR_RUN_FORWARD == run_mode)
 					{
-						mcu_push_medicine_track_only(g_src_board_id, motor_run_detect_track_num);
+						mcu_push_medicine_track_only(g_src_board_id, motor_run_detect_track_num, 0);
 					}
 					else if(MOTOR_RUN_BACKWARD == run_mode)
 					{
@@ -454,9 +454,9 @@ int Track_run_bk(MOTOR_ENUM run_mode)
 	{
 		//if(g_src_board_id != 1)
 		{
-			mcu_push_medicine_track_only(g_src_board_id, 0xFF);//向1号板发送当前单板出货完成
+			mcu_push_medicine_track_only(g_src_board_id, 0xFF, 0);//向1号板发送当前单板出货完成
 			RTOS_TimeDlyHMSM(0, 0, 1, 0);
-			//mcu_push_medicine_track_only(g_src_board_id, 0xFF);//向1号板发送当前单板出货完成
+			//mcu_push_medicine_track_only(g_src_board_id, 0xFF, 0);//向1号板发送当前单板出货完成
 		}
 
 		if(g_src_board_id == 1)
@@ -805,7 +805,7 @@ int Track_run_a(MOTOR_ENUM run_mode)
 					/*暂时注释，方便消息应答处理*/
 					if(MOTOR_RUN_FORWARD == run_mode)
 					{
-						mcu_push_medicine_track_only(g_src_board_id, motor_run_detect_track_num);
+						mcu_push_medicine_track_only(g_src_board_id, motor_run_detect_track_num, 0);
 					}
 					else if(MOTOR_RUN_BACKWARD == run_mode)
 					{
@@ -832,9 +832,9 @@ int Track_run_a(MOTOR_ENUM run_mode)
 	{
 		if(push_result_fail == 0)
 		{
-			mcu_push_medicine_track_only(g_src_board_id, 0xFF);//向1号板发送当前单板出货完成
+			mcu_push_medicine_track_only(g_src_board_id, 0xFF, 0);//向1号板发送当前单板出货完成
 			RTOS_TimeDlyHMSM(0, 0, 1, 0);
-			//mcu_push_medicine_track_only(g_src_board_id, 0xFF);//向1号板发送当前单板出货完成
+			//mcu_push_medicine_track_only(g_src_board_id, 0xFF, 0);//向1号板发送当前单板出货完成
 
 			if(g_src_board_id == 1)
 			knl_box_struct->board_push_finish &= ~(1<<0);//清标志
@@ -909,6 +909,9 @@ int Track_run(MOTOR_ENUM run_mode)
 					heart_info.board_id = g_src_board_id;
 					heart_info.board_status = PUSHING_STATUS;
 					heart_info.medicine_track_number = motor_run_detect_track_num; 
+
+					knl_box_struct->cur_boardidx = g_src_board_id;
+					knl_box_struct->cur_trackidx = motor_run_detect_track_num;	
 					board_send_message(STATUS_REPORT_REQUEST, &heart_info);
 					
 					g_push_time = 120;//每处一盒药还原到180
@@ -952,6 +955,7 @@ int Track_run(MOTOR_ENUM run_mode)
 						if(time_pass_ms >= 500)
 						{
 							UsartPrintf(USART_DEBUG, "time_pass_ms[%d]OverCurrentDetected[%d]push[%d] fail %d/%d:%d\r\n", time_pass_ms, OverCurrentDetected, motor_run_detect_track_num, drug_cnt, track_struct[x][y].drug_count);
+							send_track_status_report(motor_run_detect_track_num, TIMEOUT_ERROR);
 							push_result_fail = 1;
 							break;
 						}
@@ -997,7 +1001,7 @@ int Track_run(MOTOR_ENUM run_mode)
 				{
 					UsartPrintf(USART_DEBUG, "push[%d] fail %d/%d:%d\r\n", motor_run_detect_track_num, drug_cnt, track_struct[x][y].drug_count);
 					knl_box_struct->board_push_finish = 0xffff;
-					mcu_push_medicine_track_only(g_src_board_id, 0xFD);//向1号板发送当前单板出货失败
+					mcu_push_medicine_track_only(g_src_board_id, motor_run_detect_track_num, 1);//向1号板发送当前单板出货失败
 					goto FINISH_RUN;
 				}
 				
@@ -1037,7 +1041,7 @@ int Track_run(MOTOR_ENUM run_mode)
 					/*暂时注释，方便消息应答处理*/
 					if(MOTOR_RUN_FORWARD == run_mode)
 					{
-						mcu_push_medicine_track_only(g_src_board_id, motor_run_detect_track_num);
+						mcu_push_medicine_track_only(g_src_board_id, motor_run_detect_track_num, 0);
 					}
 					else if(MOTOR_RUN_BACKWARD == run_mode)
 					{
@@ -1065,9 +1069,9 @@ int Track_run(MOTOR_ENUM run_mode)
 	{
 		if(push_result_fail == 0)
 		{
-			mcu_push_medicine_track_only(g_src_board_id, 0xFF);//向1号板发送当前单板出货完成
+			mcu_push_medicine_track_only(g_src_board_id, 0xFF, 0);//向1号板发送当前单板出货完成
 			RTOS_TimeDlyHMSM(0, 0, 1, 0);
-			//mcu_push_medicine_track_only(g_src_board_id, 0xFF);//向1号板发送当前单板出货完成
+			//mcu_push_medicine_track_only(g_src_board_id, 0xFF, 0);//向1号板发送当前单板出货完成
 
 			if(g_src_board_id == 1)
 			knl_box_struct->board_push_finish &= ~(1<<0);//清标志
@@ -1091,7 +1095,7 @@ int Track_run(MOTOR_ENUM run_mode)
 	{
 		if(knl_box_struct->board_push_finish & (1 << (i-1)))
 		{
-			send_board_push_cmd(i);
+			send_board_push_cmd(i, 0xFF);
 			break;
 		}
 	}

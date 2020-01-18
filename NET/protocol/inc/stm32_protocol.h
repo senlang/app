@@ -145,6 +145,10 @@ typedef enum{
 	OTHER_FAULT = 0x0F,
 }FAULT_CODE;  
 
+typedef enum{  
+	PUSH_ = 1,	//
+}PUSH_DRUG_RESULT;  
+
 /*
 typedef enum{
 	MOTOR_FORWARD_TEST = 1,	//货道前进
@@ -596,7 +600,7 @@ void mcu_push_medicine_close_door_complete(void);
 
 void mcu_push_medicine_fail(void);
 
-void mcu_push_medicine_track_only(uint8_t board, uint8_t track_number);
+void mcu_push_medicine_track_only(uint8_t board, uint8_t track_number, uint8_t status);
 void mcu_add_medicine_track_only(uint8_t board, uint8_t track_number);
 
 void send_track_runtime_report( void *input_data);

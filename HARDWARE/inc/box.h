@@ -103,6 +103,7 @@ typedef enum
 	//NORMAL_RUNNING,	//正常运转
 	SHORTCIRCUIT_BLOCK=1,//短路、堵转
 	BROKENCIRCUIT,	//断路
+	TIMEOUT_ERROR,	//超时
 }MOTOR_STATUS_ENUM;
 
 typedef enum
@@ -119,6 +120,9 @@ typedef struct
 	uint16_t board_add_finish;/*1111 1111每一个bit表示1个单板*/
 	uint16_t board_push_ackmsg;/*1111 1111每一个bit表示1个单板*/
 	uint16_t board_add_ackmsg;/*1111 1111每一个bit表示1个单板*/
+	uint8_t cur_boardidx;
+	uint8_t cur_trackidx;
+	uint8_t g_board_id;
 } box_struct, *pbox_struct;
 
 

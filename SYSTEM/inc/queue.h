@@ -105,6 +105,8 @@ int MessageAckCheck(unsigned char *pdata, uint16_t size);
 
 void MessageInsertQueue(unsigned char *pdata, uint16_t size, uint8_t uart_idx);
 
+void DelayMessageInsertQueue(unsigned char *pdata, uint16_t size, uint8_t uart_idx);
+
 void NotRetryMessageInsertQueue(unsigned char *pdata, uint16_t size, uint8_t uart_idx);
 
 

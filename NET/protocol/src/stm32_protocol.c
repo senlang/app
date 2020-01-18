@@ -137,22 +137,26 @@ void mcu_push_medicine_fail(void)
 	struct push_medicine_complete_request_info_struct  push_complete_info;
 	
 	memset(&push_complete_info, 0x00, sizeof(push_complete_info));
-	push_complete_info.board_id = 0xfd;
+	push_complete_info.board_id = 0xFD;
 	push_complete_info.track_status= 0;
+	push_complete_info.medicine_track_number= 0;
 	board_send_message(PUSH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
 }
 
 
 
+
+
 /*各货道出货完成，所有单板都需要执行*/
-void mcu_push_medicine_track_only(uint8_t board, uint8_t track_number)
+//status: 0 完成，1 故障
+void mcu_push_medicine_track_only(uint8_t board, uint8_t track_number, uint8_t status)
 {
 	struct push_medicine_complete_request_info_struct  push_complete_info;
 	
 	memset(&push_complete_info, 0x00, sizeof(push_complete_info));
 	push_complete_info.board_id = board;
 	push_complete_info.medicine_track_number = track_number;
-	push_complete_info.track_status = 0;
+	push_complete_info.track_status = status;
 	board_send_message(PUSH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
 }
 
@@ -236,7 +240,7 @@ void send_push_medicine_complete_request( void *input_data)
 		
 		/*每个货道出货完成向1号板汇报*/
 		//if(push_medicine_complete_info->medicine_track_number > TRACK_MAX)
-		MessageInsertQueue(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE, UART1_IDX);
+		DelayMessageInsertQueue(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE, UART1_IDX);
 	}	
 	else
 	{
@@ -282,7 +286,7 @@ void mcu_send_push_medicine_complete_request( void *input_data)
 		UART1_IO_Send(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE);
 
 		if(push_medicine_complete_info->medicine_track_number > TRACK_MAX)
-		MessageInsertQueue(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE, UART1_IDX);
+		DelayMessageInsertQueue(send_push_medicine_complete_request_data, PUSH_MEDICINE_COMPLETE_PACKET_SIZE, UART1_IDX);
 	}
 	else
 	{
@@ -323,7 +327,7 @@ void mcu_send_add_medicine_complete_request( void *input_data)
 	if(g_src_board_id == 1)
 	{
 		UART1_IO_Send(send_add_medicine_complete_request_data, ADD_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE); 
-		MessageInsertQueue(send_add_medicine_complete_request_data, ADD_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE, UART1_IDX);
+		DelayMessageInsertQueue(send_add_medicine_complete_request_data, ADD_MEDICINE_CONPLETE_REQUEST_PACKET_SIZE, UART1_IDX);
 	}
 	else
 	{
@@ -445,7 +449,7 @@ void send_track_runtime_report( void *input_data)
 	if(g_src_board_id == 1)
 	{
 		UART1_IO_Send(send_track_runtime, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE); 
-		MessageInsertQueue(send_track_runtime, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE, UART1_IDX);
+		DelayMessageInsertQueue(send_track_runtime, TRACK_RUNTIME_CALC_REPORT_PACKET_SIZE, UART1_IDX);
 	}
 	else
 	{
@@ -694,6 +698,9 @@ void up_packet_parser(unsigned char *src, int len)
 			{
 				UsartPrintf(USART_DEBUG, "Board[%d]Track[%d] is Pushing!!\r\n", info->board_id, info->medicine_track_number);
 				g_push_time = 120;
+				
+				knl_box_struct->cur_boardidx = info->board_id;
+				knl_box_struct->cur_trackidx = info->medicine_track_number;				
 			}
 			UART1_IO_Send(uart2_shared_rx_buf, pkt_len);
 		}
@@ -723,7 +730,7 @@ void up_packet_parser(unsigned char *src, int len)
 						if(knl_box_struct->board_push_finish & (1 << (i-1)))
 						{
 							UsartPrintf(USART_DEBUG, "Send Push Message to board[%d]!!\r\n", i);
-							send_board_push_cmd(i);
+							send_board_push_cmd(i, 0xFF);
 							break;
 						}
 					}
@@ -732,30 +739,14 @@ void up_packet_parser(unsigned char *src, int len)
 				{
 					UsartPrintf(USART_DEBUG, "All Board Finish!!\r\n");
 				}
-				
-				/*
-				if(last_board != board_id)
-				{
-					for(i = 2; i <= BOARD_ID_MAX; i++)
-					{
-						if(knl_box_struct->board_push_finish & (1 << (i-1)))
-						{
-							send_board_push_cmd(i);
-							last_board = i;
-							break;
-						}
-					}
-				}
-				else
-				{
-					UsartPrintf(USART_DEBUG, "Board[%d] is old!!\r\n", board_id);
-				}
-				*/
 			}
-			else if(push_medicine_complete_request.info.medicine_track_number == 0xFD)
+			/*货道超时消息*/
+			else if(push_medicine_complete_request.info.track_status == 1)
 			{
 				UsartPrintf(USART_DEBUG, "Board[%d]Track[%d] Have Push Fail!!\r\n", board_id, push_medicine_complete_request.info.medicine_track_number);
 				knl_box_struct->board_push_finish = 0xffff;
+				knl_box_struct->cur_boardidx = push_medicine_complete_request.info.board_id;
+				knl_box_struct->cur_trackidx = push_medicine_complete_request.info.medicine_track_number;
 			}
 			
 		}  

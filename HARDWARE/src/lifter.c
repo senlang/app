@@ -102,6 +102,9 @@ void Lifter_Set(uint8_t status)
 	UsartPrintf(USART_DEBUG, "Lifter run, status[%d]!!!\r\n", status);
 	if(status == LIFTER_UP)
 	{
+		if(Lifter_Key_Detect(LIFTER_UP) == LIFTER_KEY_DETECT)
+		return;
+	
 		GPIO_WriteBit(GPIOA, LIFTER_DOWN_KEY, Bit_RESET);	
 		GPIO_WriteBit(GPIOA, LIFTER_UP_KEY, Bit_SET);	
 
@@ -119,6 +122,9 @@ void Lifter_Set(uint8_t status)
 
 	else if(status == LIFTER_FALL)
 	{
+		if(Lifter_Key_Detect(LIFTER_FALL) == LIFTER_KEY_DETECT)
+		return;
+		
 		GPIO_WriteBit(GPIOA, LIFTER_UP_KEY, Bit_RESET);	
 		GPIO_WriteBit(GPIOA, GPIO_Pin_7, Bit_SET);	
 

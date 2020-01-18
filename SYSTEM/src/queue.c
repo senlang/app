@@ -627,12 +627,33 @@ void MessageInsertQueue(unsigned char *pdata, uint16_t size, uint8_t uart_idx)
 }
 
 
+void DelayMessageInsertQueue(unsigned char *pdata, uint16_t size, uint8_t uart_idx)
+{
+	struct node* Uart1MsgNode = NULL;
+	
+	Uart1MsgNode = CreateMsgNode();
+	UsartPrintf(USART_DEBUG, " DelayMessageInsertQueue malloc Uart1MsgNode = 0x%p\r\n", Uart1MsgNode);
+	
+	if(Uart1MsgNode == NULL)
+	return;
+
+	Uart1MsgNode->data.size = size;
+	Uart1MsgNode->data.uart_idx = uart_idx;
+	Uart1MsgNode->data.times = 1;
+	
+	memcpy(Uart1MsgNode->data.payload, pdata, size);
+	
+	InsertNode(UartMsgNode, TAIL, Uart1MsgNode);
+}
+
+
+
 void NotRetryMessageInsertQueue(unsigned char *pdata, uint16_t size, uint8_t uart_idx)
 {
 	struct node* Uart1MsgNode = NULL;
 	
 	Uart1MsgNode = CreateMsgNode();
-	UsartPrintf(USART_DEBUG, " MessageInsertQueue malloc Uart1MsgNode = 0x%p\r\n", Uart1MsgNode);
+	UsartPrintf(USART_DEBUG, " NotRetryMessageInsertQueue malloc Uart1MsgNode = 0x%p\r\n", Uart1MsgNode);
 	
 	if(Uart1MsgNode == NULL)
 	return;

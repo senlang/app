@@ -1015,7 +1015,6 @@ void send_query_message(uint8_t id)
 
 
 
-
 void send_track_status_report(uint8_t track_id, uint8_t status)  
 {  
 	struct track_status_struct track_status;
@@ -1035,7 +1034,7 @@ void send_track_status_report(uint8_t track_id, uint8_t status)
 	if(g_src_board_id == 1)
 	{
 		UART1_IO_Send((u8 *)(&track_status), TRACK_STATUS_REPORT_PACKET_SIZE);  
-		MessageInsertQueue((u8 *)(&track_status), TRACK_STATUS_REPORT_PACKET_SIZE, UART1_IDX);
+		DelayMessageInsertQueue((u8 *)(&track_status), TRACK_STATUS_REPORT_PACKET_SIZE, UART1_IDX);
 	}
 	else
 	{
@@ -1154,9 +1153,12 @@ void send_temperature_report(int temp, int humi)
 	
 } 
 
+//出货准备
+//0x02,0x08,0x20,0x02,0x00,0x00,0x00,0x00,0x2c
 
+//开始出货
 //0x02,0x08,0x20,0x01,0xff,0x00,0x00,0x00,0x2a
-void send_board_push_cmd(uint8_t board_id)  
+void send_board_push_cmd(uint8_t board_id, uint8_t action)  
 {
 	int i = 0;  
 	uint8_t cmd[9];
@@ -1167,7 +1169,7 @@ void send_board_push_cmd(uint8_t board_id)
 
 	cmd[3] = board_id;
 	
-	cmd[4] = 0xff;
+	cmd[4] = action;
 	
 	cmd[5] = 0x00;
 	
@@ -1188,5 +1190,21 @@ void send_board_push_cmd(uint8_t board_id)
 	MessageInsertQueue(cmd, 9, UART2_IDX);
 } 
 
+void mcu_push_medicine_result(uint8_t board, uint8_t track, uint8_t status)
+{
+	struct push_medicine_complete_request_info_struct  push_complete_info;
+	
+	memset(&push_complete_info, 0x00, sizeof(push_complete_info));
+	push_complete_info.board_id = board;	
+	push_complete_info.medicine_track_number = track;
+	push_complete_info.track_status = status;
+	board_send_message(PUSH_MEDICINE_COMPLETE_REQUEST, &push_complete_info);
+}
+
+void SoftReset(void)
+{
+    __set_FAULTMASK(1); // 关闭所有中断
+    NVIC_SystemReset(); // 复位
+}
 
 

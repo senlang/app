@@ -557,6 +557,7 @@ void DrugPush_Task(void *pdata)
 	uint8_t delay_time = 10;
 	uint16_t run_time = 0;
 	INT8U            err;
+	int i = 0;
 
 	uint8_t drug_push_status = 0;
 	INT8U try_times = 0;
@@ -565,8 +566,9 @@ void DrugPush_Task(void *pdata)
 	SemOfConveyor= OSSemCreate(0);
 
 	/*上电启动传送带，回收药品*/
-	#if 0
+	#if 1
 	UsartPrintf(USART_DEBUG, "Drug Collect Start!!!!!!!!!!\r\n");
+	Lifter_Set(LIFTER_FALL);
 	PushBeltControl(BELT_RUN);
 	RTOS_TimeDlyHMSM(0, 0, 10, 0);
 	PushBeltControl(BELT_STOP);
@@ -608,8 +610,8 @@ void DrugPush_Task(void *pdata)
 			RTOS_TimeDlyHMSM(0, 0, 1, 0);
 			run_time ++;
 			g_push_time--;
-		}while(g_push_time >= 0);
-		if(drug_push_status == 0)// 150s后未出货完成开始回收
+		}while(g_push_time > 0);
+		if(drug_push_status == 0)// 出货失败开始回收
 		{
 			UsartPrintf(USART_DEBUG, "Push Fail, Clean!!!!!!!!!!\r\n");
 			
@@ -619,11 +621,17 @@ void DrugPush_Task(void *pdata)
 			Lifter_Set(LIFTER_FALL);
 			CleanTrackParam();
 			
+			//mcu_push_medicine_fail();
+			mcu_push_medicine_result(knl_box_struct->cur_boardidx, knl_box_struct->cur_trackidx, 1);
+			for(i = 2; i <= BOARD_ID_MAX; i++)
+			{
+				send_board_push_cmd(i, 0);
+			}
+			
 			knl_box_struct->board_add_finish = 0;
 			knl_box_struct->board_push_finish = 0;
-			
-			mcu_push_medicine_fail();
-			
+			knl_box_struct->cur_boardidx = 0;
+			knl_box_struct->cur_trackidx = 0;			
 			continue;
 		}
 
@@ -1268,7 +1276,7 @@ void TrackMonitor_Task(void *pdata)
 				}
 				
 				voltage = voltage/2;
-				UsartPrintf(USART_DEBUG, "TRACK_WORKING adcx:%.3f[%d]\r\n", voltage, adcx);
+				UsartPrintf(USART_DEBUG, "TRACK_WORKING voltage[%.3f] > [%.3f]\r\n", voltage, g_standby_voltage + 0.3);
 				
 				if(voltage < g_standby_voltage + 0.03)//< g_standby_voltage + 0.03，断路
 				{
